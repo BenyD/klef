@@ -1,0 +1,7 @@
+# Auth
+BETTER_AUTH_SECRET=""
+BETTER_AUTH_URL="https://klef.sh"
+
+# Google
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
