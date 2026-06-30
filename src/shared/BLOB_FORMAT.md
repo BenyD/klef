@@ -64,8 +64,11 @@ and DEK be imported as **non-extractable** `CryptoKey` objects.
 `KLEF-` prefix, e.g. `KLEF-AB3C4-9XK2M-...`. Shown **exactly once** at vault
 setup with explicit "I have saved this" confirmation; it cannot be recovered.
 
-A key derived from the recovery key wraps the DEK to produce the second wrapped
-DEK, so a forgotten passphrase can still be recovered while the data stays
+The recovery key is already high-entropy (128 random bits), so it does **not**
+go through the slow passphrase KDF. The wrapping key is derived with
+**HKDF-SHA-256** (`salt = empty`, `info = "klef/recovery-kek/v1"`, 32-byte
+output → AES-256-GCM). That key wraps the DEK to produce the second wrapped DEK,
+so a forgotten passphrase can still be recovered while the data stays
 zero-knowledge.
 
 ## Wire formats
