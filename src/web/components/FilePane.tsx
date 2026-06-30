@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check, Copy, Download, History, Loader2, Save, Undo2 } from "lucide-react";
 import { decryptBlob, encryptBlob } from "../../shared/crypto.ts";
 import { diffLines, diffStats, isUnchanged } from "../../shared/diff.ts";
 import {
@@ -10,6 +11,9 @@ import {
 } from "../structure-api.ts";
 import { useVault } from "../vault-session.tsx";
 import type { SelectedFile } from "./StructureNav.tsx";
+import { Badge } from "./ui/badge.tsx";
+import { Button } from "./ui/button.tsx";
+import { Textarea } from "./ui/textarea.tsx";
 
 interface Props {
   file: SelectedFile;
@@ -123,90 +127,137 @@ export function FilePane({ file, onSaved }: Props) {
   }
 
   return (
-    <div className="pane-file">
-      <div className="pane-head">
-        <h2 className="pane-title">{file.name}</h2>
-        <div className="pane-actions">
+    <div className="mx-auto max-w-3xl p-6">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-mono text-lg font-medium">{file.name}</h2>
+        <div className="flex items-center gap-1.5">
           {changed ? (
-            <span className="diff-summary">
-              <span className="add">+{stats.added}</span>{" "}
-              <span className="remove">−{stats.removed}</span>
+            <span className="mr-1 font-mono text-sm">
+              <span className="text-emerald-600">+{stats.added}</span>{" "}
+              <span className="text-rose-600">−{stats.removed}</span>
             </span>
           ) : (
-            justSaved && <span className="good small">Saved ✓</span>
+            justSaved && (
+              <span className="text-muted-foreground mr-1 flex items-center gap-1 text-sm">
+                <Check className="size-3.5 text-emerald-600" />
+                Saved
+              </span>
+            )
           )}
-          <button className="btn ghost small" onClick={copyToClipboard} disabled={loading}>
-            {copied ? "Copied ✓" : "Copy"}
-          </button>
-          <button className="btn ghost small" onClick={exportFile} disabled={loading}>
+          <Button variant="ghost" size="sm" onClick={copyToClipboard} disabled={loading}>
+            {copied ? <Check /> : <Copy />}
+            {copied ? "Copied" : "Copy"}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={exportFile} disabled={loading}>
+            <Download />
             Export
-          </button>
-          <button className="btn ghost small" onClick={toggleHistory} disabled={loading}>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void toggleHistory()}
+            disabled={loading}
+            className={history ? "bg-accent" : undefined}
+          >
+            <History />
             History
-          </button>
+          </Button>
           {changed && (
-            <button
-              className="btn ghost small"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setDraft(stored)}
               disabled={saving}
             >
+              <Undo2 />
               Discard
-            </button>
+            </Button>
           )}
-          <button className="btn small save" onClick={onSave} disabled={!changed || saving}>
+          <Button size="sm" onClick={() => void onSave()} disabled={!changed || saving}>
+            {saving ? <Loader2 className="animate-spin" /> : <Save />}
             {saving ? "Saving…" : "Save version"}
-          </button>
+          </Button>
         </div>
       </div>
 
-      {error && <p className="bad small">{error}</p>}
+      {error && <p className="text-destructive mb-3 text-sm">{error}</p>}
 
       {loading ? (
-        <p className="muted">Decrypting…</p>
+        <div className="text-muted-foreground flex items-center gap-2 py-12 text-sm">
+          <Loader2 className="size-4 animate-spin" />
+          Decrypting…
+        </div>
       ) : (
         <>
-          <textarea
-            className="editor"
+          <Textarea
             spellCheck={false}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Paste your .env contents here…"
+            className="min-h-80 font-mono text-sm leading-relaxed"
           />
+
           {changed && (
-            <section className="diff">
-              <h3 className="diff-title">Changes</h3>
-              <pre className="diff-body">
+            <section className="mt-6">
+              <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
+                Changes
+              </h3>
+              <div className="overflow-hidden rounded-md border font-mono text-xs leading-relaxed">
                 {ops.map((op, i) => (
-                  <div key={i} className={`diff-line ${op.type}`}>
-                    <span className="diff-gutter">
-                      {op.type === "add" ? "+" : op.type === "remove" ? "−" : " "}
+                  <div
+                    key={i}
+                    data-diff={op.type}
+                    className={`flex gap-2 px-3 ${
+                      op.type === "add"
+                        ? "bg-emerald-50 text-emerald-700"
+                        : op.type === "remove"
+                          ? "bg-rose-50 text-rose-700"
+                          : "text-muted-foreground"
+                    }`}
+                  >
+                    <span className="w-3 shrink-0 text-center opacity-60 select-none">
+                      {op.type === "add" ? "+" : op.type === "remove" ? "−" : ""}
                     </span>
-                    {op.text || " "}
+                    <span className="break-all whitespace-pre-wrap">
+                      {op.text || " "}
+                    </span>
                   </div>
                 ))}
-              </pre>
+              </div>
             </section>
           )}
 
           {history && (
-            <section className="history">
-              <h3 className="diff-title">Version history</h3>
+            <section className="mt-6">
+              <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
+                Version history
+              </h3>
               {history.length === 0 ? (
-                <p className="muted small">No saved versions yet.</p>
+                <p className="text-muted-foreground text-sm">
+                  No saved versions yet.
+                </p>
               ) : (
-                <ul className="history-list">
+                <ul className="divide-y rounded-md border">
                   {history.map((v) => (
-                    <li key={v.id} className="history-item">
-                      <span className="history-when">
+                    <li
+                      key={v.id}
+                      className="flex items-center justify-between gap-3 px-3 py-2"
+                    >
+                      <span className="text-muted-foreground flex items-center gap-2 text-sm">
                         {new Date(v.createdAt).toLocaleString()}
-                        {v.isCurrent && <span className="badge">current</span>}
+                        {v.isCurrent && (
+                          <Badge variant="secondary" className="font-normal">
+                            current
+                          </Badge>
+                        )}
                       </span>
-                      <button
-                        className="btn ghost small"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => void loadVersion(v.id)}
                       >
                         Load into editor
-                      </button>
+                      </Button>
                     </li>
                   ))}
                 </ul>

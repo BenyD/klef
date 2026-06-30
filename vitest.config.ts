@@ -15,6 +15,10 @@ export default defineConfig(async () => {
     test: {
       projects: [
         {
+          // Mirror the Vite `@` alias so client component tests resolve it.
+          resolve: {
+            alias: { "@": path.resolve(import.meta.dirname, "src/web") },
+          },
           test: {
             name: "unit",
             environment: "node",

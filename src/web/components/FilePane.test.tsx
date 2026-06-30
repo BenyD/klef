@@ -81,7 +81,7 @@ describe("FilePane (the save loop)", () => {
     // The diff section renders, showing the removed line (the new line is also
     // in the textarea, so we assert on the removed one which only appears here).
     expect(screen.getByText("Changes")).toBeTruthy();
-    expect(container.querySelector(".diff-line.remove")?.textContent).toContain("A=1");
-    expect(container.querySelector(".diff-line.add")?.textContent).toContain("A=2");
+    expect(container.querySelector('[data-diff="remove"]')?.textContent).toContain("A=1");
+    expect(container.querySelector('[data-diff="add"]')?.textContent).toContain("A=2");
   });
 });
