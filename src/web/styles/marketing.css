@@ -54,7 +54,7 @@
   gap: 8px;
 }
 
-.m-btn {
+.marketing .m-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -71,33 +71,33 @@
     border-color 0.15s ease;
 }
 
-.m-btn-primary {
+.marketing .m-btn-primary {
   background: #0a0a0a;
   color: #ffffff;
 }
-.m-btn-primary:hover {
+.marketing .m-btn-primary:hover {
   background: #383838;
 }
 
-.m-btn-ghost {
+.marketing .m-btn-ghost {
   background: transparent;
   color: var(--m-fg);
 }
-.m-btn-ghost:hover {
+.marketing .m-btn-ghost:hover {
   background: #f5f5f5;
 }
 
-.m-btn-outline {
+.marketing .m-btn-outline {
   background: #ffffff;
   color: var(--m-fg);
   border-color: var(--m-border);
 }
-.m-btn-outline:hover {
+.marketing .m-btn-outline:hover {
   background: #fafafa;
   border-color: #d4d4d4;
 }
 
-.m-btn-sm {
+.marketing .m-btn-sm {
   height: 34px;
   padding: 0 12px;
   font-size: 13px;
