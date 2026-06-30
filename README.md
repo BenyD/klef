@@ -4,10 +4,9 @@
 across machines, pull them back down — all end-to-end encrypted. The server only
 ever stores ciphertext; your keys never leave the browser.
 
-> Status: **v1 feature-complete and locally usable.** Phases 0–6 done — auth,
-> zero-knowledge crypto, vault setup/unlock, workspaces/projects/files, the
-> paste → diff → save loop, and export / copy / version history + restore. See
-> [`PRD.md`](./PRD.md) for the full spec and roadmap.
+> Status: **v1 feature-complete and locally usable** — auth, zero-knowledge
+> crypto, vault setup/unlock, workspaces/projects/files, the paste → diff → save
+> loop, and export / copy / version history + restore.
 
 Klef is deliberately **not** an Infisical/Doppler/Vault competitor. No CLI, no
 daemon, no file watcher — just a dead-simple, truly zero-knowledge env vault you

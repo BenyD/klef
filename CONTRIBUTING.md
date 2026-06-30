@@ -8,8 +8,8 @@ sections, which apply to every contribution.
 ## Before you start
 
 - For anything non-trivial, **open an issue first** to discuss the change. Klef
-  is intentionally minimal (see [`PRD.md`](./PRD.md) for what's in and out of
-  scope) — a quick conversation avoids wasted work on something that doesn't fit.
+  is intentionally minimal and tightly scoped — a quick conversation avoids
+  wasted work on something that doesn't fit.
 - Small fixes (typos, docs, obvious bugs) can go straight to a PR.
 
 ## Development

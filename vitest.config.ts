@@ -2,7 +2,7 @@ import path from "node:path";
 import { defineConfig } from "vitest/config";
 import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-pool-workers";
 
-// Two test surfaces (see PRD §5 / research):
+// Two test surfaces:
 //   - "unit"   : pure crypto + client logic in a fast node/happy-dom env.
 //   - "worker" : Hono routes + D1 inside the real workerd runtime (Miniflare),
 //                with our migrations applied to an isolated local D1 per run.

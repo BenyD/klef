@@ -29,3 +29,6 @@ coverage/
 
 # TS build info
 *.tsbuildinfo
+
+# Personal (kept local, not part of the public repo)
+PRD.md
