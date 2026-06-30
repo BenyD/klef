@@ -22,7 +22,7 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
 
-    "paths": { "@/*": ["./src/client/*"] }
+    "paths": { "@/*": ["./src/web/*"] }
   },
   "include": ["src", "test", "worker-configuration.d.ts"],
   "exclude": ["node_modules", "dist"]

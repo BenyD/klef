@@ -9,6 +9,6 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), cloudflare(), tailwindcss()],
   resolve: {
-    alias: { "@": path.resolve(import.meta.dirname, "./src/client") },
+    alias: { "@": path.resolve(import.meta.dirname, "./src/web") },
   },
 });

@@ -1,7 +1,7 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"name": "klef-web",
-	"main": "./src/worker/index.ts",
+	"main": "./src/api/index.ts",
 	"compatibility_date": "2026-06-25",
 	"compatibility_flags": [
 		"nodejs_compat"
@@ -19,7 +19,7 @@
 			"binding": "DB",
 			"database_name": "klef-db",
 			"database_id": "6e2e8c39-dba0-4543-b12b-1c3c29050905",
-			"migrations_dir": "./migrations"
+			"migrations_dir": "./db/migrations"
 		}
 	],
 	// Serve on the custom domain. Requires klef.sh to be an active zone in this

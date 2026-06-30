@@ -4,7 +4,7 @@
 // Never imported by the Worker or the client.
 import Database from "better-sqlite3";
 import { betterAuth } from "better-auth";
-import { buildAuthOptions } from "./src/worker/auth.ts";
+import { buildAuthOptions } from "./src/api/auth.ts";
 
 export const auth = betterAuth(
   buildAuthOptions({

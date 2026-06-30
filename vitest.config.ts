@@ -8,7 +8,7 @@ import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-pool-worker
 //                with our migrations applied to an isolated local D1 per run.
 export default defineConfig(async () => {
   const migrations = await readD1Migrations(
-    path.join(import.meta.dirname, "migrations"),
+    path.join(import.meta.dirname, "db/migrations"),
   );
 
   return {
@@ -20,7 +20,7 @@ export default defineConfig(async () => {
             environment: "node",
             include: [
               "src/shared/**/*.test.ts",
-              "src/client/**/*.test.{ts,tsx}",
+              "src/web/**/*.test.{ts,tsx}",
             ],
           },
         },
@@ -44,7 +44,7 @@ export default defineConfig(async () => {
           ],
           test: {
             name: "worker",
-            include: ["src/worker/**/*.test.ts"],
+            include: ["src/api/**/*.test.ts"],
             setupFiles: ["./test/apply-migrations.ts"],
           },
         },
