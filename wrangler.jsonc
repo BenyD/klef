@@ -1,26 +1,28 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "klef",
-  "main": "./src/worker/index.ts",
-  "compatibility_date": "2026-06-25",
-  "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    // Unmatched routes fall back to the SPA's index.html (client-side routing).
-    "not_found_handling": "single-page-application",
-    // API requests hit the Hono Worker first; everything else serves static SPA assets.
-    "run_worker_first": ["/api/*"]
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "klef-db",
-      // Placeholder until `wrangler d1 create klef-db` is run (Cloudflare setup step).
-      // Local dev/tests use a local SQLite DB and ignore this id.
-      "database_id": "00000000-0000-0000-0000-000000000000",
-      "migrations_dir": "./migrations"
-    }
-  ],
-  "observability": {
-    "enabled": true
-  }
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "klef",
+	"main": "./src/worker/index.ts",
+	"compatibility_date": "2026-06-25",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"assets": {
+		// Unmatched routes fall back to the SPA's index.html (client-side routing).
+		"not_found_handling": "single-page-application",
+		// API requests hit the Hono Worker first; everything else serves static SPA assets.
+		"run_worker_first": [
+			"/api/*"
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "klef-db",
+			"database_id": "6e2e8c39-dba0-4543-b12b-1c3c29050905",
+			"migrations_dir": "./migrations"
+		}
+	],
+	"observability": {
+		"enabled": true
+	}
 }
