@@ -1,6 +1,8 @@
 # Not a monorepo — this file only allowlists native build scripts for pnpm 11.
 # (Real workspaces are deferred until a second deliverable lands; see PRD §4.)
 allowBuilds:
+  '@prisma/client': false
+  better-sqlite3: true
   esbuild: true
   sharp: true
   workerd: true

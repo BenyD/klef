@@ -1,12 +1,14 @@
 import { Hono } from "hono";
+import { createAuth } from "./auth.ts";
+import { requireAuth, type AuthVariables } from "./middleware.ts";
 
-// `Env` is generated into worker-configuration.d.ts by `wrangler types`
-// (run `pnpm cf-typegen`). It exposes the bindings declared in wrangler.jsonc,
-// e.g. `DB: D1Database`.
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
-// Phase 0 smoke test: proves the SPA can reach the Worker AND the Worker can
-// reach D1 through the real binding. Replaced/expanded in later phases.
+// Better Auth owns every /api/auth/* route: Google OAuth, session, passkey, etc.
+// Instantiated per request because the D1 binding comes from `c.env`.
+app.on(["GET", "POST"], "/api/auth/*", (c) => createAuth(c.env).handler(c.req.raw));
+
+// Smoke route: proves SPA -> Worker -> D1 connectivity.
 app.get("/api/health", async (c) => {
   const row = await c.env.DB.prepare(
     "SELECT COUNT(*) AS n FROM health_check",
@@ -20,7 +22,12 @@ app.get("/api/health", async (c) => {
   });
 });
 
-// Anything else under /api that we haven't defined yet.
+// Session-gated route — the canonical "API gates on session" example.
+app.get("/api/me", requireAuth, (c) =>
+  c.json({ ok: true, user: c.get("user") }),
+);
+
+// Any other /api path we haven't defined.
 app.all("/api/*", (c) => c.json({ ok: false, error: "Not found" }, 404));
 
 export default app;

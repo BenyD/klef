@@ -28,10 +28,17 @@ export default defineConfig(async () => {
           plugins: [
             cloudflareTest({
               wrangler: { configPath: "./wrangler.jsonc" },
-              // Hand the migrations to the test Worker as a binding so the
-              // setup file can apply them to the isolated local D1.
               miniflare: {
-                bindings: { TEST_MIGRATIONS: migrations },
+                bindings: {
+                  // Migrations handed to the setup file to apply to local D1.
+                  TEST_MIGRATIONS: migrations,
+                  // Auth secrets — real values come from .dev.vars / wrangler
+                  // secrets; tests just need them present and well-formed.
+                  BETTER_AUTH_SECRET: "test-secret-please-ignore-32chars-minimum",
+                  BETTER_AUTH_URL: "https://klef.test",
+                  GOOGLE_CLIENT_ID: "test-google-client-id",
+                  GOOGLE_CLIENT_SECRET: "test-google-client-secret",
+                },
               },
             }),
           ],
