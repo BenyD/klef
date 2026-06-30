@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { createAuth } from "./auth.ts";
 import { requireAuth, type AuthVariables } from "./middleware.ts";
 import { vault } from "./vault.ts";
+import { structure } from "./structure.ts";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -34,6 +35,15 @@ app.get("/api/me", requireAuth, (c) =>
 app.use("/api/vault", requireAuth);
 app.use("/api/vault/*", requireAuth);
 app.route("/api/vault", vault);
+
+// Navigation structure (workspaces / projects / env files). Gate each resource
+// prefix (not all of /api, so unknown paths still hit the 404 below); the route
+// module itself is auth-free so it can be unit-tested with a stub session.
+for (const prefix of ["/api/tree", "/api/workspaces", "/api/projects", "/api/files"]) {
+  app.use(prefix, requireAuth);
+  app.use(`${prefix}/*`, requireAuth);
+}
+app.route("/api", structure);
 
 // Any other /api path we haven't defined.
 app.all("/api/*", (c) => c.json({ ok: false, error: "Not found" }, 404));

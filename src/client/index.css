@@ -262,3 +262,163 @@ h1 {
   margin-top: 0.2rem;
   accent-color: var(--accent);
 }
+
+/* --- workbench (Phase 4) --- */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-shell .topbar {
+  margin: 0;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.workbench {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.sidebar {
+  width: 280px;
+  flex: none;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 1rem 0.75rem;
+}
+
+.pane {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+.pane-empty {
+  max-width: 420px;
+  margin: 3rem auto;
+  text-align: center;
+}
+
+.pane-title {
+  font-size: 1.4rem;
+  margin: 0 0 0.5rem;
+}
+
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.9rem;
+}
+
+.tree-ws {
+  margin-bottom: 0.85rem;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 6px;
+}
+
+.tree-row:hover {
+  background: #161b21;
+}
+
+.tree-head .tree-name {
+  font-weight: 700;
+}
+
+.tree-proj {
+  margin-left: 0.5rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid var(--border);
+}
+
+.tree-proj-name {
+  font-weight: 600;
+}
+
+.tree-file.active {
+  background: #1b2330;
+}
+
+.tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-name {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+}
+
+.tree-controls {
+  display: flex;
+  gap: 0.1rem;
+  opacity: 0;
+}
+
+.tree-row:hover .tree-controls {
+  opacity: 1;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 0.25rem;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.icon-btn:hover {
+  color: var(--text);
+}
+
+.tree-add {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: left;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.82rem;
+}
+
+.tree-add:hover {
+  color: var(--accent);
+}
+
+.tree-add.prominent {
+  margin-top: 0.5rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tree-proj .tree-add {
+  margin-left: 0.5rem;
+}
+
+.tree-add-form input {
+  width: 100%;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.82rem;
+  background: #0c1014;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  color: var(--text);
+}
