@@ -181,4 +181,38 @@ describe("env versions (save flow)", () => {
       (await intruder.request(`/files/${fileId}/versions`, post({ blob: BLOB }), env)).status,
     ).toBe(404);
   });
+
+  it("lists history newest-first and serves a single version; isolates by user", async () => {
+    await seedUser("v4");
+    await seedUser("v4-intruder");
+    const app = appForUser("v4");
+    const fileId = await makeFile(app);
+
+    const firstId = await id(await app.request(`/files/${fileId}/versions`, post({ blob: BLOB }), env));
+    const secondId = await id(
+      await app.request(
+        `/files/${fileId}/versions`,
+        post({ blob: { ...BLOB, ciphertext: "Mg==" } }),
+        env,
+      ),
+    );
+
+    const history = (await (await app.request(`/files/${fileId}/versions`, {}, env)).json()) as {
+      versions: { id: string; createdAt: string; isCurrent: boolean }[];
+    };
+    expect(history.versions.map((v) => v.id)).toEqual([secondId, firstId]); // newest first
+    expect(history.versions.find((v) => v.id === secondId)!.isCurrent).toBe(true);
+    expect(history.versions.find((v) => v.id === firstId)!.isCurrent).toBe(false);
+
+    // Fetch a specific (older) version's blob.
+    const one = (await (await app.request(`/files/${fileId}/versions/${firstId}`, {}, env)).json()) as {
+      version: { blob: typeof BLOB };
+    };
+    expect(one.version.blob).toEqual(BLOB);
+
+    // Another user can't read this file's versions.
+    const intruder = appForUser("v4-intruder");
+    expect((await intruder.request(`/files/${fileId}/versions`, {}, env)).status).toBe(404);
+    expect((await intruder.request(`/files/${fileId}/versions/${firstId}`, {}, env)).status).toBe(404);
+  });
 });

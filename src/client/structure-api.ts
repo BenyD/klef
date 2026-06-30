@@ -53,3 +53,15 @@ export const saveVersion = (fileId: string, blob: EncryptedBlob) =>
     `/api/files/${fileId}/versions`,
     jsonBody("POST", { blob }),
   );
+
+export interface VersionSummary {
+  id: string;
+  createdAt: string;
+  isCurrent: boolean;
+}
+
+export const listVersions = (fileId: string) =>
+  req<{ versions: VersionSummary[] }>(`/api/files/${fileId}/versions`);
+
+export const getVersion = (fileId: string, versionId: string) =>
+  req<{ version: CurrentVersion }>(`/api/files/${fileId}/versions/${versionId}`);

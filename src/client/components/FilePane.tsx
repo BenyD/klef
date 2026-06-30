@@ -1,7 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { decryptBlob, encryptBlob } from "../../shared/crypto.ts";
 import { diffLines, diffStats, isUnchanged } from "../../shared/diff.ts";
-import { getCurrentVersion, saveVersion } from "../structure-api.ts";
+import {
+  getCurrentVersion,
+  getVersion,
+  listVersions,
+  saveVersion,
+  type VersionSummary,
+} from "../structure-api.ts";
 import { useVault } from "../vault-session.tsx";
 import type { SelectedFile } from "./StructureNav.tsx";
 
@@ -20,6 +26,8 @@ export function FilePane({ file, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [history, setHistory] = useState<VersionSummary[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,6 +56,10 @@ export function FilePane({ file, onSaved }: Props) {
   const stats = useMemo(() => diffStats(ops), [ops]);
   const changed = !isUnchanged(stored, draft);
 
+  const refreshHistory = useCallback(async () => {
+    setHistory((await listVersions(file.id)).versions);
+  }, [file.id]);
+
   async function onSave() {
     if (!dek || !changed) return;
     setSaving(true);
@@ -58,10 +70,55 @@ export function FilePane({ file, onSaved }: Props) {
       setStored(draft);
       setJustSaved(true);
       onSaved();
+      if (history) await refreshHistory();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function copyToClipboard() {
+    try {
+      await navigator.clipboard.writeText(draft);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function exportFile() {
+    const blob = new Blob([draft], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function toggleHistory() {
+    if (history) {
+      setHistory(null);
+      return;
+    }
+    try {
+      await refreshHistory();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // Load an older version into the editor as the draft; the diff vs current
+  // shows what restoring would change, and Save makes it the new version.
+  async function loadVersion(versionId: string) {
+    if (!dek) return;
+    try {
+      const { version } = await getVersion(file.id, versionId);
+      setDraft(await decryptBlob(dek, version.blob));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -78,6 +135,15 @@ export function FilePane({ file, onSaved }: Props) {
           ) : (
             justSaved && <span className="good small">Saved ✓</span>
           )}
+          <button className="btn ghost small" onClick={copyToClipboard} disabled={loading}>
+            {copied ? "Copied ✓" : "Copy"}
+          </button>
+          <button className="btn ghost small" onClick={exportFile} disabled={loading}>
+            Export
+          </button>
+          <button className="btn ghost small" onClick={toggleHistory} disabled={loading}>
+            History
+          </button>
           {changed && (
             <button
               className="btn ghost small"
@@ -119,6 +185,32 @@ export function FilePane({ file, onSaved }: Props) {
                   </div>
                 ))}
               </pre>
+            </section>
+          )}
+
+          {history && (
+            <section className="history">
+              <h3 className="diff-title">Version history</h3>
+              {history.length === 0 ? (
+                <p className="muted small">No saved versions yet.</p>
+              ) : (
+                <ul className="history-list">
+                  {history.map((v) => (
+                    <li key={v.id} className="history-item">
+                      <span className="history-when">
+                        {new Date(v.createdAt).toLocaleString()}
+                        {v.isCurrent && <span className="badge">current</span>}
+                      </span>
+                      <button
+                        className="btn ghost small"
+                        onClick={() => void loadVersion(v.id)}
+                      >
+                        Load into editor
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           )}
         </>

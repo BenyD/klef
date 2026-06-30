@@ -305,6 +305,45 @@ structure.get("/files/:id/current", async (c) => {
   });
 });
 
+// Version history (newest first), with a flag for the current one.
+structure.get("/files/:id/versions", async (c) => {
+  const file = await fileForUser(c.env.DB, c.get("user").id, c.req.param("id"));
+  if (!file) return c.json({ ok: false, error: "Not found" }, 404);
+
+  const rows = await c.env.DB.prepare(
+    // rowid tiebreak keeps ordering deterministic when two saves land in the
+    // same millisecond (created_at would otherwise tie).
+    "SELECT id, created_at FROM env_versions WHERE env_file_id = ? ORDER BY created_at DESC, rowid DESC",
+  )
+    .bind(file.id)
+    .all<{ id: string; created_at: string }>();
+
+  return c.json({
+    versions: rows.results.map((r) => ({
+      id: r.id,
+      createdAt: r.created_at,
+      isCurrent: r.id === file.current_version_id,
+    })),
+  });
+});
+
+// A specific version's opaque blob (for viewing / restoring in-browser).
+structure.get("/files/:id/versions/:vid", async (c) => {
+  const file = await fileForUser(c.env.DB, c.get("user").id, c.req.param("id"));
+  if (!file) return c.json({ ok: false, error: "Not found" }, 404);
+
+  const row = await c.env.DB.prepare(
+    "SELECT id, blob, created_at FROM env_versions WHERE id = ? AND env_file_id = ?",
+  )
+    .bind(c.req.param("vid"), file.id)
+    .first<{ id: string; blob: string; created_at: string }>();
+  if (!row) return c.json({ ok: false, error: "Not found" }, 404);
+
+  return c.json({
+    version: { id: row.id, blob: JSON.parse(row.blob), createdAt: row.created_at },
+  });
+});
+
 // Save a new version: insert the blob and atomically advance current_version_id.
 structure.post("/files/:id/versions", async (c) => {
   const file = await fileForUser(c.env.DB, c.get("user").id, c.req.param("id"));

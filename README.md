@@ -4,8 +4,10 @@
 across machines, pull them back down — all end-to-end encrypted. The server only
 ever stores ciphertext; your keys never leave the browser.
 
-> Status: **early build.** Phase 0 (scaffold) complete. See [`PRD.md`](./PRD.md)
-> for the full product spec and build phases.
+> Status: **v1 feature-complete and locally usable.** Phases 0–6 done — auth,
+> zero-knowledge crypto, vault setup/unlock, workspaces/projects/files, the
+> paste → diff → save loop, and export / copy / version history + restore. See
+> [`PRD.md`](./PRD.md) for the full spec and roadmap.
 
 Klef is deliberately **not** an Infisical/Doppler/Vault competitor. No CLI, no
 daemon, no file watcher — just a dead-simple, truly zero-knowledge env vault you
@@ -59,9 +61,45 @@ pnpm build         # typecheck + production build
 
 ## Self-hosting
 
-Klef is built to be forked and self-hosted on your own Cloudflare account:
-create your own D1 database, set your secrets, and `pnpm deploy`. A full guide
-lands near Phase 6.
+Klef is built to be forked and self-hosted on your own Cloudflare account — the
+single-repo Cloudflare deploy makes this genuinely easy, and it's a first-class
+use case.
+
+```bash
+# 1. Fork + clone, then install
+pnpm install
+
+# 2. Authenticate Wrangler with your Cloudflare account
+pnpm exec wrangler login
+
+# 3. Create your own D1 database, then put its id in wrangler.jsonc
+pnpm exec wrangler d1 create klef-db   # copy the database_id into wrangler.jsonc
+
+# 4. Apply the schema to your remote D1
+pnpm db:migrate:remote
+
+# 5. Set production secrets (never committed)
+pnpm exec wrangler secret put BETTER_AUTH_SECRET   # openssl rand -base64 32
+pnpm exec wrangler secret put BETTER_AUTH_URL      # https://your-domain
+pnpm exec wrangler secret put GOOGLE_CLIENT_ID
+pnpm exec wrangler secret put GOOGLE_CLIENT_SECRET
+
+# 6. Ship it
+pnpm deploy
+```
+
+Create the Google OAuth client at the [Google Cloud
+Console](https://console.cloud.google.com/apis/credentials) with an authorized
+redirect URI of `https://your-domain/api/auth/callback/google`.
+
+Because everything is end-to-end encrypted, the operator (you) still can't read
+any stored secret — the same zero-knowledge guarantee holds whether Klef is
+hosted by its author or by you.
+
+## Security
+
+See [`SECURITY.md`](./SECURITY.md) for the threat model and how to report
+vulnerabilities.
 
 ## License
 
