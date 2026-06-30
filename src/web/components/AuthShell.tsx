@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
-import { KeyRound } from "lucide-react";
+import { KeyRound, LogOut } from "lucide-react";
 import { signOut } from "../auth.ts";
 import { Button } from "./ui/button.tsx";
 
@@ -18,9 +18,10 @@ export function AuthShell({ children }: { children: ReactNode }) {
       <Button
         variant="ghost"
         size="sm"
-        className="text-muted-foreground absolute top-4 right-4"
+        className="text-destructive hover:text-destructive hover:bg-destructive/10 absolute top-4 right-4"
         onClick={() => void onSignOut()}
       >
+        <LogOut />
         Sign out
       </Button>
 

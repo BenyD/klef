@@ -143,17 +143,16 @@ export function VaultSetup() {
                 Download
               </Button>
             </div>
-            <label className="text-muted-foreground flex items-start gap-2 text-xs leading-relaxed">
+            <label className="text-muted-foreground flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
-                className="mt-px size-3.5"
+                className="size-4"
                 style={{ accentColor: "var(--primary)" }}
                 checked={saved}
                 onChange={(e) => setSaved(e.target.checked)}
               />
               <span>
-                I’ve saved my recovery key and understand Klef cannot recover it
-                for me.
+                I’ve saved my recovery key.
               </span>
             </label>
             <Button className="w-full" disabled={!saved} onClick={finishSetup}>

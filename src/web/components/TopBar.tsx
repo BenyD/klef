@@ -32,7 +32,7 @@ export function TopBar() {
         <Button
           variant="ghost"
           size="sm"
-          className="text-muted-foreground"
+          className="text-destructive hover:text-destructive hover:bg-destructive/10"
           onClick={() => void onSignOut()}
         >
           <LogOut />
