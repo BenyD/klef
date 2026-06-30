@@ -1,6 +1,6 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
-	"name": "klef",
+	"name": "klef-web",
 	"main": "./src/worker/index.ts",
 	"compatibility_date": "2026-06-25",
 	"compatibility_flags": [
