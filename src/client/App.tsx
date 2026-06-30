@@ -1,3 +1,4 @@
+import { Loader2 } from "lucide-react";
 import { useSession } from "./auth.ts";
 import { VaultProvider, useVault } from "./vault-session.tsx";
 import { LoginScreen } from "./components/LoginScreen.tsx";
@@ -7,9 +8,9 @@ import { VaultHome } from "./components/VaultHome.tsx";
 
 function Loading() {
   return (
-    <main className="shell narrow">
-      <p className="muted">Loading…</p>
-    </main>
+    <div className="flex min-h-svh items-center justify-center">
+      <Loader2 className="text-muted-foreground size-5 animate-spin" />
+    </div>
   );
 }
 

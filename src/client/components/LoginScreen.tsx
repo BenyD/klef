@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { KeyRound } from "lucide-react";
 import { signInWithGoogle } from "../auth.ts";
+import { Button } from "./ui/button.tsx";
+import { Card, CardContent } from "./ui/card.tsx";
 
 export function LoginScreen() {
   const [busy, setBusy] = useState(false);
@@ -17,22 +20,42 @@ export function LoginScreen() {
   }
 
   return (
-    <main className="shell narrow">
-      <h1>Klef</h1>
-      <p className="tagline">Zero-knowledge .env sync — your keys never leave this browser.</p>
+    <div className="flex min-h-svh flex-col items-center justify-center gap-8 px-4">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <div className="bg-primary text-primary-foreground flex size-11 items-center justify-center rounded-xl">
+          <KeyRound className="size-5" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Klef</h1>
+          <p className="text-muted-foreground mt-1.5 max-w-xs text-sm text-balance">
+            Zero-knowledge env sync. Your keys never leave this browser.
+          </p>
+        </div>
+      </div>
 
-      <section className="card">
-        <button className="btn google" onClick={onGoogle} disabled={busy}>
-          <GoogleMark />
-          {busy ? "Redirecting…" : "Continue with Google"}
-        </button>
-        {error && <p className="bad small">Couldn’t start sign-in: {error}</p>}
-        <p className="muted small">
-          Signing in only creates your account. Your secrets are encrypted with a
-          separate passphrase that never touches our servers.
-        </p>
-      </section>
-    </main>
+      <Card className="w-full max-w-sm">
+        <CardContent className="flex flex-col gap-4">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={onGoogle}
+            disabled={busy}
+          >
+            <GoogleMark />
+            {busy ? "Redirecting…" : "Continue with Google"}
+          </Button>
+          {error && (
+            <p className="text-destructive text-sm">
+              Couldn’t start sign-in: {error}
+            </p>
+          )}
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            Signing in only creates your account. Your secrets are encrypted with
+            a separate passphrase that never touches our servers.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
