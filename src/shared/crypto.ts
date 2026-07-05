@@ -315,3 +315,24 @@ export async function changePassphrase(
 
   return { kdfParams: nextParams, wrappedDek: nextWrapped };
 }
+
+/**
+ * Rotate the recovery key: verify the passphrase to recover the DEK bytes,
+ * mint a fresh recovery key, and re-wrap the DEK under it. The passphrase
+ * wrapping is untouched and no blobs are re-encrypted. The previous recovery
+ * key stops working once the returned material is persisted.
+ */
+export async function rotateRecoveryKey(
+  passphrase: string,
+  kdfParams: KdfParams,
+  wrappedDek: WrappedKey,
+): Promise<{ recoveryKey: string; wrappedDekRecovery: WrappedKey }> {
+  const kek = await deriveKek(passphrase, kdfParams);
+  const dekBytes = await unwrapKeyBytes(kek, wrappedDek);
+
+  const recovery = generateRecoveryKey();
+  const recoveryWrappingKey = await deriveRecoveryWrappingKey(recovery.bytes);
+  const wrappedDekRecovery = await wrapKeyBytes(recoveryWrappingKey, dekBytes);
+
+  return { recoveryKey: recovery.display, wrappedDekRecovery };
+}

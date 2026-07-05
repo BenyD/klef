@@ -1,7 +1,7 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"name": "klef-web",
-	"main": "./src/worker/index.ts",
+	"main": "./src/api/index.ts",
 	"compatibility_date": "2026-06-25",
 	"compatibility_flags": [
 		"nodejs_compat"
@@ -10,8 +10,11 @@
 		// Unmatched routes fall back to the SPA's index.html (client-side routing).
 		"not_found_handling": "single-page-application",
 		// API requests hit the Hono Worker first; everything else serves static SPA assets.
+		// /.well-known/* also goes to the Worker so unknown discovery probes get a
+		// real 404 instead of the SPA shell (a soft-404 that confuses crawlers).
 		"run_worker_first": [
-			"/api/*"
+			"/api/*",
+			"/.well-known/*"
 		]
 	},
 	"d1_databases": [
@@ -19,7 +22,7 @@
 			"binding": "DB",
 			"database_name": "klef-db",
 			"database_id": "6e2e8c39-dba0-4543-b12b-1c3c29050905",
-			"migrations_dir": "./migrations"
+			"migrations_dir": "./db/migrations"
 		}
 	],
 	// Serve on the custom domain. Requires klef.sh to be an active zone in this

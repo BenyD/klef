@@ -6,6 +6,7 @@ import {
   formatRecoveryKey,
   generateRecoveryKey,
   parseRecoveryKey,
+  rotateRecoveryKey,
   setupVault,
   unlockWithPassphrase,
   unlockWithRecoveryKey,
@@ -146,5 +147,42 @@ describe("passphrase change (re-wrap only)", () => {
 
     // Re-wrap used fresh KDF salt.
     expect(kdfParams.salt).not.toBe(keyMaterial.kdfParams.salt);
+  });
+});
+
+describe("recovery-key rotation (re-wrap only)", () => {
+  it("new key unlocks, old key fails, passphrase + old blobs still work", async () => {
+    const { keyMaterial, recoveryKey: oldKey, dek } = await setupVault("pw");
+    const blob = await encryptBlob(dek, SAMPLE_ENV); // encrypted before rotation
+
+    const { recoveryKey: newKey, wrappedDekRecovery } = await rotateRecoveryKey(
+      "pw",
+      keyMaterial.kdfParams,
+      keyMaterial.wrappedDek,
+    );
+
+    // New recovery key unlocks the same DEK (pre-rotation blobs decrypt).
+    const viaNew = await unlockWithRecoveryKey(newKey, wrappedDekRecovery);
+    expect(await decryptBlob(viaNew, blob)).toBe(SAMPLE_ENV);
+
+    // The old recovery key no longer matches the new wrapping.
+    await expect(
+      unlockWithRecoveryKey(oldKey, wrappedDekRecovery),
+    ).rejects.toThrow();
+
+    // The passphrase wrapping is untouched.
+    const viaPassphrase = await unlockWithPassphrase(
+      "pw",
+      keyMaterial.kdfParams,
+      keyMaterial.wrappedDek,
+    );
+    expect(await decryptBlob(viaPassphrase, blob)).toBe(SAMPLE_ENV);
+  });
+
+  it("requires the correct passphrase", async () => {
+    const { keyMaterial } = await setupVault("right-pw");
+    await expect(
+      rotateRecoveryKey("wrong-pw", keyMaterial.kdfParams, keyMaterial.wrappedDek),
+    ).rejects.toThrow();
   });
 });

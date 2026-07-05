@@ -1,0 +1,34 @@
+# Klef
+
+> Klef (klef.sh) is a personal, zero-knowledge tool for syncing .env files
+> across machines. Environment files are encrypted with AES-256-GCM in the
+> browser before upload; the server stores only ciphertext it cannot decrypt.
+> Free, open source (AGPL-3.0), and self-hostable.
+
+Key facts:
+
+- Zero-knowledge / end-to-end encrypted: the server never sees file contents,
+  the master passphrase, the recovery key, or any decryption-capable key.
+- Envelope encryption: a random per-account data encryption key (DEK) encrypts
+  files; a key encryption key derived from the passphrase via Argon2id
+  (19 MiB, t=2; PBKDF2-SHA-256 600k fallback) wraps the DEK.
+- A 128-bit recovery key (KLEF-XXXXX-...) is shown exactly once at setup. If
+  both the passphrase and the recovery key are lost, data is unrecoverable by
+  design.
+- Sign-in (Google OAuth or passkeys) is separate from unlocking, which happens
+  entirely in the browser. Auto-lock and manual lock clear keys from memory.
+- Every save creates a new version, so files have history and restore.
+- No analytics, trackers, ads, or third-party scripts.
+- Runs on Cloudflare Workers with D1; self-hostable on your own account.
+- Built by Beny Dishon K (https://beny.one).
+
+## Pages
+
+- [Home](https://klef.sh/): what Klef is and how it works
+- [Security](https://klef.sh/security): the zero-knowledge encryption design in detail
+- [Terms](https://klef.sh/terms): terms of service
+- [Privacy](https://klef.sh/privacy): what is stored and what never is
+
+## Source
+
+- [GitHub repository](https://github.com/BenyD/klef): full source code, AGPL-3.0

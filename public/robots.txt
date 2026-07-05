@@ -1,0 +1,38 @@
+# Klef - https://klef.sh
+# Search engines and AI crawlers are welcome. Only the app shell (auth/vault
+# routes) and the API are excluded; they render no useful content anyway.
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /app
+Disallow: /auth
+
+# Explicit welcome for the major AI crawlers (retrieval and training).
+User-agent: GPTBot
+Allow: /
+Disallow: /api/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /api/
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /api/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /api/
+
+User-agent: CCBot
+Allow: /
+Disallow: /api/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /api/
+
+Sitemap: https://klef.sh/sitemap.xml

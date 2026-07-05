@@ -3,14 +3,88 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Klef — zero-knowledge .env sync</title>
+    <title>Klef - Zero-knowledge .env sync</title>
     <meta
       name="description"
-      content="Personal, end-to-end-encrypted .env sync. Your keys never leave the browser."
+      content="Sync your .env files across machines without trusting the server. Everything is encrypted in your browser before upload. Open source and self-hostable."
     />
+    <link rel="canonical" href="https://klef.sh/" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Klef" />
+    <meta property="og:url" content="https://klef.sh/" />
+    <meta property="og:title" content="Klef - Zero-knowledge .env sync" />
+    <meta
+      property="og:description"
+      content="Sync your .env files across machines without trusting the server. Everything is encrypted in your browser before upload. Open source and self-hostable."
+    />
+    <meta property="og:image" content="https://klef.sh/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Klef - zero-knowledge .env sync. Encrypted in your browser."
+    />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Klef - Zero-knowledge .env sync" />
+    <meta
+      name="twitter:description"
+      content="Sync your .env files across machines without trusting the server. Everything is encrypted in your browser before upload. Open source and self-hostable."
+    />
+    <meta name="twitter:image" content="https://klef.sh/og.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Klef",
+        "url": "https://klef.sh/",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Web",
+        "description": "Personal, zero-knowledge, end-to-end-encrypted .env sync. Environment files are encrypted in the browser before they leave; the server never sees plaintext secrets.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Beny Dishon K",
+          "url": "https://beny.one"
+        },
+        "license": "https://github.com/BenyD/klef/blob/main/LICENSE",
+        "sameAs": ["https://github.com/BenyD/klef"]
+      }
+    </script>
+    <!-- Set the theme before first paint to avoid a light flash (FOUC). Must
+         run synchronously in <head>, ahead of the app bundle. Mirrors the
+         next-themes config in main.tsx (attribute="class", storageKey="theme",
+         defaultTheme="system"). Setting color-scheme also gives the browser a
+         dark default canvas before CSS loads. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme");
+          var dark =
+            stored === "dark" ||
+            (stored !== "light" &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          var root = document.documentElement;
+          if (dark) root.classList.add("dark");
+          root.style.colorScheme = dark ? "dark" : "light";
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/client/main.tsx"></script>
+    <script type="module" src="/src/web/main.tsx"></script>
   </body>
 </html>

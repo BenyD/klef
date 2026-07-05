@@ -1,0 +1,704 @@
+/* Landing page styles. Independent of shadcn (plain CSS), but theme-aware:
+   light by default, dark when an ancestor has the `.dark` class that
+   next-themes toggles on <html>. Scoped under .marketing.
+
+   Tokens derive from the app tokens (global.css) wherever the two systems
+   agree, so they can't drift; the literals below are deliberate
+   marketing-only departures. */
+.marketing {
+  /* light (default) */
+  --m-bg: var(--background);
+  --m-fg: var(--foreground);
+  --m-muted: #575757; /* darker than --muted-foreground: hero copy wants more contrast */
+  --m-dim: #a3a3a3;
+  --m-border: var(--border);
+  --m-card: #fafafa; /* off-white card vs the app's flat white */
+  --m-primary-bg: var(--m-fg);
+  --m-primary-fg: var(--background);
+  --m-primary-hover: #2a2a2a;
+  --m-hover: rgba(0, 0, 0, 0.05);
+  --m-outline-hover: #d4d4d4;
+  --m-add: #16a34a;
+  --m-remove: #dc2626;
+  --m-add-tint: rgba(22, 163, 74, 0.12);
+  --m-glow: rgba(0, 0, 0, 0.04);
+  --m-dot: #dcdcdc;
+  --m-shadow: rgba(0, 0, 0, 0.14);
+  --m-radius-sm: calc(var(--radius) - 2px); /* = app --radius-md */
+  --m-radius: var(--radius);
+  --m-radius-lg: calc(var(--radius) + 4px); /* = app --radius-xl */
+
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  color: var(--m-fg);
+  background:
+    radial-gradient(60% 45% at 50% 0%, var(--m-glow), transparent 70%),
+    var(--m-bg);
+  font-family: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* bg/fg/border/primary flip automatically via the app tokens. */
+.dark .marketing {
+  --m-muted: #a1a1a1;
+  --m-dim: #6b6b6b;
+  --m-card: #101010;
+  --m-primary-hover: #e2e2e2;
+  --m-hover: rgba(255, 255, 255, 0.06);
+  --m-outline-hover: #3f3f3f;
+  --m-add: #4ade80;
+  --m-remove: #f87171;
+  --m-add-tint: rgba(74, 222, 128, 0.14);
+  --m-glow: rgba(255, 255, 255, 0.06);
+  --m-dot: #2a2a2a;
+  --m-shadow: rgba(0, 0, 0, 0.7);
+}
+
+.marketing a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.marketing-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 22px 24px;
+}
+
+.marketing-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+.marketing-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--m-radius);
+  background: var(--m-primary-bg);
+  color: var(--m-primary-fg);
+}
+
+.marketing-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.marketing .m-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: var(--m-radius);
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.marketing .m-btn-primary {
+  background: var(--m-primary-bg);
+  color: var(--m-primary-fg);
+}
+.marketing .m-btn-primary:hover {
+  background: var(--m-primary-hover);
+}
+
+.marketing .m-btn-ghost {
+  background: transparent;
+  color: var(--m-fg);
+}
+.marketing .m-btn-ghost:hover {
+  background: var(--m-hover);
+}
+
+.marketing .m-btn-outline {
+  background: transparent;
+  color: var(--m-fg);
+  border-color: var(--m-border);
+}
+.marketing .m-btn-outline:hover {
+  border-color: var(--m-outline-hover);
+  background: var(--m-hover);
+}
+
+.marketing .m-btn-sm {
+  height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.marketing .m-btn-icon {
+  width: 34px;
+  padding: 0;
+}
+
+.marketing-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 64px 24px 40px;
+  text-align: center;
+}
+
+/* Subtle staggered entrance (spring-ish ease-out). */
+@keyframes m-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.marketing-nav,
+.marketing-hero > * {
+  animation: m-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.marketing-nav {
+  animation-duration: 0.5s;
+}
+.marketing-hero > *:nth-child(1) {
+  animation-delay: 0.08s;
+}
+.marketing-hero > *:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.marketing-hero > *:nth-child(3) {
+  animation-delay: 0.22s;
+}
+.marketing-hero > *:nth-child(4) {
+  animation-delay: 0.29s;
+}
+.marketing-hero > *:nth-child(5) {
+  animation-delay: 0.38s;
+}
+.marketing-hero > *:nth-child(6) {
+  animation-delay: 0.46s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-nav,
+  .marketing-hero > * {
+    animation: none;
+  }
+}
+
+.marketing-announce {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 14px 5px 6px;
+  border: 1px solid var(--m-border);
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--m-muted);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+.marketing-announce:hover {
+  border-color: var(--m-outline-hover);
+  background: var(--m-hover);
+}
+.marketing-announce-tag {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--m-add-tint);
+  color: var(--m-add);
+}
+.marketing-announce-arrow {
+  flex: none;
+  color: var(--m-dim);
+  transition:
+    transform 0.15s ease,
+    color 0.15s ease;
+}
+.marketing-announce:hover .marketing-announce-arrow {
+  transform: translateX(2px);
+  color: var(--m-muted);
+}
+
+.marketing-hero h1 {
+  margin: 0;
+  font-size: clamp(38px, 6vw, 58px);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  font-weight: 600;
+}
+
+.marketing-hero p {
+  margin: 0;
+  max-width: 560px;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--m-muted);
+}
+
+.marketing-cta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.marketing-window {
+  width: 100%;
+  max-width: 620px;
+  margin-top: 26px;
+  border: 1px solid var(--m-border);
+  border-radius: var(--m-radius-lg);
+  background: var(--m-card);
+  overflow: hidden;
+  text-align: left;
+  box-shadow: 0 24px 60px -20px var(--m-shadow);
+}
+
+.marketing-window-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--m-border);
+}
+.marketing-window-bar .dots {
+  display: flex;
+  gap: 6px;
+}
+.marketing-window-bar .dots span {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: var(--m-dot);
+}
+.marketing-window-name {
+  margin-left: 6px;
+  font-family: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12.5px;
+  color: var(--m-dim);
+}
+
+.marketing-code {
+  margin: 0;
+  padding: 14px 16px;
+  font-family: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.marketing-code .line {
+  display: flex;
+  gap: 12px;
+  white-space: pre;
+}
+.marketing-code .gutter {
+  width: 1ch;
+  color: var(--m-dim);
+  user-select: none;
+}
+.marketing-code .ctx {
+  color: var(--m-muted);
+}
+.marketing-code .add {
+  color: var(--m-add);
+}
+.marketing-code .rem {
+  color: var(--m-remove);
+}
+
+/* Quiet "open source" note under the hero window. */
+.marketing .marketing-oss {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--m-dim);
+  transition: color 0.15s ease;
+}
+.marketing .marketing-oss:hover {
+  color: var(--m-muted);
+}
+.marketing .marketing-oss svg {
+  width: 14px;
+  height: 14px;
+}
+
+.marketing-footer {
+  border-top: 1px solid var(--m-border);
+  margin-top: 40px;
+}
+
+.marketing-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 22px 24px;
+  font-size: 13px;
+  color: var(--m-dim);
+}
+
+.marketing-footer-inner a {
+  color: var(--m-muted);
+  transition: color 0.15s ease;
+}
+.marketing-footer-inner a:hover {
+  color: var(--m-fg);
+}
+
+.marketing-credit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+}
+.marketing-credit-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  /* Always a dark disc so the light logo mark reads in both themes. */
+  background: #111111;
+}
+
+/* Signature at the end of the "Why Klef" note. */
+.marketing-why-sig {
+  margin-top: 32px;
+}
+.marketing-why-sig .marketing-credit-avatar {
+  width: 22px;
+  height: 22px;
+}
+.marketing-page .marketing-why-sig a {
+  gap: 9px;
+  text-decoration: none;
+  font-weight: 500;
+  color: var(--m-fg);
+}
+
+.marketing-footer-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+@media (max-width: 560px) {
+  .marketing-footer-inner {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    gap: 10px;
+    padding: 18px 20px;
+    font-size: 12px;
+  }
+  .marketing-footer-links {
+    gap: 16px;
+  }
+}
+
+/* Content pages (security, terms, privacy). */
+.marketing-page {
+  flex: 1;
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 56px 24px 72px;
+  animation: m-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.08s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-page {
+    animation: none;
+  }
+}
+
+.marketing-page h1 {
+  margin: 0 0 10px;
+  font-size: clamp(30px, 5vw, 40px);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+}
+
+.marketing-page-updated {
+  margin: 0 0 18px;
+  font-size: 13px;
+  color: var(--m-dim);
+}
+
+.marketing-page-lead {
+  margin: 0 0 8px;
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--m-muted);
+}
+
+.marketing-page section {
+  margin-top: 36px;
+}
+
+.marketing-page h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+.marketing-page p,
+.marketing-page li {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--m-muted);
+}
+
+.marketing-page ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.marketing-page li {
+  margin-bottom: 8px;
+}
+
+.marketing-page strong {
+  color: var(--m-fg);
+  font-weight: 600;
+}
+
+.marketing-page code {
+  padding: 1px 5px;
+  border: 1px solid var(--m-border);
+  border-radius: var(--m-radius-sm);
+  background: var(--m-card);
+  font-family: "JetBrains Mono Variable", ui-monospace, monospace;
+  font-size: 0.85em;
+}
+
+.marketing-page section a,
+.marketing-page-lead a,
+.marketing .marketing-inline-link {
+  color: var(--m-fg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--m-dim);
+  transition: text-decoration-color 0.15s ease;
+}
+
+.marketing-page section a:hover,
+.marketing-page-lead a:hover,
+.marketing .marketing-inline-link:hover {
+  text-decoration-color: var(--m-fg);
+}
+
+.marketing-page-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 40px;
+}
+
+/* Document layout: sticky table of contents (desktop) + prose column. */
+.marketing-doc {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr);
+  gap: 56px;
+  /* No align-items: start here — the toc column must stretch to the full
+     article height or its sticky inner has no room to travel. */
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 56px 24px 72px;
+  animation: m-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.08s;
+}
+
+/* The prose column is positioned by the grid, not by its own centering. */
+.marketing-doc .marketing-page {
+  flex: none;
+  max-width: 640px;
+  margin: 0;
+  padding: 0;
+  animation: none;
+}
+
+.marketing-doc-toc-inner {
+  position: sticky;
+  top: 48px;
+}
+
+.marketing-doc-toc-label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--m-dim);
+}
+
+/* Mobile-only disclosure trigger; hidden on desktop where the rail is
+   always visible. */
+.marketing-doc-toc-toggle {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--m-muted);
+  cursor: pointer;
+}
+
+.marketing-doc-toc-chevron {
+  color: var(--m-dim);
+  transition: transform 0.2s ease;
+}
+
+.marketing-doc-toc-toggle[aria-expanded="true"] .marketing-doc-toc-chevron {
+  transform: rotate(180deg);
+}
+
+.marketing-doc-toc nav {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--m-border);
+}
+
+.marketing .marketing-doc-toc nav a {
+  padding: 6px 0 6px 14px;
+  margin-left: -1px;
+  border-left: 1px solid transparent;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--m-muted);
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.marketing .marketing-doc-toc nav a:hover {
+  color: var(--m-fg);
+}
+
+.marketing .marketing-doc-toc nav a[aria-current="true"] {
+  color: var(--m-fg);
+  border-left-color: var(--m-fg);
+  font-weight: 500;
+}
+
+/* Anchor room under the top edge when jumping to a section. */
+.marketing-doc section {
+  scroll-margin-top: 32px;
+}
+
+/* Section headings are self-links, styled as plain headings with a
+   hover-revealed # mark. */
+.marketing-page section h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.marketing-page section h2 a::after {
+  content: " #";
+  color: var(--m-dim);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.marketing-page section h2 a:hover::after {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-doc {
+    animation: none;
+  }
+}
+
+/* Mobile: the TOC becomes a collapsed "On this page" disclosure that expands
+   into a stacked list. */
+@media (max-width: 860px) {
+  .marketing-doc {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    max-width: 728px;
+  }
+  .marketing-doc-toc-inner {
+    position: static;
+    border: 1px solid var(--m-border);
+    border-radius: var(--m-radius-lg);
+    background: var(--m-card);
+    overflow: hidden;
+  }
+  .marketing-doc-toc-label {
+    display: none;
+  }
+  .marketing-doc-toc-toggle {
+    display: flex;
+  }
+  .marketing-doc-toc nav {
+    display: none;
+    border-left: none;
+    border-top: 1px solid var(--m-border);
+    padding: 6px 0;
+  }
+  .marketing-doc-toc nav[data-open="true"] {
+    display: flex;
+    flex-direction: column;
+  }
+  .marketing .marketing-doc-toc nav a {
+    padding: 8px 14px;
+    margin-left: 0;
+    border-left: none;
+    font-size: 14px;
+  }
+  .marketing .marketing-doc-toc nav a[aria-current="true"] {
+    border-left: none;
+  }
+}
