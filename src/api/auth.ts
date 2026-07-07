@@ -1,5 +1,8 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { APIError, getSessionFromCtx } from "better-auth/api";
+import { setSessionCookie } from "better-auth/cookies";
 import { passkey } from "@better-auth/passkey";
+import { parsePasskeySignupContext } from "./passkey-signup.ts";
 
 /**
  * Inputs that differ between the runtime (Cloudflare D1) and offline schema
@@ -25,6 +28,10 @@ export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
     // login password is NOT the vault passphrase; the master passphrase still
     // decrypts data and never touches the server.
     emailAndPassword: { enabled: true },
+    // Account deletion needs a fresh session. Every app table (vault,
+    // workspaces, and Better Auth's own) cascades from user(id), so the one
+    // DELETE wipes all of the account's data.
+    user: { deleteUser: { enabled: true } },
     socialProviders: {
       google: {
         clientId: deps.google.clientId,
@@ -36,6 +43,55 @@ export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
         rpID: url.hostname,
         rpName: "Klef",
         origin: url.origin,
+        // Passkey-first sign-up: with no session, the client sends its form
+        // fields as the WebAuthn `context`. No user row is created until the
+        // credential actually verifies; signed-in users adding a passkey from
+        // settings still resolve through their session and never hit these.
+        registration: {
+          requireSession: false,
+          resolveUser: async ({ ctx, context }) => {
+            const signup = parsePasskeySignupContext(context);
+            if (!signup) {
+              throw new APIError("BAD_REQUEST", {
+                message: "Enter your name and email to sign up with a passkey.",
+              });
+            }
+            if (await ctx.context.internalAdapter.findUserByEmail(signup.email)) {
+              throw new APIError("BAD_REQUEST", {
+                message:
+                  "An account with this email already exists. Sign in instead.",
+              });
+            }
+            // Provisional identity for the WebAuthn ceremony only; the real
+            // user row is created in afterVerification.
+            return {
+              id: `signup:${signup.email}`,
+              name: signup.email,
+              displayName: signup.name,
+            };
+          },
+          afterVerification: async ({ ctx, context }) => {
+            const signup = parsePasskeySignupContext(context);
+            // A signed-in user adding a passkey from settings: nothing to do.
+            if (!signup || (await getSessionFromCtx(ctx))) return;
+            if (await ctx.context.internalAdapter.findUserByEmail(signup.email)) {
+              throw new APIError("BAD_REQUEST", {
+                message:
+                  "An account with this email already exists. Sign in instead.",
+              });
+            }
+            const user = await ctx.context.internalAdapter.createUser({
+              name: signup.name,
+              email: signup.email,
+              emailVerified: false,
+            });
+            const session = await ctx.context.internalAdapter.createSession(
+              user.id,
+            );
+            await setSessionCookie(ctx, { session, user });
+            return { userId: user.id };
+          },
+        },
       }),
     ],
   };

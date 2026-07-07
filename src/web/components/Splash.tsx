@@ -70,7 +70,8 @@ export function Splash() {
 
 // Ambient background: a grid of short cipher tokens, a fraction re-scrambling
 // each tick. One interval drives them all (cheap), masked to fade the center.
-function CipherField() {
+// Shared with NotFound, which reuses the splash's visual language.
+export function CipherField() {
   const COUNT = 420;
   const [cells, setCells] = useState(() =>
     Array.from({ length: COUNT }, randToken),
@@ -97,7 +98,7 @@ function CipherField() {
   );
 }
 
-function Scramble({
+export function Scramble({
   value,
   mode = "reveal",
   className,

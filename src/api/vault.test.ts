@@ -197,4 +197,60 @@ describe("vault routes", () => {
     const bobView = await (await appForUser("bob").request("/", {}, env)).json();
     expect(bobView).toEqual({ exists: false });
   });
+
+  it("tracks recovery confirmation: unset, explicit confirm, and via rotation", async () => {
+    await seedUser("u-rec1");
+    const app = appForUser("u-rec1");
+    await app.request("/", json(MATERIAL), env);
+
+    // Fresh vault: never confirmed.
+    let view = (await (await app.request("/", {}, env)).json()) as {
+      recoveryConfirmedAt: string | null;
+    };
+    expect(view.recoveryConfirmedAt).toBeNull();
+
+    // The setup checkbox posts an explicit confirmation.
+    const confirmed = await app.request(
+      "/recovery-confirmed",
+      { method: "POST" },
+      env,
+    );
+    expect(confirmed.status).toBe(200);
+    view = (await (await app.request("/", {}, env)).json()) as {
+      recoveryConfirmedAt: string | null;
+    };
+    expect(view.recoveryConfirmedAt).toBeTruthy();
+  });
+
+  it("rotation stamps recovery confirmation on the same write", async () => {
+    await seedUser("u-rec2");
+    const app = appForUser("u-rec2");
+    await app.request("/", json(MATERIAL), env);
+
+    const rotated = await app.request(
+      "/recovery",
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ wrappedDekRecovery: MATERIAL.wrappedDekRecovery }),
+      },
+      env,
+    );
+    expect(rotated.status).toBe(200);
+
+    const view = (await (await app.request("/", {}, env)).json()) as {
+      recoveryConfirmedAt: string | null;
+    };
+    expect(view.recoveryConfirmedAt).toBeTruthy();
+  });
+
+  it("confirming without a vault is a 404", async () => {
+    await seedUser("u-rec3");
+    const res = await appForUser("u-rec3").request(
+      "/recovery-confirmed",
+      { method: "POST" },
+      env,
+    );
+    expect(res.status).toBe(404);
+  });
 });

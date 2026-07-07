@@ -1,21 +1,8 @@
-import type { MouseEvent } from "react";
 import { Contrast } from "lucide-react";
-import { useTheme } from "next-themes";
-import { switchTheme } from "../lib/theme.ts";
+import { useThemeSwitch } from "../lib/use-theme-switch.ts";
 import { cn } from "../lib/utils.ts";
 import { Button } from "./ui/button.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip.tsx";
-
-// Shared by the app toggle below and the marketing page's plain-CSS button
-// (Landing.tsx), so the toggle behavior and icon spin stay in one place.
-export function useThemeSwitch() {
-  const { resolvedTheme, setTheme } = useTheme();
-  return (e: MouseEvent) =>
-    switchTheme(resolvedTheme === "dark" ? "light" : "dark", setTheme, {
-      x: e.clientX,
-      y: e.clientY,
-    });
-}
 
 export function ThemeGlyph({ className }: { className?: string }) {
   return (

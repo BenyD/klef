@@ -1,14 +1,11 @@
 import {
-  Boxes,
   FilePlus2,
   FileText,
-  Folder,
   FolderPlus,
   Lock,
   Plus,
   Settings,
 } from "lucide-react";
-import { cn } from "../lib/utils.ts";
 import { isMacPlatform } from "../lib/auto-lock.ts";
 import { paletteFilter } from "../lib/command-palette.ts";
 import type {
@@ -16,8 +13,10 @@ import type {
   ProjectNode,
   WorkspaceNode,
 } from "../../shared/api-types.ts";
-import { ENV_META } from "./EnvBadge.tsx";
+import { EnvBadge } from "./EnvBadge.tsx";
 import { LockShortcutKeys } from "./LockShortcutKeys.tsx";
+import { ProjectIcon } from "./ProjectIcon.tsx";
+import { WorkspaceIcon } from "./WorkspaceIcon.tsx";
 import type { SettingsTab } from "./SettingsDialog.tsx";
 import {
   Command,
@@ -31,11 +30,14 @@ import {
 } from "./ui/command.tsx";
 import { Kbd, KbdGroup } from "./ui/kbd.tsx";
 
-/** The palette chord (Cmd/Ctrl+K) as keycaps, matching the platform. */
+/**
+ * The palette chord (Cmd/Ctrl+K) as keycaps, matching the platform.
+ * Hidden on phones: no keyboard, no shortcut hints.
+ */
 export function PaletteShortcutKeys() {
   const mac = isMacPlatform();
   return (
-    <KbdGroup>
+    <KbdGroup className="max-sm:hidden">
       <Kbd>{mac ? "⌘" : "Ctrl"}</Kbd>
       <Kbd>K</Kbd>
     </KbdGroup>
@@ -123,14 +125,12 @@ export function CommandPalette({
                       {project.name}
                     </span>
                     {file.environment && (
-                      <span
-                        className={cn(
-                          "ml-auto size-1.5 shrink-0 rounded-full",
-                          ENV_META[file.environment].dot,
-                        )}
-                        title={file.environment}
-                        aria-hidden="true"
-                      />
+                      // CommandShortcut is the item's right-edge slot; it also
+                      // hides the built-in (invisible) check indicator that
+                      // would otherwise reserve space after the badge.
+                      <CommandShortcut>
+                        <EnvBadge environment={file.environment} />
+                      </CommandShortcut>
                     )}
                   </CommandItem>
                 )),
@@ -147,7 +147,7 @@ export function CommandPalette({
                   keywords={["project"]}
                   onSelect={() => run(() => onShowProject(project))}
                 >
-                  <Folder className="text-muted-foreground" />
+                  <ProjectIcon project={project} size="sm" />
                   <span className="truncate">{project.name}</span>
                 </CommandItem>
               ))}
@@ -214,7 +214,7 @@ export function CommandPalette({
                 keywords={["workspace"]}
                 onSelect={() => run(() => onPickWorkspace(w.id))}
               >
-                <Boxes className="text-muted-foreground" />
+                <WorkspaceIcon workspace={w} />
                 <span className="truncate">Switch to {w.name}</span>
               </CommandItem>
             ))}

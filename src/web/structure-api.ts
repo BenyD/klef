@@ -20,8 +20,12 @@ export const getTree = () => req<VaultTree>("/api/tree");
 
 export const createWorkspace = (name: string) =>
   req<{ id: string }>("/api/workspaces", jsonBody("POST", { name }));
+export const updateWorkspace = (
+  id: string,
+  fields: { name?: string; icon?: string | null },
+) => req(`/api/workspaces/${id}`, jsonBody("PATCH", fields));
 export const renameWorkspace = (id: string, name: string) =>
-  req(`/api/workspaces/${id}`, jsonBody("PATCH", { name }));
+  updateWorkspace(id, { name });
 export const deleteWorkspace = (id: string) =>
   req(`/api/workspaces/${id}`, { method: "DELETE" });
 
@@ -29,14 +33,15 @@ export const createProject = (
   workspaceId: string,
   name: string,
   framework: Framework | null = null,
+  icon: string | null = null,
 ) =>
   req<{ id: string }>(
     "/api/projects",
-    jsonBody("POST", { workspaceId, name, framework }),
+    jsonBody("POST", { workspaceId, name, framework, icon }),
   );
 export const updateProject = (
   id: string,
-  fields: { name?: string; framework?: Framework | null },
+  fields: { name?: string; framework?: Framework | null; icon?: string | null },
 ) => req(`/api/projects/${id}`, jsonBody("PATCH", fields));
 export const deleteProject = (id: string) =>
   req(`/api/projects/${id}`, { method: "DELETE" });

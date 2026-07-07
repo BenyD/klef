@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { ThemeProvider } from "next-themes";
 import { App } from "./App.tsx";
+import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import "./styles/global.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -18,7 +19,9 @@ createRoot(document.getElementById("root")!).render(
         enableColorScheme={false}
         disableTransitionOnChange
       >
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </ThemeProvider>
     </BrowserRouter>
   </StrictMode>,

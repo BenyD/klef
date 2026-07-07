@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useVault } from "../vault-session.tsx";
+import { useVault } from "../vault-context.ts";
 import { AuthShell } from "./AuthShell.tsx";
 import { Button } from "./ui/button.tsx";
 import {

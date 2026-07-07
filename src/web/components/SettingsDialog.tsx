@@ -1,13 +1,44 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Copy, Download } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
+import {
+  Copy,
+  Download,
+  Fingerprint,
+  Pencil,
+  Plus,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { toast } from "sonner";
-import { authClient } from "../auth.ts";
-import { useVault } from "../vault-session.tsx";
+import { authClient, isPasskeyCancel } from "../auth.ts";
+import { AvatarCropDialog } from "./AvatarCropDialog.tsx";
+import { WorkspaceIcon } from "./WorkspaceIcon.tsx";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog.tsx";
+import { useVault } from "../vault-context.ts";
 import {
   AUTO_LOCK_OPTIONS,
   setAutoLockMinutes,
   useAutoLockMinutes,
 } from "../lib/auto-lock.ts";
+import {
+  setConfirmSaveReview,
+  useConfirmSaveReview,
+} from "../lib/preferences.ts";
+import { passkeyProviderName } from "../lib/passkey-provider.ts";
 import type { WorkspaceNode } from "../../shared/api-types.ts";
 import { useIsMobile } from "../hooks/use-mobile.ts";
 import { LockShortcutKeys } from "./LockShortcutKeys.tsx";
@@ -20,8 +51,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog.tsx";
+import {
+  Empty,
+  EmptyContent,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "./ui/empty.tsx";
 import { Input } from "./ui/input.tsx";
 import { Label } from "./ui/label.tsx";
+import { Switch } from "./ui/switch.tsx";
 import { PasswordInput } from "./ui/password-input.tsx";
 import {
   Select,
@@ -33,7 +72,7 @@ import {
 import { Separator } from "./ui/separator.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs.tsx";
 
-export type SettingsTab = "profile" | "security" | "workspace";
+export type SettingsTab = "profile" | "preferences" | "security" | "workspace";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -47,6 +86,8 @@ interface SettingsDialogProps {
   /** False while this is the account's only workspace. */
   canDeleteWorkspace: boolean;
   onRenameWorkspace: (name: string) => Promise<void>;
+  /** Persists an uploaded workspace icon (data URL) or clears it with null. */
+  onUpdateWorkspaceIcon: (icon: string | null) => Promise<void>;
   /** Opens the delete confirmation (the dialog closes itself first). */
   onRequestDeleteWorkspace: () => void;
 }
@@ -65,6 +106,7 @@ export function SettingsDialog({
   workspace,
   canDeleteWorkspace,
   onRenameWorkspace,
+  onUpdateWorkspaceIcon,
   onRequestDeleteWorkspace,
 }: SettingsDialogProps) {
   // Landscape layout with a left tab rail on desktop; on phones the dialog is
@@ -89,16 +131,25 @@ export function SettingsDialog({
             className="w-full sm:w-36 sm:shrink-0"
           >
             <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="preferences">Preferences</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
             <TabsTrigger value="workspace">Workspace</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className={panelClass}>
             <ProfileSection name={name} email={email} image={image} />
+            <Separator />
+            <DeleteAccountSection email={email} />
+          </TabsContent>
+
+          <TabsContent value="preferences" className={panelClass}>
+            <PreferencesSection />
           </TabsContent>
 
           <TabsContent value="security" className={panelClass}>
             <PasswordSection />
+            <Separator />
+            <PasskeysSection />
             <Separator />
             <SecuritySection />
             <Separator />
@@ -109,6 +160,7 @@ export function SettingsDialog({
             <WorkspaceSection
               workspace={workspace}
               onRename={onRenameWorkspace}
+              onUpdateIcon={onUpdateWorkspaceIcon}
             />
             <Separator />
             <DangerZone
@@ -136,35 +188,81 @@ function ProfileSection({
   image?: string | null;
 }) {
   const [displayName, setDisplayName] = useState(name);
+  // Either the existing image (Google photo URL) or a fresh upload (data URL).
   const [imageUrl, setImageUrl] = useState(image ?? "");
-  const [busy, setBusy] = useState(false);
+  const photoFileRef = useRef<HTMLInputElement>(null);
+  // Object URL of a freshly picked file, shown in the crop dialog.
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  // Auto-save baseline: what the server currently has, so a blur with no real
+  // change (or a session refresh echoing our own write) doesn't re-save.
+  const savedRef = useRef({ name, image: image ?? "" });
 
   useEffect(() => {
     setDisplayName(name);
     setImageUrl(image ?? "");
+    savedRef.current = { name, image: image ?? "" };
   }, [name, image]);
 
   const preview = imageUrl.trim();
   const initial = (displayName.trim() || email).charAt(0).toUpperCase();
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = displayName.trim();
-    if (!trimmed) {
-      toast.error("Enter a display name");
+  async function persist(nextName: string, nextImage: string) {
+    if (
+      nextName === savedRef.current.name &&
+      nextImage === savedRef.current.image
+    ) {
       return;
     }
-    setBusy(true);
     const res = await authClient.updateUser({
-      name: trimmed,
-      image: preview || null,
+      name: nextName,
+      image: nextImage || null,
     });
-    setBusy(false);
     if (res.error) {
       toast.error(res.error.message ?? "Couldn't update profile");
     } else {
+      savedRef.current = { name: nextName, image: nextImage };
       toast.success("Profile updated");
     }
+  }
+
+  function saveName() {
+    const trimmed = displayName.trim();
+    // An emptied field just reverts; there's nothing sensible to save.
+    if (!trimmed) {
+      setDisplayName(savedRef.current.name);
+      return;
+    }
+    void persist(trimmed, preview);
+  }
+
+  function onPickPhoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    // An object URL keeps the full-size original out of memory-hungry base64;
+    // the cropper reads straight from the blob.
+    setCropSrc(URL.createObjectURL(file));
+  }
+
+  function closeCrop() {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  }
+
+  async function onCropped(dataUrl: string) {
+    setImageUrl(dataUrl);
+    closeCrop();
+    await persist(displayName.trim() || savedRef.current.name, dataUrl);
+  }
+
+  function removePhoto() {
+    setImageUrl("");
+    void persist(displayName.trim() || savedRef.current.name, "");
+  }
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    saveName();
   }
 
   return (
@@ -191,24 +289,130 @@ function ProfileSection({
           id="settings-name"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
+          onBlur={saveName}
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="settings-image">Photo URL</Label>
-        <Input
-          id="settings-image"
-          type="url"
-          placeholder="https://example.com/me.png"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
+        <Label>Profile picture</Label>
+        <div className="flex items-center gap-2">
+          <input
+            ref={photoFileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => void onPickPhoto(e)}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => photoFileRef.current?.click()}
+          >
+            <Upload />
+            {preview ? "Replace photo" : "Upload photo"}
+          </Button>
+          {preview && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={removePhoto}
+            >
+              <Trash2 />
+              Remove
+            </Button>
+          )}
+        </div>
+      </div>
+      {cropSrc && (
+        <AvatarCropDialog
+          key={cropSrc}
+          src={cropSrc}
+          onCancel={closeCrop}
+          onCropped={onCropped}
         />
+      )}
+    </form>
+  );
+}
+
+// Account deletion: type-to-confirm, then one server-side DELETE that
+// cascades through every table. On success we hard-navigate to the marketing
+// page; the full reload drops the vault keys held in memory.
+function DeleteAccountSection({ email }: { email: string }) {
+  const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function deleteAccount() {
+    setBusy(true);
+    const res = await authClient.deleteUser();
+    if (res.error) {
+      setBusy(false);
+      toast.error(res.error.message ?? "Couldn't delete account");
+      return;
+    }
+    window.location.assign("/");
+  }
+
+  return (
+    <div className="border-destructive/30 flex flex-col gap-3 rounded-lg border p-4">
+      <div className="flex flex-col gap-1">
+        <h3 className="text-sm font-medium">Delete account</h3>
+        <p className="text-muted-foreground text-sm">
+          Deletes your account and every workspace in it.
+        </p>
       </div>
       <div>
-        <Button type="submit" disabled={busy}>
-          {busy ? "Saving..." : "Save profile"}
+        <Button
+          type="button"
+          variant="destructive"
+          onClick={() => setOpen(true)}
+        >
+          Delete account
         </Button>
       </div>
-    </form>
+      <AlertDialog
+        open={open}
+        onOpenChange={(next) => {
+          if (busy) return;
+          setOpen(next);
+          if (!next) setConfirmText("");
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes your account, workspaces, projects, and
+              files. It cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-2">
+            <Label htmlFor="delete-account-confirm">
+              Type "{email}" to confirm
+            </Label>
+            <Input
+              id="delete-account-confirm"
+              autoComplete="off"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              disabled={
+                busy || confirmText.trim().toLowerCase() !== email.toLowerCase()
+              }
+              onClick={() => void deleteAccount()}
+            >
+              {busy ? "Deleting..." : "Delete account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
 
@@ -250,8 +454,8 @@ function PasswordSection() {
       <div className="flex flex-col gap-1">
         <h3 className="text-sm font-medium">Change password</h3>
         <p className="text-muted-foreground text-sm">
-          Your login password — separate from your master passphrase. Changing
-          it signs you out everywhere else.
+          Not your master passphrase. Changing it signs you out everywhere
+          else.
         </p>
       </div>
       <div className="grid gap-2">
@@ -294,30 +498,75 @@ function PasswordSection() {
 function WorkspaceSection({
   workspace,
   onRename,
+  onUpdateIcon,
 }: {
   workspace: WorkspaceNode | null;
   onRename: (name: string) => Promise<void>;
+  onUpdateIcon: (icon: string | null) => Promise<void>;
 }) {
   const [wsName, setWsName] = useState(workspace?.name ?? "");
-  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const iconFileRef = useRef<HTMLInputElement>(null);
+  // Object URL of a freshly picked file, shown in the crop dialog.
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+
+  function onPickIcon(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setCropSrc(URL.createObjectURL(file));
+  }
+
+  function closeCrop() {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  }
+
+  async function onCropped(dataUrl: string) {
+    closeCrop();
+    try {
+      await onUpdateIcon(dataUrl);
+      toast.success("Workspace icon updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  function removeIcon() {
+    onUpdateIcon(null)
+      .then(() => toast.success("Workspace icon removed"))
+      .catch((err: unknown) =>
+        toast.error(err instanceof Error ? err.message : String(err)),
+      );
+  }
 
   useEffect(() => {
     setWsName(workspace?.name ?? "");
   }, [workspace?.id, workspace?.name]);
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
+  // Auto-save on blur (and Enter); an emptied field just reverts.
+  async function save() {
+    if (!workspace || busyRef.current) return;
     const trimmed = wsName.trim();
-    if (!workspace || !trimmed || trimmed === workspace.name) return;
-    setBusy(true);
+    if (!trimmed) {
+      setWsName(workspace.name);
+      return;
+    }
+    if (trimmed === workspace.name) return;
+    busyRef.current = true;
     try {
       await onRename(trimmed);
       toast.success("Workspace renamed");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     } finally {
-      setBusy(false);
+      busyRef.current = false;
     }
+  }
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    void save();
   }
 
   return (
@@ -334,23 +583,295 @@ function WorkspaceSection({
           id="settings-workspace"
           value={wsName}
           onChange={(e) => setWsName(e.target.value)}
+          onBlur={() => void save()}
           disabled={!workspace}
         />
       </div>
-      <div>
-        <Button
-          type="submit"
-          disabled={
-            busy ||
-            !workspace ||
-            !wsName.trim() ||
-            wsName.trim() === workspace.name
-          }
-        >
-          {busy ? "Saving..." : "Rename workspace"}
-        </Button>
+      <div className="grid gap-2">
+        <Label>Icon</Label>
+        <div className="flex items-center gap-3">
+          <WorkspaceIcon workspace={workspace} size="md" />
+          <input
+            ref={iconFileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onPickIcon}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!workspace}
+            onClick={() => iconFileRef.current?.click()}
+          >
+            <Upload />
+            {workspace?.icon ? "Replace icon" : "Upload icon"}
+          </Button>
+          {workspace?.icon && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={removeIcon}
+            >
+              <Trash2 />
+              Remove
+            </Button>
+          )}
+        </div>
       </div>
+      {cropSrc && (
+        <AvatarCropDialog
+          key={cropSrc}
+          src={cropSrc}
+          onCancel={closeCrop}
+          onCropped={onCropped}
+        />
+      )}
     </form>
+  );
+}
+
+// Login passkeys (the auth gate, not the vault): list, add, rename, remove.
+// The list refetches automatically; the passkey client pokes its atom after
+// every register/update/delete round-trip.
+function PasskeysSection() {
+  const { data: passkeys, isPending, refetch } = authClient.useListPasskeys();
+  const [adding, setAdding] = useState(false);
+
+  // The list atom caches for the app's lifetime and only auto-refreshes on
+  // the auth client's own passkey calls. Passkeys created elsewhere (the
+  // signup flow, another tab) would never appear, so refresh on every show.
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  async function add() {
+    setAdding(true);
+    const res = await authClient.passkey.addPasskey();
+    setAdding(false);
+    if (res?.error) {
+      if (!isPasskeyCancel(res.error)) {
+        toast.error(res.error.message ?? "Couldn't add passkey");
+      }
+      return;
+    }
+    toast.success("Passkey added");
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h3 className="text-sm font-medium">Passkeys</h3>
+        <p className="text-muted-foreground text-sm">
+          Sign in with Face ID, Touch ID, or a hardware key.
+        </p>
+      </div>
+      {isPending ? (
+        <p className="text-muted-foreground text-sm">Loading passkeys...</p>
+      ) : passkeys?.length ? (
+        <>
+          <ul className="flex flex-col gap-2">
+            {passkeys.map((pk) => (
+              <PasskeyRow key={pk.id} passkey={pk} />
+            ))}
+          </ul>
+          <div>
+            <Button variant="outline" onClick={add} disabled={adding}>
+              <Plus />
+              {adding ? "Waiting for your device..." : "Add passkey"}
+            </Button>
+          </div>
+        </>
+      ) : (
+        <Empty className="bg-muted/40 gap-3 border border-dashed py-8">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Fingerprint />
+            </EmptyMedia>
+            <EmptyTitle>No passkeys yet</EmptyTitle>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={add}
+              disabled={adding}
+            >
+              <Plus />
+              {adding ? "Waiting for your device..." : "Add passkey"}
+            </Button>
+          </EmptyContent>
+        </Empty>
+      )}
+    </div>
+  );
+}
+
+function PasskeyRow({
+  passkey,
+}: {
+  passkey: {
+    id: string;
+    name?: string;
+    createdAt?: Date;
+    backedUp: boolean;
+    aaguid?: string | null;
+  };
+}) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(passkey.name ?? "");
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const added = passkey.createdAt
+    ? new Date(passkey.createdAt).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : null;
+
+  async function rename(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setBusy(true);
+    const res = await authClient.passkey.updatePasskey({
+      id: passkey.id,
+      name: trimmed,
+    });
+    setBusy(false);
+    if (res.error) {
+      toast.error(res.error.message ?? "Couldn't rename passkey");
+      return;
+    }
+    setEditing(false);
+    toast.success("Passkey renamed");
+  }
+
+  async function remove() {
+    setBusy(true);
+    const res = await authClient.passkey.deletePasskey({ id: passkey.id });
+    setBusy(false);
+    if (res.error) {
+      toast.error(res.error.message ?? "Couldn't remove passkey");
+      return;
+    }
+    toast.success("Passkey removed");
+  }
+
+  return (
+    <li className="flex items-center gap-3 rounded-md border p-3">
+      <Fingerprint className="text-muted-foreground size-4 shrink-0" />
+      {editing ? (
+        <form onSubmit={rename} className="flex flex-1 items-center gap-2">
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+            aria-label="Passkey name"
+          />
+          <Button type="submit" size="sm" disabled={busy || !name.trim()}>
+            Save
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setEditing(false);
+              setName(passkey.name ?? "");
+            }}
+          >
+            Cancel
+          </Button>
+        </form>
+      ) : confirming ? (
+        <div className="flex flex-1 items-center justify-between gap-2">
+          <span className="text-sm">Remove this passkey?</span>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={remove}
+              disabled={busy}
+            >
+              Remove
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirming(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex min-w-0 flex-1 flex-col">
+            {/* Unnamed passkeys fall back to their authenticator's product
+                name (from the AAGUID) before the generic label. */}
+            <span className="truncate text-sm font-medium">
+              {passkey.name?.trim() ||
+                passkeyProviderName(passkey.aaguid) ||
+                "Passkey"}
+            </span>
+            <span className="text-muted-foreground text-xs">
+              {added ? `Added ${added}` : "Added"}
+              {passkey.backedUp ? ", synced" : ", this device only"}
+            </span>
+          </div>
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            onClick={() => setEditing(true)}
+            aria-label="Rename passkey"
+          >
+            <Pencil />
+          </Button>
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            onClick={() => setConfirming(true)}
+            aria-label="Remove passkey"
+          >
+            <Trash2 />
+          </Button>
+        </>
+      )}
+    </li>
+  );
+}
+
+// Per-device behavior toggles (localStorage, not vault data).
+function PreferencesSection() {
+  const confirmSave = useConfirmSaveReview();
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h3 className="text-sm font-medium">Editor</h3>
+        <p className="text-muted-foreground text-sm">
+          How saving behaves on this device.
+        </p>
+      </div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="settings-confirm-save">
+            Review changes before saving
+          </Label>
+          <p className="text-muted-foreground text-sm">
+            Shows the diff to confirm each time you save a version.
+          </p>
+        </div>
+        <Switch
+          id="settings-confirm-save"
+          checked={confirmSave}
+          onCheckedChange={setConfirmSaveReview}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -362,8 +883,13 @@ function SecuritySection() {
       <div className="flex flex-col gap-1">
         <h3 className="text-sm font-medium">Auto-lock</h3>
         <p className="text-muted-foreground text-sm">
-          Lock the vault after a period of inactivity. You can always lock
-          instantly with the lock button or <LockShortcutKeys />.
+          Locks the vault when you're idle. Lock instantly with the lock
+          button
+          <span className="max-sm:hidden">
+            {" "}
+            or <LockShortcutKeys />
+          </span>
+          .
         </p>
       </div>
       <div className="grid gap-2">
@@ -438,12 +964,12 @@ function RecoverySection() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    // The id lets the recovery-key banner deep-link here (open + scroll).
+    <div id="settings-recovery" className="flex scroll-mt-2 flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h3 className="text-sm font-medium">Recovery key</h3>
         <p className="text-muted-foreground text-sm">
-          Lost your recovery key? Generate a new one. The old key stops working
-          immediately.
+          Generates a new recovery key. The old one stops working immediately.
         </p>
       </div>
       {newKey ? (
@@ -516,7 +1042,7 @@ function DangerZone({
         <h3 className="text-sm font-medium">Delete workspace</h3>
         <p className="text-muted-foreground text-sm">
           {workspace
-            ? `Permanently deletes "${workspace.name}" and every project, file, and version inside it.`
+            ? `Deletes "${workspace.name}" and everything inside it.`
             : "No workspace to delete."}
         </p>
       </div>

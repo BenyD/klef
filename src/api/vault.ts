@@ -40,6 +40,7 @@ interface VaultRow {
   kdf_params: string;
   wrapped_dek: string;
   wrapped_dek_recovery: string;
+  recovery_confirmed_at: string | null;
 }
 
 // The workspace we auto-create on first setup, so the user lands in a named
@@ -56,7 +57,7 @@ function defaultWorkspaceName(name: string, email: string): string {
 // Does the current user have a vault yet, and if so return its key material.
 vault.get("/", async (c) => {
   const row = await c.env.DB.prepare(
-    "SELECT kdf_params, wrapped_dek, wrapped_dek_recovery FROM vault WHERE user_id = ?",
+    "SELECT kdf_params, wrapped_dek, wrapped_dek_recovery, recovery_confirmed_at FROM vault WHERE user_id = ?",
   )
     .bind(c.get("user").id)
     .first<VaultRow>();
@@ -70,6 +71,7 @@ vault.get("/", async (c) => {
       wrappedDek: JSON.parse(row.wrapped_dek),
       wrappedDekRecovery: JSON.parse(row.wrapped_dek_recovery),
     } satisfies VaultKeyMaterial,
+    recoveryConfirmedAt: row.recovery_confirmed_at,
   });
 });
 
@@ -156,7 +158,8 @@ vault.put("/passphrase", async (c) => {
 
 // Recovery-key rotation: replace only the recovery-wrapped DEK. The passphrase
 // wrapping and all blobs are untouched; the previous recovery key stops
-// working immediately.
+// working immediately. Rotating counts as confirming (the new key is shown
+// with copy/download right then).
 vault.put("/recovery", async (c) => {
   const body = (await c.req.json().catch(() => null)) as {
     wrappedDekRecovery?: unknown;
@@ -166,14 +169,25 @@ vault.put("/recovery", async (c) => {
     return c.json({ ok: false, error: "Invalid payload" }, 400);
   }
 
+  const now = new Date().toISOString();
   const res = await c.env.DB.prepare(
-    "UPDATE vault SET wrapped_dek_recovery = ?, updated_at = ? WHERE user_id = ?",
+    "UPDATE vault SET wrapped_dek_recovery = ?, recovery_confirmed_at = ?, updated_at = ? WHERE user_id = ?",
   )
-    .bind(
-      JSON.stringify(body.wrappedDekRecovery),
-      new Date().toISOString(),
-      c.get("user").id,
-    )
+    .bind(JSON.stringify(body.wrappedDekRecovery), now, now, c.get("user").id)
+    .run();
+
+  if (res.meta.changes === 0) {
+    return c.json({ ok: false, error: "No vault to update" }, 404);
+  }
+  return c.json({ ok: true });
+});
+
+// The user confirmed they saved their recovery key (setup checkbox).
+vault.post("/recovery-confirmed", async (c) => {
+  const res = await c.env.DB.prepare(
+    "UPDATE vault SET recovery_confirmed_at = ? WHERE user_id = ?",
+  )
+    .bind(new Date().toISOString(), c.get("user").id)
     .run();
 
   if (res.meta.changes === 0) {

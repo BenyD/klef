@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# The workflow only reads the repo; never hand it a write token.
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Reads the pnpm version from package.json's `packageManager` field.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Unit tests (node/happy-dom) + Worker/D1 tests in workerd via Miniflare.
+      # Test-only auth secrets are defined inline in vitest.config.ts, so no
+      # .dev.vars is needed here.
+      - name: Test
+        run: pnpm test
+
+      # Production build including the prerendered marketing pages.
+      - name: Build
+        run: pnpm build

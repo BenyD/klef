@@ -2,7 +2,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { VaultKeyMaterial } from "../shared/types.ts";
-import { VaultProvider, useVault } from "./vault-session.tsx";
+import { VaultProvider } from "./vault-session.tsx";
+import { useVault } from "./vault-context.ts";
 
 // In-memory stand-in for the server. Real crypto runs; only the network is faked.
 const state = vi.hoisted(() => ({ stored: null as VaultKeyMaterial | null }));
@@ -10,12 +11,14 @@ const state = vi.hoisted(() => ({ stored: null as VaultKeyMaterial | null }));
 vi.mock("./vault-api.ts", () => ({
   fetchVault: async () =>
     state.stored
-      ? { exists: true, keyMaterial: state.stored }
+      ? { exists: true, keyMaterial: state.stored, recoveryConfirmedAt: null }
       : { exists: false },
   createVault: async (m: VaultKeyMaterial) => {
     state.stored = m;
   },
   updateVaultPassphrase: async () => {},
+  updateVaultRecovery: async () => {},
+  confirmRecoverySaved: async () => {},
 }));
 
 // In-memory stand-in for the IndexedDB DEK cache (persistence across reloads).

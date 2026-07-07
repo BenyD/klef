@@ -28,6 +28,7 @@
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
   --success: oklch(0.6 0.13 160);
+  --warning: oklch(0.666 0.145 65);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -64,6 +65,7 @@
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
   --success: oklch(0.7 0.14 160);
+  --warning: oklch(0.77 0.14 75);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -103,6 +105,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-success: var(--success);
+  --color-warning: var(--warning);
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, "SF Mono", Menlo, monospace;
   --font-heading: var(--font-sans);

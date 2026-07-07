@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { KeyRound } from "lucide-react";
-import { ThemeGlyph, useThemeSwitch } from "./ThemeToggle.tsx";
+import { ThemeGlyph } from "./ThemeToggle.tsx";
+import { useThemeSwitch } from "../lib/use-theme-switch.ts";
 import "../styles/marketing.css";
 
 // Shared chrome for the public marketing pages (landing, security, terms,
