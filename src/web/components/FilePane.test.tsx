@@ -1,5 +1,12 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { decryptBlob, importAesKey, randomBytes } from "../../shared/crypto.ts";
 import type { EncryptedBlob } from "../../shared/types.ts";
@@ -13,7 +20,7 @@ const holder = vi.hoisted(() => ({
   current: null as { id: string; blob: EncryptedBlob; createdAt: string } | null,
 }));
 
-vi.mock("../vault-session.tsx", () => ({
+vi.mock("../vault-context.ts", () => ({
   useVault: () => ({ dek: holder.dek }),
 }));
 
@@ -47,6 +54,14 @@ describe("FilePane (the save loop)", () => {
     expect(save.disabled).toBe(false);
     fireEvent.click(save);
 
+    // The review dialog gates the save; nothing persists until confirmed.
+    expect(holder.saved).toHaveLength(0);
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.textContent).toContain("Review changes");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: /save version/i }),
+    );
+
     await waitFor(() => expect(holder.saved).toHaveLength(1));
 
     // The server only ever received an opaque blob, not the plaintext.
@@ -66,7 +81,7 @@ describe("FilePane (the save loop)", () => {
       createdAt: "now",
     };
 
-    const { container } = render(
+    render(
       <FilePane file={{ id: "f2", name: ".env", project: "p", workspace: "w", environment: null }} onSaved={() => {}} />,
     );
 
@@ -78,10 +93,19 @@ describe("FilePane (the save loop)", () => {
 
     fireEvent.change(textarea, { target: { value: "A=2" } });
     expect(save().disabled).toBe(false);
-    // The diff section renders, showing the removed line (the new line is also
-    // in the textarea, so we assert on the removed one which only appears here).
-    expect(screen.getByText("Changes")).toBeTruthy();
-    expect(container.querySelector('[data-diff="remove"]')?.textContent).toContain("A=1");
-    expect(container.querySelector('[data-diff="add"]')?.textContent).toContain("A=2");
+
+    // A change reveals the review trigger; opening it renders the diff sheet
+    // (portaled to body), showing the removed line (the new line is also in
+    // the textarea, so we assert on the removed one which only appears here).
+    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+    await waitFor(() =>
+      expect(document.querySelector('[data-diff="remove"]')?.textContent).toContain("A=1"),
+    );
+    expect(document.querySelector('[data-diff="add"]')?.textContent).toContain("A=2");
+
+    // Reverting the edit hides the review toggle again.
+    fireEvent.change(textarea, { target: { value: "A=1" } });
+    expect(save().disabled).toBe(true);
+    expect(screen.queryByRole("button", { name: /review/i })).toBeNull();
   });
 });
