@@ -133,6 +133,38 @@ describe("structure routes", () => {
     expect((await app.request(`/workspaces/${wsId}`, patch({ name: "Vault" }), env)).status).toBe(400);
   });
 
+  it("stores, updates, and validates the project icon", async () => {
+    await seedUser("s10");
+    const app = appForUser("s10");
+    const wsId = await id(await app.request("/workspaces", post({ name: "W" }), env));
+    const projId = await id(
+      await app.request(
+        "/projects",
+        post({ workspaceId: wsId, name: "P", icon: "https://dine.example/favicon.ico" }),
+        env,
+      ),
+    );
+    const icon = async () => (await tree(app)).workspaces[0]!.projects[0]!.icon;
+    expect(await icon()).toBe("https://dine.example/favicon.ico");
+
+    // Uploads arrive as small data URLs.
+    expect(
+      (await app.request(`/projects/${projId}`, patch({ icon: "data:image/png;base64,AAAA" }), env))
+        .status,
+    ).toBe(200);
+    expect(await icon()).toBe("data:image/png;base64,AAAA");
+
+    // Only https and data:image values are accepted.
+    expect(
+      (await app.request(`/projects/${projId}`, patch({ icon: "javascript:alert(1)" }), env))
+        .status,
+    ).toBe(400);
+
+    // Explicit null clears it.
+    expect((await app.request(`/projects/${projId}`, patch({ icon: null }), env)).status).toBe(200);
+    expect(await icon()).toBeNull();
+  });
+
   it("isolates structure per user", async () => {
     await seedUser("owner");
     await seedUser("intruder");
@@ -283,6 +315,35 @@ describe("structure routes", () => {
       (await app.request(`/files/${fileId}`, patch({ environment: "staging" }), env)).status,
     ).toBe(400);
     expect((await app.request(`/files/${fileId}`, patch({}), env)).status).toBe(400);
+  });
+
+  it("sets, returns, clears, and validates a workspace icon", async () => {
+    await seedUser("s11");
+    const app = appForUser("s11");
+    const wsId = await id(await app.request("/workspaces", post({ name: "Iconic" }), env));
+
+    // New workspaces start without an icon.
+    expect((await tree(app)).workspaces[0]!.icon).toBeNull();
+
+    const dataUrl = "data:image/png;base64,aWNvbg==";
+    expect(
+      (await app.request(`/workspaces/${wsId}`, patch({ icon: dataUrl }), env)).status,
+    ).toBe(200);
+    expect((await tree(app)).workspaces[0]!.icon).toBe(dataUrl);
+
+    // Icon-only patches must not touch the name; clearing works with null.
+    expect((await tree(app)).workspaces[0]!.name).toBe("Iconic");
+    expect(
+      (await app.request(`/workspaces/${wsId}`, patch({ icon: null }), env)).status,
+    ).toBe(200);
+    expect((await tree(app)).workspaces[0]!.icon).toBeNull();
+
+    // Junk schemes and empty patches are rejected.
+    expect(
+      (await app.request(`/workspaces/${wsId}`, patch({ icon: "javascript:alert(1)" }), env))
+        .status,
+    ).toBe(400);
+    expect((await app.request(`/workspaces/${wsId}`, patch({}), env)).status).toBe(400);
   });
 });
 

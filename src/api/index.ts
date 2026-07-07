@@ -3,6 +3,7 @@ import { createAuth } from "./auth.ts";
 import { requireAuth, type AuthVariables } from "./middleware.ts";
 import { vault } from "./vault.ts";
 import { structure } from "./structure.ts";
+import { icon } from "./icon.ts";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -44,6 +45,10 @@ for (const prefix of ["/api/tree", "/api/workspaces", "/api/projects", "/api/fil
   app.use(`${prefix}/*`, requireAuth);
 }
 app.route("/api", structure);
+
+// Favicon discovery for project icons (server-side because of CORS).
+app.use("/api/icon", requireAuth);
+app.route("/api/icon", icon);
 
 // Any other /api path we haven't defined.
 app.all("/api/*", (c) => c.json({ ok: false, error: "Not found" }, 404));

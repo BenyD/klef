@@ -1,8 +1,14 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
-import { ArrowLeft, KeyRound } from "lucide-react";
+import { ArrowLeft, Fingerprint, KeyRound } from "lucide-react";
 import { z } from "zod";
-import { authClient, signInWithGoogle } from "../auth.ts";
+import {
+  authClient,
+  isPasskeyCancel,
+  signInWithGoogle,
+  signInWithPasskey,
+  signUpWithPasskey,
+} from "../auth.ts";
 import { useReturnPath } from "../lib/return-path.ts";
 import { useFieldValidation } from "../lib/use-field-validation.ts";
 import { Button, buttonVariants } from "./ui/button.tsx";
@@ -51,6 +57,44 @@ export function AuthPage() {
       setFormError(e instanceof Error ? e.message : String(e));
       setBusy(false);
     }
+  }
+
+  async function onPasskeySignIn() {
+    setBusy(true);
+    setFormError(null);
+    const res = await signInWithPasskey();
+    if (res?.error) {
+      if (!isPasskeyCancel(res.error)) {
+        setFormError(res.error.message ?? "Couldn't sign in with a passkey");
+      }
+      setBusy(false);
+      return;
+    }
+    navigate(returnPath);
+  }
+
+  async function onPasskeySignUp() {
+    setFormError(null);
+    // Password doesn't apply to a passkey sign-up; a placeholder keeps the
+    // shared schema satisfied while name and email still validate for real.
+    if (
+      !validation.validateAll(
+        { name, email, password: "passkey-signup" },
+        ["name", "email"],
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    const res = await signUpWithPasskey(name.trim(), email);
+    if (res?.error) {
+      if (!isPasskeyCancel(res.error)) {
+        setFormError(res.error.message ?? "Couldn't sign up with a passkey");
+      }
+      setBusy(false);
+      return;
+    }
+    navigate(returnPath);
   }
 
   async function onSubmit(e: FormEvent) {
@@ -118,6 +162,17 @@ export function AuthPage() {
             <GoogleMark />
             Continue with Google
           </Button>
+          {mode === "signin" && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={onPasskeySignIn}
+              disabled={busy}
+            >
+              <Fingerprint />
+              Sign in with a passkey
+            </Button>
+          )}
 
           <div className="flex items-center gap-3">
             <span className="bg-border h-px flex-1" />
@@ -198,6 +253,18 @@ export function AuthPage() {
                     ? "Sign in"
                     : "Create account"}
               </Button>
+              {mode === "signup" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={onPasskeySignUp}
+                  disabled={busy}
+                >
+                  <Fingerprint />
+                  Sign up with a passkey
+                </Button>
+              )}
             </FieldGroup>
           </form>
 

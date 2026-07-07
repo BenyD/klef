@@ -1,13 +1,7 @@
 import { cn } from "../lib/utils.ts";
 import type { Environment } from "../../shared/api-types.ts";
+import { ENV_META } from "../lib/env-meta.ts";
 import { Badge } from "./ui/badge.tsx";
-
-/** Short display labels + dot colors for the fixed environment set. */
-export const ENV_META: Record<Environment, { label: string; dot: string }> = {
-  development: { label: "dev", dot: "bg-sky-500" },
-  preview: { label: "preview", dot: "bg-amber-500" },
-  production: { label: "prod", dot: "bg-rose-500" },
-};
 
 export function EnvBadge({
   environment,

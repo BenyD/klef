@@ -1,44 +1,36 @@
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   Check,
-  ChevronsUpDown,
-  EllipsisVertical,
-  FilePlus2,
   FileText,
-  Folder,
-  FolderOpen,
-  KeyRound,
-  LogOut,
-  MoreHorizontal,
+  LayoutGrid,
   Pencil,
   Plus,
   Settings,
+  ShieldCheck,
   Trash2,
+  UserRound,
+  X,
 } from "lucide-react";
-import { useNavigate } from "react-router";
 import { cn } from "../lib/utils.ts";
-import { signOut } from "../auth.ts";
-import { clearDek } from "../dek-store.ts";
 import {
+  ENVIRONMENTS,
   type EnvFileNode,
+  type Environment,
   type ProjectNode,
   type WorkspaceNode,
 } from "../../shared/api-types.ts";
-import { ENV_META } from "./EnvBadge.tsx";
+import { ENV_META } from "../lib/env-meta.ts";
+import { ProjectIcon } from "./ProjectIcon.tsx";
 import type { SettingsTab } from "./SettingsDialog.tsx";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar.tsx";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "./ui/collapsible.tsx";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu.tsx";
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "./ui/context-menu.tsx";
 import {
   Sidebar,
   SidebarContent,
@@ -46,335 +38,276 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
-  SidebarMenuAction,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarRail,
+  SidebarMenuSkeleton,
   useSidebar,
 } from "./ui/sidebar.tsx";
 
 interface AppSidebarProps {
-  name: string;
-  email: string;
-  image?: string | null;
-  workspaces: WorkspaceNode[];
+  /** Tree still loading; skeleton rows. */
+  loading?: boolean;
   workspace: WorkspaceNode | null;
+  /** Project of the open file; null on the workspace overview. */
+  currentProject: ProjectNode | null;
   selectedFileId: string | null;
-  onPickWorkspace: (id: string) => void;
+  onShowOverview: () => void;
   onSelectFile: (project: ProjectNode, file: EnvFileNode) => void;
-  onNewWorkspace: () => void;
-  onOpenSettings: (tab: SettingsTab) => void;
-  onNewProject: () => void;
-  onRenameProject: (project: ProjectNode) => void;
-  onDeleteProject: (project: ProjectNode) => void;
   onNewFile: (project: ProjectNode) => void;
+  onRenameFile: (file: EnvFileNode) => void;
+  onDeleteFile: (file: EnvFileNode) => void;
+  onSetEnvironment: (file: EnvFileNode, env: Environment | null) => void;
+  onEditProject: (project: ProjectNode) => void;
+  onOpenSettings: (tab: SettingsTab) => void;
 }
 
+/**
+ * Contextual rail (Supabase-style): collapsed to icons, expands over the
+ * content on hover. On the workspace overview it is global navigation; inside
+ * a project it is that project's files plus its settings. Cross-navigation
+ * (workspaces/projects/files) lives in the topbar switchers.
+ */
 export function AppSidebar({
-  name,
-  email,
-  image,
-  workspaces,
+  loading = false,
   workspace,
+  currentProject,
   selectedFileId,
-  onPickWorkspace,
+  onShowOverview,
   onSelectFile,
-  onNewWorkspace,
-  onOpenSettings,
-  onNewProject,
-  onRenameProject,
-  onDeleteProject,
   onNewFile,
+  onRenameFile,
+  onDeleteFile,
+  onSetEnvironment,
+  onEditProject,
+  onOpenSettings,
 }: AppSidebarProps) {
-  const { isMobile, setOpenMobile } = useSidebar();
-  const projects = workspace?.projects ?? [];
+  const { isMobile, setOpen, setOpenMobile } = useSidebar();
+  // Short intent delay before the rail expands, so mousing across it on the
+  // way to the content doesn't flare it open. Collapse stays immediate.
+  const expandTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (expandTimer.current !== null) clearTimeout(expandTimer.current);
+    },
+    [],
+  );
 
-  // Sidebar search was removed on purpose: file finding belongs to the
-  // command palette (Cmd+K), not a header filter box.
-  const [openProjects, setOpenProjects] = useState<Record<string, boolean>>({});
-  const isOpen = (id: string) => openProjects[id] ?? true;
-
-  // On mobile the sidebar is a sheet; close it once a file is chosen.
-  function selectFile(project: ProjectNode, file: EnvFileNode) {
-    onSelectFile(project, file);
+  // On mobile the sidebar is a sheet; close it once a choice is made.
+  function act(fn: () => void) {
+    fn();
     setOpenMobile(false);
   }
 
   return (
-    <Sidebar variant="inset">
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <SidebarMenuButton
-                    size="lg"
-                    aria-label="Switch workspace"
-                    className="aria-expanded:bg-sidebar-accent aria-expanded:text-sidebar-accent-foreground"
-                  >
-                    <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                      <KeyRound className="size-4" />
-                    </div>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium">
-                        {workspace?.name ?? "Klef"}
-                      </span>
-                      <span className="text-muted-foreground truncate text-xs">
-                        Workspace
-                      </span>
-                    </div>
-                    <ChevronsUpDown className="ml-auto size-4" />
-                  </SidebarMenuButton>
-                }
-              />
-              <DropdownMenuContent
-                side={isMobile ? "bottom" : "right"}
-                align="start"
-                className="min-w-56"
-              >
-                {workspaces.map((w) => (
-                  <DropdownMenuItem
-                    key={w.id}
-                    onClick={() => onPickWorkspace(w.id)}
-                  >
-                    <span className="truncate">{w.name}</span>
-                    {w.id === workspace?.id && (
-                      <Check className="ml-auto size-4" />
-                    )}
-                  </DropdownMenuItem>
-                ))}
-                {workspaces.length > 0 && <DropdownMenuSeparator />}
-                <DropdownMenuItem onClick={onNewWorkspace}>
-                  <Plus />
-                  New workspace
-                </DropdownMenuItem>
-                {/* Rename/delete deliberately live in Account settings, not
-                    here — the switcher is for switching. */}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
-
-      </SidebarHeader>
-
+    <Sidebar
+      collapsible="icon"
+      /* Anchored to the content row (relative) rather than the viewport, so
+         whatever sits above it (topbar, announcement banner) can vary in
+         height without the rail drifting out of place. */
+      className="absolute h-auto"
+      onMouseEnter={() => {
+        if (isMobile) return;
+        expandTimer.current = window.setTimeout(() => setOpen(true), 150);
+      }}
+      onMouseLeave={() => {
+        if (isMobile) return;
+        if (expandTimer.current !== null) {
+          clearTimeout(expandTimer.current);
+          expandTimer.current = null;
+        }
+        setOpen(false);
+      }}
+    >
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Projects</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {projects.map((project) => (
-                <Collapsible
-                  key={project.id}
-                  open={isOpen(project.id)}
-                  onOpenChange={(open) =>
-                    setOpenProjects((s) => ({ ...s, [project.id]: open }))
-                  }
-                  className="group/collapsible"
-                  render={<SidebarMenuItem />}
-                >
-                  <CollapsibleTrigger
-                    render={
-                      <SidebarMenuButton>
-                        {isOpen(project.id) ? <FolderOpen /> : <Folder />}
-                        <span className="truncate">{project.name}</span>
-                      </SidebarMenuButton>
-                    }
-                  />
-                  <SidebarMenuBadge className="text-muted-foreground transition-opacity group-focus-within/menu-item:opacity-0 group-hover/menu-item:opacity-0">
-                    {project.files.length}
-                  </SidebarMenuBadge>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <SidebarMenuAction
-                          showOnHover
-                          aria-label={`Actions for ${project.name}`}
+        {currentProject ? (
+          <SidebarGroup>
+            <SidebarGroupLabel className="gap-1.5">
+              <ProjectIcon project={currentProject} size="sm" />
+              <span className="truncate">{currentProject.name}</span>
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip="All projects"
+                    onClick={() => act(onShowOverview)}
+                  >
+                    <LayoutGrid />
+                    <span>All projects</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                {currentProject.files.map((file) => (
+                  <SidebarMenuItem key={file.id}>
+                    {/* Right-click manages the file in place; the row itself
+                        just opens it. */}
+                    <ContextMenu>
+                      <ContextMenuTrigger>
+                        <SidebarMenuButton
+                          tooltip={file.name}
+                          isActive={file.id === selectedFileId}
+                          className="font-mono"
+                          onClick={() =>
+                            act(() => onSelectFile(currentProject, file))
+                          }
                         >
-                          <MoreHorizontal />
-                        </SidebarMenuAction>
-                      }
-                    />
-                    <DropdownMenuContent
-                      side={isMobile ? "bottom" : "right"}
-                      align="start"
-                      className="min-w-44"
-                    >
-                      <DropdownMenuItem onClick={() => onNewFile(project)}>
-                        <FilePlus2 />
-                        New file
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onRenameProject(project)}>
-                        <Pencil />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => onDeleteProject(project)}
-                      >
-                        <Trash2 />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {project.files.length === 0 ? (
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton
-                            render={<button type="button" />}
-                            className="text-muted-foreground w-full"
-                            onClick={() => onNewFile(project)}
-                          >
-                            <Plus />
-                            <span>Add file</span>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ) : (
-                        project.files.map((file) => (
-                          <SidebarMenuSubItem key={file.id}>
-                            <SidebarMenuSubButton
-                              size="sm"
-                              render={<button type="button" />}
-                              isActive={file.id === selectedFileId}
-                              className="w-full font-mono"
-                              onClick={() => selectFile(project, file)}
+                          <FileText />
+                          <span className="truncate">{file.name}</span>
+                          {file.environment && (
+                            <>
+                              <span
+                                className={cn(
+                                  "ml-auto size-1.5 shrink-0 rounded-full",
+                                  ENV_META[file.environment].dot,
+                                )}
+                                title={file.environment}
+                                aria-hidden="true"
+                              />
+                              <span className="sr-only">
+                                {file.environment}
+                              </span>
+                            </>
+                          )}
+                        </SidebarMenuButton>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent className="min-w-44">
+                        <ContextMenuItem
+                          onClick={() => act(() => onRenameFile(file))}
+                        >
+                          <Pencil />
+                          Rename
+                        </ContextMenuItem>
+                        <ContextMenuSeparator />
+                        <ContextMenuGroup>
+                          <ContextMenuLabel>Environment</ContextMenuLabel>
+                          {ENVIRONMENTS.map((env) => (
+                            <ContextMenuItem
+                              key={env}
+                              onClick={() => onSetEnvironment(file, env)}
                             >
-                              <FileText />
-                              <span className="truncate">{file.name}</span>
-                              {file.environment && (
-                                <>
-                                  <span
-                                    className={cn(
-                                      "ml-auto size-1.5 shrink-0 rounded-full",
-                                      ENV_META[file.environment].dot,
-                                    )}
-                                    title={file.environment}
-                                    aria-hidden="true"
-                                  />
-                                  <span className="sr-only">
-                                    {file.environment}
-                                  </span>
-                                </>
+                              <span
+                                className={cn(
+                                  "size-1.5 rounded-full",
+                                  ENV_META[env].dot,
+                                )}
+                                aria-hidden="true"
+                              />
+                              {ENV_META[env].label}
+                              {file.environment === env && (
+                                <Check className="ml-auto size-4" />
                               )}
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))
-                      )}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </Collapsible>
-              ))}
-              {/* Always the last row, so "add" reads as part of the list. */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  className="text-muted-foreground"
-                  onClick={onNewProject}
-                  disabled={!workspace}
-                >
-                  <Plus />
-                  <span>Add project</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                            </ContextMenuItem>
+                          ))}
+                          {file.environment && (
+                            <ContextMenuItem
+                              onClick={() => onSetEnvironment(file, null)}
+                            >
+                              <X />
+                              Clear label
+                            </ContextMenuItem>
+                          )}
+                        </ContextMenuGroup>
+                        <ContextMenuSeparator />
+                        <ContextMenuItem
+                          variant="destructive"
+                          onClick={() => act(() => onDeleteFile(file))}
+                        >
+                          <Trash2 />
+                          Delete
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  </SidebarMenuItem>
+                ))}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip="New file"
+                    className="text-muted-foreground"
+                    onClick={() => act(() => onNewFile(currentProject))}
+                  >
+                    <Plus />
+                    <span>New file</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : (
+          <SidebarGroup>
+            <SidebarGroupLabel className="truncate">
+              {workspace?.name ?? "Workspace"}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {loading ? (
+                  Array.from({ length: 3 }, (_, i) => (
+                    <SidebarMenuItem key={`skeleton-${i}`}>
+                      <SidebarMenuSkeleton showIcon />
+                    </SidebarMenuItem>
+                  ))
+                ) : (
+                  <>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        tooltip="Projects"
+                        isActive
+                        onClick={() => act(onShowOverview)}
+                      >
+                        <LayoutGrid />
+                        <span>Projects</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        tooltip="Profile"
+                        onClick={() => act(() => onOpenSettings("profile"))}
+                      >
+                        <UserRound />
+                        <span>Profile</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        tooltip="Security"
+                        onClick={() => act(() => onOpenSettings("security"))}
+                      >
+                        <ShieldCheck />
+                        <span>Security</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        tooltip="Workspace settings"
+                        onClick={() => act(() => onOpenSettings("workspace"))}
+                      >
+                        <Settings />
+                        <span>Workspace settings</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
-
-      {/* The footer is the account area, not another switcher: a hairline
-          separates it from the tree and its row reads as a menu (ellipsis,
-          muted monogram) while the workspace tile up top keeps the bold
-          primary square and the up/down switcher chevrons. */}
-      <SidebarFooter className="border-sidebar-border border-t">
-        <NavUser
-          name={name}
-          email={email}
-          image={image}
-          onOpenSettings={onOpenSettings}
-        />
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
-  );
-}
-
-function NavUser({
-  name,
-  email,
-  image,
-  onOpenSettings,
-}: {
-  name: string;
-  email: string;
-  image?: string | null;
-  onOpenSettings: (tab: SettingsTab) => void;
-}) {
-  const { isMobile } = useSidebar();
-  const navigate = useNavigate();
-  const displayName = name.trim() || email;
-  const initial = displayName.charAt(0).toUpperCase();
-
-  async function onSignOut() {
-    await clearDek();
-    await signOut();
-    navigate("/");
-  }
-
-  return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
+      {/* Configuration pins to the bottom; the top of the rail stays about
+          the project's contents. */}
+      {currentProject && (
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
               <SidebarMenuButton
-                size="lg"
-                aria-label="Account menu"
-                className="aria-expanded:bg-sidebar-accent aria-expanded:text-sidebar-accent-foreground"
+                tooltip="Project settings"
+                onClick={() => act(() => onEditProject(currentProject))}
               >
-                <Avatar>
-                  {image && (
-                    <AvatarImage src={image} alt="" referrerPolicy="no-referrer" />
-                  )}
-                  <AvatarFallback>{initial}</AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{displayName}</span>
-                  <span className="text-muted-foreground truncate text-xs">
-                    {email}
-                  </span>
-                </div>
-                <EllipsisVertical className="text-muted-foreground ml-auto size-4" />
+                <Settings />
+                <span>Project settings</span>
               </SidebarMenuButton>
-            }
-          />
-          <DropdownMenuContent
-            side={isMobile ? "bottom" : "right"}
-            align="end"
-            className="min-w-56"
-          >
-            {/* One entry; Profile/Account live as tabs inside the dialog. */}
-            <DropdownMenuItem onClick={() => onOpenSettings("profile")}>
-              <Settings />
-              Settings
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={() => void onSignOut()}
-            >
-              <LogOut />
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      )}
+    </Sidebar>
   );
 }

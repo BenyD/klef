@@ -62,6 +62,8 @@ export interface ProjectNode {
   name: string;
   /** Optional framework; plaintext, only used for UI defaults. */
   framework: Framework | null;
+  /** Optional icon: https URL or small data: URL; falls back to the framework icon. */
+  icon: string | null;
   createdAt: string;
   files: EnvFileNode[];
 }
@@ -69,6 +71,8 @@ export interface ProjectNode {
 export interface WorkspaceNode {
   id: string;
   name: string;
+  /** Uploaded image (data URL) or https URL; null shows the cube glyph. */
+  icon: string | null;
   createdAt: string;
   projects: ProjectNode[];
 }

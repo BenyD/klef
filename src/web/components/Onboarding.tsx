@@ -21,7 +21,7 @@ import { z } from "zod";
 import { signOut } from "../auth.ts";
 import { clearDek } from "../dek-store.ts";
 import { useFieldValidation } from "../lib/use-field-validation.ts";
-import { useVault } from "../vault-session.tsx";
+import { useVault } from "../vault-context.ts";
 import { Button } from "./ui/button.tsx";
 import { Checkbox } from "./ui/checkbox.tsx";
 import { Field, FieldError, FieldGroup, FieldLabel } from "./ui/field.tsx";

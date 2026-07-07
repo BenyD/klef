@@ -3,7 +3,8 @@ import { Navigate, Route, Routes, useLocation } from "react-router";
 import { useTheme } from "next-themes";
 import { useSession } from "./auth.ts";
 import { useReturnPath } from "./lib/return-path.ts";
-import { VaultProvider, useVault } from "./vault-session.tsx";
+import { VaultProvider } from "./vault-session.tsx";
+import { useVault } from "./vault-context.ts";
 import { Landing } from "./components/Landing.tsx";
 import { Security } from "./components/Security.tsx";
 import { Terms } from "./components/Terms.tsx";
@@ -14,6 +15,9 @@ import { Onboarding } from "./components/Onboarding.tsx";
 import { UnlockScreen } from "./components/UnlockScreen.tsx";
 import { VaultHome } from "./components/VaultHome.tsx";
 import { Splash } from "./components/Splash.tsx";
+import { ToastLab } from "./components/ToastLab.tsx";
+import { AppShellSkeleton } from "./components/AppShellSkeleton.tsx";
+import { NotFound } from "./components/NotFound.tsx";
 import { TooltipProvider } from "./components/ui/tooltip.tsx";
 import { Toaster } from "./components/ui/sonner.tsx";
 
@@ -76,7 +80,9 @@ function VaultGate({
   const { status } = useVault();
   switch (status) {
     case "loading":
-      return <Splash />;
+      // Skeleton, not the splash: on reload the shell should appear in
+      // place instantly rather than flashing a brand moment.
+      return <AppShellSkeleton />;
     case "needs-setup":
       return <Onboarding />;
     case "locked":
@@ -89,7 +95,7 @@ function VaultGate({
 function AppArea() {
   const { data: session, isPending } = useSession();
   const { pathname } = useLocation();
-  if (isPending) return <Splash />;
+  if (isPending) return <AppShellSkeleton />;
   // Remember where the user was headed (e.g. /my-team) so sign-in returns there.
   if (!session) return <Navigate to="/auth" replace state={{ from: pathname }} />;
   return (
@@ -125,10 +131,13 @@ export function App() {
         <Route path="/about" element={<Why />} />
         <Route path="/auth" element={<AuthRoute />} />
         <Route path="/app" element={<AppArea />} />
+        {import.meta.env.DEV && (
+          <Route path="/dev/toasts" element={<ToastLab />} />
+        )}
         {/* Workspace home: klef.sh/<workspace-slug>. Marketing routes above
             win first; reserved slugs are rejected at workspace creation. */}
         <Route path="/:wsSlug" element={<AppArea />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />
     </TooltipProvider>

@@ -3,6 +3,8 @@ import type { KdfParams, VaultKeyMaterial, WrappedKey } from "../shared/types.ts
 interface VaultStatus {
   exists: boolean;
   keyMaterial?: VaultKeyMaterial;
+  /** When the user last confirmed saving their recovery key; null = never. */
+  recoveryConfirmedAt?: string | null;
 }
 
 async function readError(res: Response): Promise<string> {
@@ -49,5 +51,11 @@ export async function updateVaultRecovery(
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ wrappedDekRecovery }),
   });
+  if (!res.ok) throw new Error(await readError(res));
+}
+
+/** Record that the user confirmed saving their recovery key. */
+export async function confirmRecoverySaved(): Promise<void> {
+  const res = await fetch("/api/vault/recovery-confirmed", { method: "POST" });
   if (!res.ok) throw new Error(await readError(res));
 }

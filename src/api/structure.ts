@@ -56,6 +56,22 @@ function cleanFramework(input: unknown): Framework | null | undefined {
   return undefined;
 }
 
+// Room for a 64px PNG as a data URL with margin; also caps pasted URLs.
+const MAX_ICON_LENGTH = 150_000;
+
+/** Same contract as cleanEnvironment, for the project icon field. */
+function cleanIcon(input: unknown): string | null | undefined {
+  if (input === null) return null;
+  if (typeof input !== "string") return undefined;
+  const icon = input.trim();
+  if (!icon) return null;
+  if (icon.length > MAX_ICON_LENGTH) return undefined;
+  if (icon.startsWith("https://") || icon.startsWith("data:image/")) {
+    return icon;
+  }
+  return undefined;
+}
+
 // Workspace names double as root URLs (klef.sh/<slug>), so beyond cleanName
 // they must slugify to something routable, unreserved, and unique per user
 // (two names that collapse to the same slug would be unreachable).
@@ -129,12 +145,12 @@ structure.get("/tree", async (c) => {
 
   const [ws, projects, files] = await Promise.all([
     c.env.DB.prepare(
-      "SELECT id, name, created_at FROM workspaces WHERE user_id = ? ORDER BY created_at, name",
+      "SELECT id, name, icon, created_at FROM workspaces WHERE user_id = ? ORDER BY created_at, name",
     )
       .bind(userId)
-      .all<{ id: string; name: string; created_at: string }>(),
+      .all<{ id: string; name: string; icon: string | null; created_at: string }>(),
     c.env.DB.prepare(
-      `SELECT p.id, p.workspace_id, p.name, p.framework, p.created_at
+      `SELECT p.id, p.workspace_id, p.name, p.framework, p.icon, p.created_at
        FROM projects p JOIN workspaces w ON p.workspace_id = w.id
        WHERE w.user_id = ? ORDER BY p.created_at, p.name`,
     )
@@ -144,6 +160,7 @@ structure.get("/tree", async (c) => {
         workspace_id: string;
         name: string;
         framework: Framework | null;
+        icon: string | null;
         created_at: string;
       }>(),
     c.env.DB.prepare(
@@ -181,6 +198,7 @@ structure.get("/tree", async (c) => {
       id: p.id,
       name: p.name,
       framework: p.framework,
+      icon: p.icon,
       createdAt: p.created_at,
       files: fileNodes.get(p.id) ?? [],
     });
@@ -189,6 +207,7 @@ structure.get("/tree", async (c) => {
   const workspaces: WorkspaceNode[] = ws.results.map((w) => ({
     id: w.id,
     name: w.name,
+    icon: w.icon,
     createdAt: w.created_at,
     projects: projectNodes.get(w.id) ?? [],
   }));
@@ -215,21 +234,44 @@ structure.post("/workspaces", async (c) => {
 });
 
 structure.patch("/workspaces/:id", async (c) => {
-  const body = (await c.req.json().catch(() => ({}))) as { name?: unknown };
-  const name = cleanName(body.name);
-  if (!name) return c.json({ ok: false, error: "Invalid name" }, 400);
-  const slugError = await workspaceNameError(
-    c.env.DB,
-    c.get("user").id,
-    name,
-    c.req.param("id"),
-  );
-  if (slugError) return c.json({ ok: false, error: slugError }, 400);
+  const body = (await c.req.json().catch(() => ({}))) as {
+    name?: unknown;
+    icon?: unknown;
+  };
+  const sets: string[] = [];
+  const binds: (string | null)[] = [];
+
+  if (body.name !== undefined) {
+    const name = cleanName(body.name);
+    if (!name) return c.json({ ok: false, error: "Invalid name" }, 400);
+    const slugError = await workspaceNameError(
+      c.env.DB,
+      c.get("user").id,
+      name,
+      c.req.param("id"),
+    );
+    if (slugError) return c.json({ ok: false, error: slugError }, 400);
+    sets.push("name = ?");
+    binds.push(name);
+  }
+
+  if (body.icon !== undefined) {
+    const icon = cleanIcon(body.icon);
+    if (icon === undefined) {
+      return c.json({ ok: false, error: "Invalid icon" }, 400);
+    }
+    sets.push("icon = ?");
+    binds.push(icon);
+  }
+
+  if (sets.length === 0) {
+    return c.json({ ok: false, error: "Nothing to update" }, 400);
+  }
 
   const res = await c.env.DB.prepare(
-    "UPDATE workspaces SET name = ? WHERE id = ? AND user_id = ?",
+    `UPDATE workspaces SET ${sets.join(", ")} WHERE id = ? AND user_id = ?`,
   )
-    .bind(name, c.req.param("id"), c.get("user").id)
+    .bind(...binds, c.req.param("id"), c.get("user").id)
     .run();
   if (res.meta.changes === 0) return c.json({ ok: false, error: "Not found" }, 404);
   return c.json({ ok: true });
@@ -269,6 +311,7 @@ structure.post("/projects", async (c) => {
     workspaceId?: unknown;
     name?: unknown;
     framework?: unknown;
+    icon?: unknown;
   };
   const name = cleanName(body.name);
   if (!name || typeof body.workspaceId !== "string") {
@@ -278,15 +321,19 @@ structure.post("/projects", async (c) => {
   if (framework === undefined) {
     return c.json({ ok: false, error: "Invalid framework" }, 400);
   }
+  const icon = cleanIcon(body.icon ?? null);
+  if (icon === undefined) {
+    return c.json({ ok: false, error: "Invalid icon" }, 400);
+  }
   if (!(await ownsWorkspace(c.env.DB, c.get("user").id, body.workspaceId))) {
     return c.json({ ok: false, error: "Not found" }, 404);
   }
 
   const id = crypto.randomUUID();
   await c.env.DB.prepare(
-    "INSERT INTO projects (id, workspace_id, name, framework) VALUES (?, ?, ?, ?)",
+    "INSERT INTO projects (id, workspace_id, name, framework, icon) VALUES (?, ?, ?, ?, ?)",
   )
-    .bind(id, body.workspaceId, name, framework)
+    .bind(id, body.workspaceId, name, framework, icon)
     .run();
   return c.json({ id, name }, 201);
 });
@@ -295,6 +342,7 @@ structure.patch("/projects/:id", async (c) => {
   const body = (await c.req.json().catch(() => ({}))) as {
     name?: unknown;
     framework?: unknown;
+    icon?: unknown;
   };
 
   // Accept name and/or framework; at least one must be present and valid.
@@ -313,6 +361,14 @@ structure.patch("/projects/:id", async (c) => {
     }
     sets.push("framework = ?");
     binds.push(framework);
+  }
+  if ("icon" in body) {
+    const icon = cleanIcon(body.icon);
+    if (icon === undefined) {
+      return c.json({ ok: false, error: "Invalid icon" }, 400);
+    }
+    sets.push("icon = ?");
+    binds.push(icon);
   }
   if (sets.length === 0) return c.json({ ok: false, error: "Empty update" }, 400);
 
