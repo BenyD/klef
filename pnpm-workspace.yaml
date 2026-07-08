@@ -6,3 +6,11 @@ allowBuilds:
   esbuild: true
   sharp: true
   workerd: true
+
+# Security overrides (GHSA alerts) for old lines pinned by @better-auth/cli,
+# which is dev-only and has no newer release. Its exact-pinned better-auth
+# 1.4.21 CANNOT be overridden - the CLI breaks against 1.6's API - so those
+# two alerts are dismissed as not-used instead. Verify with `pnpm db:generate`.
+overrides:
+  drizzle-orm: ^0.45.2
+  lodash: ^4.18.1
