@@ -1,8 +1,9 @@
 import type { Environment, Framework, VaultTree } from "../shared/api-types.ts";
 import type { EncryptedBlob } from "../shared/types.ts";
+import { apiFetch } from "./api-fetch.ts";
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
+  const res = await apiFetch(url, init);
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     throw new Error(body?.error ?? `Request failed (${res.status})`);
