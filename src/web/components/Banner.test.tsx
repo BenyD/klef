@@ -24,6 +24,17 @@ describe("Banner (announcement strip)", () => {
     expect(screen.getByText("Klef is in early access")).toBeTruthy();
   });
 
+  it("renders the brand variant (mark icon, still dismissible)", () => {
+    render(
+      <Banner variant="brand">
+        <span>Klef is in early access</span>
+      </Banner>,
+    );
+    expect(screen.getByText("Klef is in early access")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Dismiss"));
+    expect(screen.queryByText("Klef is in early access")).toBeNull();
+  });
+
   it("hides on dismiss", () => {
     render(<Banner>Heads up</Banner>);
     fireEvent.click(screen.getByLabelText("Dismiss"));

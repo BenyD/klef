@@ -88,7 +88,7 @@ export function ToastLab() {
   return (
     <div className="klef-screen flex min-h-svh flex-col">
       {/* Banner variants, topmost one mirroring the live early-access strip. */}
-      <Banner variant="warning">
+      <Banner variant="brand">
         <span className="font-medium">Klef is in early access.</span>
         <span className="text-muted-foreground">
           {" "}
@@ -110,6 +110,10 @@ export function ToastLab() {
       <Banner variant="success">
         <span className="font-medium">Passkeys are here.</span>
         <span className="text-muted-foreground"> Add one in settings</span>
+      </Banner>
+      <Banner variant="warning">
+        <span className="font-medium">Recovery key not saved.</span>
+        <span className="text-muted-foreground"> Download it in settings</span>
       </Banner>
       <Banner variant="error">
         <span className="font-medium">Sync is degraded.</span>

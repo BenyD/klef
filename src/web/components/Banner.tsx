@@ -7,10 +7,15 @@ import {
   XIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { KlefMark } from "./KlefMark.tsx";
 
-type BannerVariant = "info" | "success" | "warning" | "error";
+type BannerVariant = "brand" | "info" | "success" | "warning" | "error";
 
-const ICONS: Record<BannerVariant, typeof InfoIcon> = {
+const ICONS: Record<
+  BannerVariant,
+  React.ComponentType<{ className?: string }>
+> = {
+  brand: KlefMark,
   info: InfoIcon,
   success: CircleCheckIcon,
   warning: TriangleAlertIcon,
@@ -18,8 +23,10 @@ const ICONS: Record<BannerVariant, typeof InfoIcon> = {
 };
 
 /* Same accent scheme as the toasts (ui/sonner.tsx): the variant sets
-   --banner-accent and every tinted piece derives from it. */
+   --banner-accent and every tinted piece derives from it. `brand` is for
+   product announcements (ember + the mark); the rest stay semantic. */
 const ACCENTS: Record<BannerVariant, string> = {
+  brand: "[--banner-accent:var(--brand)]",
   info: "[--banner-accent:var(--info)]",
   success: "[--banner-accent:var(--success)]",
   warning: "[--banner-accent:var(--warning)]",
