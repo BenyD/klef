@@ -4,13 +4,14 @@ import { Check } from "lucide-react";
 // sign-up passwords, and password changes all share the same meter so
 // "Strong" means the same thing everywhere.
 
-// Contextual strength levels: red (weak) -> amber (fair/good) -> green (strong).
+// Contextual strength levels on the semantic tokens: destructive (weak) ->
+// warning (fair/good) -> success (strong).
 const STRENGTH = [
-  { label: "Weak", bar: "bg-red-500", text: "text-red-500" },
-  { label: "Weak", bar: "bg-red-500", text: "text-red-500" },
-  { label: "Fair", bar: "bg-amber-500", text: "text-amber-500" },
-  { label: "Good", bar: "bg-amber-500", text: "text-amber-500" },
-  { label: "Strong", bar: "bg-emerald-500", text: "text-emerald-500" },
+  { label: "Weak", bar: "bg-destructive", text: "text-destructive" },
+  { label: "Weak", bar: "bg-destructive", text: "text-destructive" },
+  { label: "Fair", bar: "bg-warning", text: "text-warning" },
+  { label: "Good", bar: "bg-warning", text: "text-warning" },
+  { label: "Strong", bar: "bg-success", text: "text-success" },
 ] as const;
 
 // Each satisfied check fills one strength segment (guidance only; the 8-char
@@ -64,7 +65,7 @@ export function StrengthMeter({ value }: { value: string }) {
               }`}
             >
               {ok ? (
-                <Check className="size-3 text-emerald-600 dark:text-emerald-400" />
+                <Check className="size-3 text-success" />
               ) : (
                 <span
                   className="border-border size-3 shrink-0 rounded-full border"
