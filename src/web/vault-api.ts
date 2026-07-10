@@ -13,6 +13,13 @@ async function readError(res: Response): Promise<string> {
   return body?.error ?? `Request failed (${res.status})`;
 }
 
+/**
+ * A vault write that failed AFTER client-side crypto already succeeded
+ * (network or server fault). Callers use this to avoid blaming the user's
+ * key or passphrase for a save problem.
+ */
+export class VaultWriteError extends Error {}
+
 /** Does the current user have a vault, and its (opaque) key material if so. */
 export async function fetchVault(): Promise<VaultStatus> {
   const res = await apiFetch("/api/vault");
@@ -35,12 +42,17 @@ export async function updateVaultPassphrase(
   kdfParams: KdfParams,
   wrappedDek: WrappedKey,
 ): Promise<void> {
-  const res = await apiFetch("/api/vault/passphrase", {
-    method: "PUT",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ kdfParams, wrappedDek }),
-  });
-  if (!res.ok) throw new Error(await readError(res));
+  let res: Response;
+  try {
+    res = await apiFetch("/api/vault/passphrase", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ kdfParams, wrappedDek }),
+    });
+  } catch (e) {
+    throw new VaultWriteError(e instanceof Error ? e.message : String(e));
+  }
+  if (!res.ok) throw new VaultWriteError(await readError(res));
 }
 
 /** Recovery-key rotation: store the newly recovery-wrapped DEK. */

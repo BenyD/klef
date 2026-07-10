@@ -6,23 +6,31 @@ import { VaultProvider } from "./vault-session.tsx";
 import { useVault } from "./vault-context.ts";
 
 // In-memory stand-in for the server. Real crypto runs; only the network is faked.
-const state = vi.hoisted(() => ({ stored: null as VaultKeyMaterial | null }));
-
-vi.mock("./vault-api.ts", () => ({
-  fetchVault: async () =>
-    state.stored
-      ? { exists: true, keyMaterial: state.stored, recoveryConfirmedAt: null }
-      : { exists: false },
-  createVault: async (m: VaultKeyMaterial) => {
-    state.stored = m;
-  },
-  updateVaultPassphrase: async (kdfParams: KdfParams, wrappedDek: WrappedKey) => {
-    if (!state.stored) throw new Error("no vault");
-    state.stored = { ...state.stored, kdfParams, wrappedDek };
-  },
-  updateVaultRecovery: async () => {},
-  confirmRecoverySaved: async () => {},
+const state = vi.hoisted(() => ({
+  stored: null as VaultKeyMaterial | null,
+  failPassphraseWrites: false,
 }));
+
+vi.mock("./vault-api.ts", () => {
+  class VaultWriteError extends Error {}
+  return {
+    VaultWriteError,
+    fetchVault: async () =>
+      state.stored
+        ? { exists: true, keyMaterial: state.stored, recoveryConfirmedAt: null }
+        : { exists: false },
+    createVault: async (m: VaultKeyMaterial) => {
+      state.stored = m;
+    },
+    updateVaultPassphrase: async (kdfParams: KdfParams, wrappedDek: WrappedKey) => {
+      if (state.failPassphraseWrites) throw new VaultWriteError("outage");
+      if (!state.stored) throw new Error("no vault");
+      state.stored = { ...state.stored, kdfParams, wrappedDek };
+    },
+    updateVaultRecovery: async () => {},
+    confirmRecoverySaved: async () => {},
+  };
+});
 
 // In-memory stand-in for the IndexedDB DEK cache (persistence across reloads).
 const dekState = vi.hoisted(() => ({ saved: null as CryptoKey | null }));
@@ -43,6 +51,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 
 beforeEach(() => {
   state.stored = null;
+  state.failPassphraseWrites = false;
   dekState.saved = null;
 });
 
@@ -119,9 +128,9 @@ describe("vault session (unlock gate)", () => {
     const afterLock = renderHook(() => useVault(), { wrapper });
     await waitFor(() => expect(afterLock.result.current.status).toBe("locked"));
 
-    // The recovery key still unlocks.
+    // The recovery key still unlocks (resetting the passphrase on the way).
     await act(async () => {
-      await afterLock.result.current.recover(recoveryKey);
+      await afterLock.result.current.recoverAndReset(recoveryKey, "next pw 1");
     });
     expect(afterLock.result.current.status).toBe("unlocked");
   });
@@ -158,6 +167,85 @@ describe("vault session (unlock gate)", () => {
     });
     expect(later.result.current.status).toBe("unlocked");
   });
+
+  it("unlock validates against fresh material after a change elsewhere", async () => {
+    // Device A sets up and stays mounted with cached key material.
+    const deviceA = renderHook(() => useVault(), { wrapper });
+    await waitFor(() => expect(deviceA.result.current.status).toBe("needs-setup"));
+    await act(async () => {
+      await deviceA.result.current.runSetup("first pw");
+    });
+
+    // Device B (fresh provider) changes the passphrase out from under A.
+    const deviceB = renderHook(() => useVault(), { wrapper });
+    await waitFor(() => expect(deviceB.result.current.status).toBe("locked"));
+    await act(async () => {
+      await deviceB.result.current.unlock("first pw");
+      await deviceB.result.current.changePassphrase("first pw", "second pw");
+    });
+
+    // A's cached material is stale, but unlock refetches: the NEW passphrase
+    // works and the OLD one is rejected, without any reload.
+    dekState.saved = null;
+    await expect(
+      act(async () => {
+        await deviceA.result.current.unlock("first pw");
+      }),
+    ).rejects.toThrow();
+    await act(async () => {
+      await deviceA.result.current.unlock("second pw");
+    });
+    expect(deviceA.result.current.status).toBe("unlocked");
+  });
+
+  it("a failed passphrase write during recovery reset never unlocks", async () => {
+    const seed = renderHook(() => useVault(), { wrapper });
+    await waitFor(() => expect(seed.result.current.status).toBe("needs-setup"));
+    let recoveryKey = "";
+    await act(async () => {
+      recoveryKey = await seed.result.current.runSetup("pw before outage");
+    });
+
+    const locked = renderHook(() => useVault(), { wrapper });
+    await waitFor(() => expect(locked.result.current.status).toBe("locked"));
+
+    state.failPassphraseWrites = true;
+    try {
+      await expect(
+        act(async () => {
+          await locked.result.current.recoverAndReset(recoveryKey, "new pw");
+        }),
+      ).rejects.toThrow();
+    } finally {
+      state.failPassphraseWrites = false;
+    }
+    // Correct key, failed save: still locked, and the old passphrase intact.
+    expect(locked.result.current.status).toBe("locked");
+    await act(async () => {
+      await locked.result.current.unlock("pw before outage");
+    });
+    expect(locked.result.current.status).toBe("unlocked");
+  });
+
+  it.skipIf(typeof BroadcastChannel === "undefined")(
+    "locking one tab locks sibling tabs",
+    async () => {
+      const seed = renderHook(() => useVault(), { wrapper });
+      await waitFor(() => expect(seed.result.current.status).toBe("needs-setup"));
+      await act(async () => {
+        await seed.result.current.runSetup("pw");
+      });
+      act(() => seed.result.current.finishSetup());
+
+      // A second tab restores the remembered DEK and is unlocked too.
+      const sibling = renderHook(() => useVault(), { wrapper });
+      await waitFor(() => expect(sibling.result.current.status).toBe("unlocked"));
+
+      act(() => seed.result.current.lock());
+      await waitFor(() => expect(sibling.result.current.status).toBe("locked"));
+      expect(sibling.result.current.dek).toBeNull();
+    },
+  );
 
   it("changePassphrase re-wraps for the new passphrase only", async () => {
     const seed = renderHook(() => useVault(), { wrapper });

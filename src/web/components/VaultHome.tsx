@@ -204,7 +204,9 @@ export function VaultHome({
   const { tree, loading, error, reload } = useTree();
   const { lock, recoveryConfirmed } = useVault();
   useAutoLock(lock);
-  useLockShortcut(lock);
+  // The shortcut is a deliberate action, so it gets the dirty-draft guard
+  // (requestLock below); only idle auto-lock skips it.
+  useLockShortcut(() => requestLock());
   const [paletteOpen, setPaletteOpen] = useState(false);
   usePaletteShortcut(useCallback(() => setPaletteOpen((o) => !o), []));
   const navigate = useNavigate();
@@ -227,6 +229,37 @@ export function VaultHome({
   } | null>(null);
   // Workspace deletes are type-to-confirm; the typed name must match exactly.
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  // Any teardown that would silently drop dirty drafts (lock, sign out,
+  // workspace switch, closing a dirty tab) funnels through one confirmation.
+  // Auto-lock deliberately bypasses it: an idle vault must lock regardless.
+  const [pendingDiscard, setPendingDiscard] = useState<{
+    description: string;
+    confirmLabel: string;
+    run: () => void;
+  } | null>(null);
+
+  const unsavedNote = () =>
+    dirtyIds.size === 1
+      ? "1 file has unsaved edits."
+      : `${dirtyIds.size} files have unsaved edits.`;
+
+  function guardDirty(
+    run: () => void,
+    what: { verb: string; confirmLabel: string },
+  ) {
+    if (dirtyIds.size === 0) run();
+    else {
+      setPendingDiscard({
+        description: `${unsavedNote()} ${what.verb} discards them.`,
+        confirmLabel: what.confirmLabel,
+        run,
+      });
+    }
+  }
+
+  function requestLock() {
+    guardDirty(lock, { verb: "Locking", confirmLabel: "Lock and discard" });
+  }
 
   const workspaces = tree?.workspaces ?? [];
   // Match by slug, or by raw id for legacy names with nothing sluggable.
@@ -300,12 +333,17 @@ export function VaultHome({
   };
 
   function pickWorkspace(id: string) {
-    const ws = workspaces.find((w) => w.id === id);
-    if (ws) navigate(`/${workspaceSlug(ws.name, ws.id)}`);
-    // Tabs are per-workspace; drafts belong to the vault being left.
-    setSelected(null);
-    setOpenFiles([]);
-    setDirtyIds(new Set());
+    guardDirty(
+      () => {
+        const ws = workspaces.find((w) => w.id === id);
+        if (ws) navigate(`/${workspaceSlug(ws.name, ws.id)}`);
+        // Tabs are per-workspace; drafts belong to the vault being left.
+        setSelected(null);
+        setOpenFiles([]);
+        setDirtyIds(new Set());
+      },
+      { verb: "Switching workspaces", confirmLabel: "Switch and discard" },
+    );
   }
 
   // Open (or focus) a tab for the file and make it active.
@@ -316,7 +354,7 @@ export function VaultHome({
     setSelected(entry);
   }
 
-  function closeFileTab(id: string) {
+  function closeFileTabNow(id: string) {
     const index = openFiles.findIndex((f) => f.id === id);
     const next = openFiles.filter((f) => f.id !== id);
     setOpenFiles(next);
@@ -330,6 +368,29 @@ export function VaultHome({
       setSelected(next[Math.min(index, next.length - 1)] ?? null);
     }
   }
+
+  function closeFileTab(id: string) {
+    if (!dirtyIds.has(id)) return closeFileTabNow(id);
+    const name = openFiles.find((f) => f.id === id)?.name ?? "This file";
+    setPendingDiscard({
+      description: `"${name}" has unsaved edits. Closing discards them.`,
+      confirmLabel: "Close and discard",
+      run: () => closeFileTabNow(id),
+    });
+  }
+
+  // The browser's own "leave site?" prompt is the only guard available for
+  // closing the tab or navigating away with unsaved edits.
+  useEffect(() => {
+    if (dirtyIds.size === 0) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Chrome still requires returnValue to be set to show the prompt.
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirtyIds]);
 
   const markDirty = useCallback((id: string, dirty: boolean) => {
     setDirtyIds((prev) => {
@@ -677,13 +738,19 @@ export function VaultHome({
               <PaletteShortcutKeys />
             </span>
           </Button>
-          <LockMenu lock={lock} />
+          <LockMenu lock={requestLock} />
           <ThemeToggle />
           <UserMenu
             name={name}
             email={email}
             image={image}
             onOpenSettings={setSettingsTab}
+            beforeSignOut={(proceed) =>
+              guardDirty(proceed, {
+                verb: "Signing out",
+                confirmLabel: "Sign out and discard",
+              })
+            }
           />
         </div>
       </header>
@@ -802,7 +869,7 @@ export function VaultHome({
         onNewFile={openNewFile}
         onNewProject={openNewProject}
         onNewWorkspace={openNewWorkspace}
-        onLock={lock}
+        onLock={requestLock}
         onOpenSettings={setSettingsTab}
       />
 
@@ -888,6 +955,34 @@ export function VaultHome({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* One confirmation for every action that would drop dirty drafts. */}
+      <AlertDialog
+        open={pendingDiscard !== null}
+        onOpenChange={(open) => !open && setPendingDiscard(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved edits?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDiscard?.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => {
+                const pd = pendingDiscard;
+                setPendingDiscard(null);
+                pd?.run();
+              }}
+            >
+              {pendingDiscard?.confirmLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   );
 }
@@ -916,11 +1011,14 @@ function UserMenu({
   email,
   image,
   onOpenSettings,
+  beforeSignOut,
 }: {
   name: string;
   email: string;
   image?: string | null;
   onOpenSettings: (tab: SettingsTab) => void;
+  /** Owner-provided gate (e.g. the dirty-draft guard) around signing out. */
+  beforeSignOut: (proceed: () => void) => void;
 }) {
   const navigate = useNavigate();
   const displayName = name.trim() || email;
@@ -930,6 +1028,10 @@ function UserMenu({
     await clearDek();
     await signOut();
     navigate("/");
+  }
+
+  function requestSignOut() {
+    beforeSignOut(() => void onSignOut());
   }
 
   return (
@@ -992,7 +1094,7 @@ function UserMenu({
           Report a bug
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onClick={() => void onSignOut()}>
+        <DropdownMenuItem variant="destructive" onClick={requestSignOut}>
           <LogOut />
           Sign out
         </DropdownMenuItem>
