@@ -85,8 +85,9 @@
   width: 24px;
   height: 24px;
   border-radius: var(--m-radius);
-  background: var(--m-primary-bg);
-  color: var(--m-primary-fg);
+  /* Brand tile matches the app mark (ember), not the monochrome CTA colors. */
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .marketing-nav-links {
