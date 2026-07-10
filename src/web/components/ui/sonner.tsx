@@ -71,7 +71,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
              toast, so a fallback there would override the per-type accents
              (same specificity, later in the generated stylesheet). Untyped
              toasts render no chip, so none is needed. */
-          info: "[--toast-accent:var(--foreground)]",
+          info: "[--toast-accent:var(--info)]",
           loading: "[--toast-accent:var(--muted-foreground)]",
         },
       }}
