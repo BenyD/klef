@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import {
+  changePassphrase as changePassphraseWrap,
+  resetPassphraseWithRecoveryKey,
   rotateRecoveryKey,
   setupVault,
   unlockWithPassphrase,
@@ -18,6 +20,7 @@ import {
   confirmRecoverySaved,
   createVault,
   fetchVault,
+  updateVaultPassphrase,
   updateVaultRecovery,
 } from "./vault-api.ts";
 import { clearDek, loadDek, saveDek } from "./dek-store.ts";
@@ -123,6 +126,50 @@ export function VaultProvider({
     [userId],
   );
 
+  // Recovery implies a forgotten passphrase, so the two happen as one step:
+  // prove the recovery key by unwrapping the DEK, persist the new wrapping,
+  // then unlock. Nothing unlocks until the server accepted the new material.
+  const recoverAndReset = useCallback(
+    async (recoveryKey: string, newPassphrase: string) => {
+      const material = keyMaterial.current ?? (await fetchVault()).keyMaterial;
+      if (!material) throw new Error("No vault to recover");
+      keyMaterial.current = material;
+      const key = await unlockWithRecoveryKey(
+        recoveryKey,
+        material.wrappedDekRecovery,
+      );
+      const next = await resetPassphraseWithRecoveryKey(
+        recoveryKey,
+        newPassphrase,
+        material.wrappedDekRecovery,
+      );
+      await updateVaultPassphrase(next.kdfParams, next.wrappedDek);
+      keyMaterial.current = { ...material, ...next };
+      setDek(key);
+      await saveDek(userId, key);
+      setStatus("unlocked");
+    },
+    [userId],
+  );
+
+  // Regular change while unlocked; the wrong current passphrase fails the
+  // unwrap and throws before anything is written.
+  const changePassphrase = useCallback(
+    async (currentPassphrase: string, newPassphrase: string) => {
+      const material = keyMaterial.current ?? (await fetchVault()).keyMaterial;
+      if (!material) throw new Error("No vault");
+      const next = await changePassphraseWrap(
+        currentPassphrase,
+        newPassphrase,
+        material.kdfParams,
+        material.wrappedDek,
+      );
+      await updateVaultPassphrase(next.kdfParams, next.wrappedDek);
+      keyMaterial.current = { ...material, ...next };
+    },
+    [],
+  );
+
   const rotateRecovery = useCallback(async (passphrase: string) => {
     const material = keyMaterial.current ?? (await fetchVault()).keyMaterial;
     if (!material) throw new Error("No vault");
@@ -154,6 +201,8 @@ export function VaultProvider({
         finishSetup,
         unlock,
         recover,
+        recoverAndReset,
+        changePassphrase,
         rotateRecovery,
         lock,
         recoveryConfirmed,
