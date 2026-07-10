@@ -89,7 +89,34 @@ function VaultGate({
       return <UnlockScreen />;
     case "unlocked":
       return <VaultHome name={name} email={email} image={image} />;
+    case "error":
+      return <VaultLoadError />;
   }
+}
+
+// A transient fetch failure must not read as "no vault yet"; offer a retry
+// instead of dropping an existing user into the setup wizard.
+function VaultLoadError() {
+  const { retryLoad } = useVault();
+  return (
+    <div className="flex min-h-svh flex-col items-center justify-center gap-4 px-4">
+      <div className="flex flex-col items-center gap-1 text-center">
+        <h1 className="text-lg font-semibold tracking-tight">
+          Couldn't load your vault
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          Check your connection and try again. Nothing was changed.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={retryLoad}
+        className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-8 items-center rounded-lg px-4 text-sm font-medium transition-colors"
+      >
+        Try again
+      </button>
+    </div>
+  );
 }
 
 function AppArea() {
