@@ -161,6 +161,8 @@ export function SettingsDialog({
             <Separator />
             <SecuritySection />
             <Separator />
+            <PassphraseSection />
+            <Separator />
             <RecoverySection email={email} />
           </TabsContent>
 
@@ -981,6 +983,87 @@ function SecuritySection() {
 // Rotate the recovery key for users who lost theirs (e.g. skipped saving it
 // during onboarding). Requires the master passphrase; the new key is shown
 // once and the old one stops working.
+// Change the master passphrase (the unlock gate, not the account password).
+// Only the DEK wrapping is redone; blobs and the recovery key are untouched.
+function PassphraseSection() {
+  const { changePassphrase } = useVault();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (next.length < 8) {
+      toast.error("Use at least 8 characters.");
+      return;
+    }
+    if (next !== confirm) {
+      toast.error("Passphrases don't match.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await changePassphrase(current, next);
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+      toast.success("Passphrase changed");
+    } catch {
+      toast.error("That passphrase didn't work.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h3 className="text-sm font-medium">Master passphrase</h3>
+        <p className="text-muted-foreground text-sm">
+          Changes what unlocks your vault everywhere. Your recovery key keeps
+          working.
+        </p>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="settings-passphrase-current">Current passphrase</Label>
+        <PasswordInput
+          id="settings-passphrase-current"
+          autoComplete="current-password"
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="settings-passphrase-new">New passphrase</Label>
+        <PasswordInput
+          id="settings-passphrase-new"
+          autoComplete="new-password"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+        />
+        <StrengthMeter value={next} />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="settings-passphrase-confirm">
+          Confirm new passphrase
+        </Label>
+        <PasswordInput
+          id="settings-passphrase-confirm"
+          autoComplete="new-password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+        />
+      </div>
+      <div>
+        <Button type="submit" disabled={busy || !current || !next || !confirm}>
+          {busy ? "Changing..." : "Change passphrase"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function RecoverySection({ email }: { email: string }) {
   const { rotateRecovery } = useVault();
   const [passphrase, setPassphrase] = useState("");

@@ -20,6 +20,16 @@ export interface VaultContextValue {
   /** Unlock with the recovery key. Throws if it doesn't match. */
   recover(recoveryKey: string): Promise<void>;
   /**
+   * Recover with the key AND set a new passphrase in one step (the standard
+   * forgot-passphrase path). Throws before unlocking if either part fails.
+   */
+  recoverAndReset(recoveryKey: string, newPassphrase: string): Promise<void>;
+  /** Re-wrap the DEK under a new passphrase. Throws on a wrong current one. */
+  changePassphrase(
+    currentPassphrase: string,
+    newPassphrase: string,
+  ): Promise<void>;
+  /**
    * Mint a new recovery key (passphrase required to prove access). Returns
    * the new key to show once; the previous recovery key stops working.
    */
