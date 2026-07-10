@@ -6,8 +6,6 @@ import {
   type FormEvent,
 } from "react";
 import {
-  Copy,
-  Download,
   Fingerprint,
   Pencil,
   Plus,
@@ -51,6 +49,7 @@ import {
 } from "../../shared/api-types.ts";
 import { useIsMobile } from "../hooks/use-mobile.ts";
 import { LockShortcutKeys } from "./LockShortcutKeys.tsx";
+import { RecoveryKeyPanel } from "./RecoveryKeyPanel.tsx";
 import { StrengthMeter } from "./StrengthMeter.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar.tsx";
 import { Button } from "./ui/button.tsx";
@@ -162,7 +161,7 @@ export function SettingsDialog({
             <Separator />
             <SecuritySection />
             <Separator />
-            <RecoverySection />
+            <RecoverySection email={email} />
           </TabsContent>
 
           <TabsContent value="workspace" className={panelClass}>
@@ -982,7 +981,7 @@ function SecuritySection() {
 // Rotate the recovery key for users who lost theirs (e.g. skipped saving it
 // during onboarding). Requires the master passphrase; the new key is shown
 // once and the old one stops working.
-function RecoverySection() {
+function RecoverySection({ email }: { email: string }) {
   const { rotateRecovery } = useVault();
   const [passphrase, setPassphrase] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1003,31 +1002,6 @@ function RecoverySection() {
     }
   }
 
-  function copy() {
-    if (!newKey) return;
-    void navigator.clipboard?.writeText(newKey);
-    toast.success("Recovery key copied");
-  }
-
-  function download() {
-    if (!newKey) return;
-    const blob = new Blob(
-      [
-        `Klef recovery key\n\n${newKey}\n\n`,
-        "Keep this somewhere safe and private. It's the only way back into your\n",
-        "vault if you forget your passphrase. Klef can't reset it for you.\n",
-      ],
-      { type: "text/plain" },
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "klef-recovery-key.txt";
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Recovery key downloaded");
-  }
-
   return (
     // The id lets the recovery-key banner deep-link here (open + scroll).
     <div id="settings-recovery" className="flex scroll-mt-2 flex-col gap-4">
@@ -1039,33 +1013,9 @@ function RecoverySection() {
       </div>
       {newKey ? (
         <div className="flex flex-col gap-3">
-          <pre className="bg-muted rounded-md border p-4 text-center font-mono text-sm tracking-wide break-all whitespace-pre-wrap">
-            {newKey}
-          </pre>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              onClick={copy}
-            >
-              <Copy />
-              Copy
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              onClick={download}
-            >
-              <Download />
-              Download
-            </Button>
-          </div>
+          <RecoveryKeyPanel recoveryKey={newKey} email={email} />
           <p className="text-muted-foreground text-xs">
-            Shown once. Save it before closing settings.
+            You'll only see it once, so save it before closing settings.
           </p>
         </div>
       ) : (
