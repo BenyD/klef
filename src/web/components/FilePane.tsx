@@ -27,7 +27,9 @@ import {
 } from "../structure-api.ts";
 import { absoluteTime, relativeTime } from "../lib/format-time.ts";
 import {
+  getConfirmLoadVersion,
   getConfirmSaveReview,
+  setConfirmLoadVersion,
   setConfirmSaveReview,
 } from "../lib/preferences.ts";
 import { useVault } from "../vault-context.ts";
@@ -108,6 +110,10 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
   // Preference-gated; the checkbox turns it off for this device.
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [skipFutureReviews, setSkipFutureReviews] = useState(false);
+  // Load confirmation: loading a version replaces the draft, so unsaved
+  // edits get a warning first. Same preference pattern as the save review.
+  const [pendingLoadId, setPendingLoadId] = useState<string | null>(null);
+  const [skipFutureLoadWarnings, setSkipFutureLoadWarnings] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -225,6 +231,25 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
     a.click();
     URL.revokeObjectURL(url);
     toast.success(`Exported ${file.name}`);
+  }
+
+  // Loading only destroys work when the draft has unsaved edits; a clean
+  // draft loads straight away (the current version stays saved regardless).
+  function requestLoadVersion(versionId: string) {
+    if (changed && getConfirmLoadVersion()) {
+      setSkipFutureLoadWarnings(false);
+      setPendingLoadId(versionId);
+    } else {
+      void loadVersion(versionId);
+    }
+  }
+
+  async function confirmLoadVersion() {
+    if (!pendingLoadId) return;
+    if (skipFutureLoadWarnings) setConfirmLoadVersion(false);
+    const versionId = pendingLoadId;
+    setPendingLoadId(null);
+    await loadVersion(versionId);
   }
 
   // Load an older version into the editor as the draft; the panel flips to
@@ -365,7 +390,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => void loadVersion(v.id)}
+                    onClick={() => requestLoadVersion(v.id)}
                   >
                     <Import />
                     Load
@@ -427,7 +452,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
       <Button
         variant="outline"
         size="sm"
-        onClick={() => void loadVersion(compare.id)}
+        onClick={() => requestLoadVersion(compare.id)}
       >
         <Import />
         Load into editor
@@ -751,6 +776,49 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
               <Button onClick={() => void confirmSave()} disabled={saving}>
                 {saving ? <Loader2 className="animate-spin" /> : <Save />}
                 Save version
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Load warning: only when unsaved edits would be replaced. */}
+      <Dialog
+        open={pendingLoadId !== null}
+        onOpenChange={(open) => !open && setPendingLoadId(null)}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Replace unsaved edits?</DialogTitle>
+            <DialogDescription>
+              Loading this version replaces your unsaved edits to{" "}
+              <span className="font-mono text-xs">{file.name}</span>. The
+              current saved version is not affected.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="items-center gap-3 sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="skip-load-warning"
+                checked={skipFutureLoadWarnings}
+                onCheckedChange={(checked) =>
+                  setSkipFutureLoadWarnings(checked === true)
+                }
+              />
+              <Label
+                htmlFor="skip-load-warning"
+                className="text-muted-foreground text-xs font-normal"
+              >
+                Don't show this again
+              </Label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setPendingLoadId(null)}>
+                Cancel
+              </Button>
+              <Button onClick={() => void confirmLoadVersion()}>
+                <Import />
+                Load version
               </Button>
             </div>
           </DialogFooter>

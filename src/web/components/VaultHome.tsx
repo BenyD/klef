@@ -73,7 +73,7 @@ import { ProjectIcon } from "./ProjectIcon.tsx";
 import { WorkspaceIcon } from "./WorkspaceIcon.tsx";
 import { ProjectsOverview } from "./ProjectsOverview.tsx";
 import { LockShortcutKeys } from "./LockShortcutKeys.tsx";
-import { ENV_META, envMeta } from "../lib/env-meta.ts";
+import { envMeta, useEnvMeta } from "../lib/env-meta.ts";
 import { FilePane } from "./FilePane.tsx";
 import { SettingsDialog, type SettingsTab } from "./SettingsDialog.tsx";
 import { ThemeToggle } from "./ThemeToggle.tsx";
@@ -1262,6 +1262,7 @@ function NameDialogView({
   dialog: NameDialog | null;
   onClose: () => void;
 }): ReactNode {
+  const envMetaOf = useEnvMeta();
   const [value, setValue] = useState("");
   // Auto-fill the name from the environment pick until the user edits it.
   const [nameDirty, setNameDirty] = useState(false);
@@ -1414,8 +1415,8 @@ function NameDialogView({
                 {ENVIRONMENTS.map((env) => (
                   <EnvChip
                     key={env}
-                    label={ENV_META[env].label}
-                    dot={ENV_META[env].dot}
+                    label={envMetaOf(env).label}
+                    dot={envMetaOf(env).dot}
                     active={!customOpen && environment === env}
                     onClick={() => pickEnvironment(env)}
                   />

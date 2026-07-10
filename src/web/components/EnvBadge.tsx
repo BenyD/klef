@@ -1,6 +1,6 @@
 import { cn } from "../lib/utils.ts";
 import type { Environment } from "../../shared/api-types.ts";
-import { envMeta } from "../lib/env-meta.ts";
+import { useEnvMeta } from "../lib/env-meta.ts";
 import { Badge } from "./ui/badge.tsx";
 
 export function EnvBadge({
@@ -10,7 +10,7 @@ export function EnvBadge({
   environment: Environment;
   className?: string;
 }) {
-  const meta = envMeta(environment);
+  const meta = useEnvMeta()(environment);
   return (
     <Badge
       variant="outline"
