@@ -65,6 +65,13 @@ export interface VaultContextValue {
   removePasskeyUnlock(passkeyId: string): Promise<void>;
 }
 
+/**
+ * The supplied master passphrase failed the unwrap. Distinct from transport
+ * and WebAuthn failures so the UI never blames the passphrase for anything
+ * else.
+ */
+export class WrongPassphraseError extends Error {}
+
 export const VaultContext = createContext<VaultContextValue | null>(null);
 
 export function useVault(): VaultContextValue {

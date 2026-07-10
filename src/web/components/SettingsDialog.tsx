@@ -29,7 +29,7 @@ import {
 import { clearDek } from "../dek-store.ts";
 import { PasskeyPrfError } from "../lib/passkey-prf.ts";
 import { VaultWriteError } from "../vault-api.ts";
-import { useVault } from "../vault-context.ts";
+import { useVault, WrongPassphraseError } from "../vault-context.ts";
 import {
   AUTO_LOCK_OPTIONS,
   setAutoLockMinutes,
@@ -898,12 +898,15 @@ function PasskeyUnlockSection() {
       setPassphrase("");
       toast.success("This passkey can now unlock your vault");
     } catch (err) {
-      if (err instanceof PasskeyPrfError) {
+      if (err instanceof WrongPassphraseError) {
+        setError("That passphrase didn't work.");
+      } else if (err instanceof PasskeyPrfError) {
         if (err.code !== "cancelled") setError(err.message);
       } else if (err instanceof VaultWriteError) {
         setError("Couldn't save. Check your connection and try again.");
       } else {
-        setError("That passphrase didn't work.");
+        console.error("Passkey enrollment failed:", err);
+        setError("Couldn't enable passkey unlock. Try again.");
       }
     } finally {
       setBusy(false);
@@ -953,11 +956,15 @@ function PasskeyUnlockSection() {
                     Remove
                   </Button>
                 </>
+              ) : enablingId === pk.id ? (
+                <span className="text-muted-foreground text-xs">
+                  Confirm below
+                </span>
               ) : (
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={busy || enablingId === pk.id}
+                  disabled={busy}
                   onClick={() => startEnable(pk.id)}
                 >
                   Enable
@@ -973,6 +980,10 @@ function PasskeyUnlockSection() {
             <Label htmlFor="settings-passkey-unlock-passphrase">
               Master passphrase
             </Label>
+            <p className="text-muted-foreground text-xs">
+              The passphrase from the unlock screen, not your account
+              password. Your device asks for the passkey right after.
+            </p>
             <PasswordInput
               id="settings-passkey-unlock-passphrase"
               autoComplete="current-password"

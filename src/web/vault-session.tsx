@@ -31,6 +31,7 @@ import {
   updateVaultRecovery,
 } from "./vault-api.ts";
 import { getPrfSecret } from "./lib/passkey-prf.ts";
+import { WrongPassphraseError } from "./vault-context.ts";
 import { clearDek, loadDek, saveDek, touchDek } from "./dek-store.ts";
 import { getAutoLockMinutes } from "./lib/auto-lock.ts";
 import { VaultContext, type VaultStatus } from "./vault-context.ts";
@@ -278,11 +279,15 @@ export function VaultProvider({
     ) => {
       const material = await freshMaterial();
       if (!material) throw new Error("No vault");
-      await unlockWithPassphrase(
-        passphrase,
-        material.kdfParams,
-        material.wrappedDek,
-      );
+      try {
+        await unlockWithPassphrase(
+          passphrase,
+          material.kdfParams,
+          material.wrappedDek,
+        );
+      } catch {
+        throw new WrongPassphraseError("That passphrase didn't work.");
+      }
       const prfSalt = randomBytes(32);
       const result = await getPrfSecret([
         { credentialId: passkey.credentialId, salt: prfSalt },

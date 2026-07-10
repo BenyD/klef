@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { KdfParams, VaultKeyMaterial, WrappedKey } from "../shared/types.ts";
 import { VaultProvider } from "./vault-session.tsx";
-import { useVault } from "./vault-context.ts";
+import { useVault, WrongPassphraseError } from "./vault-context.ts";
 
 // In-memory stand-in for the server. Real crypto runs; only the network is faked.
 const state = vi.hoisted(() => ({
@@ -313,7 +313,8 @@ describe("vault session (unlock gate)", () => {
     });
     act(() => seed.result.current.finishSetup());
 
-    // A wrong passphrase rejects before any wrap is stored.
+    // A wrong passphrase rejects with the typed error (so the UI can blame
+    // the passphrase precisely) before any wrap is stored.
     await expect(
       act(async () => {
         await seed.result.current.enrollPasskey("wrong", {
@@ -321,7 +322,7 @@ describe("vault session (unlock gate)", () => {
           credentialId: "cred-1",
         });
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(WrongPassphraseError);
     expect(state.passkeyWraps).toHaveLength(0);
 
     await act(async () => {
