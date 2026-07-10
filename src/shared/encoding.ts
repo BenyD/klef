@@ -38,6 +38,21 @@ export function base64ToBytes(b64: string): Bytes {
   return out;
 }
 
+/** Bytes → base64url without padding, the WebAuthn credential-ID encoding. */
+export function bytesToBase64Url(bytes: Uint8Array): string {
+  return bytesToBase64(bytes)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+/** base64url (padded or not) → bytes. */
+export function base64UrlToBytes(b64url: string): Bytes {
+  const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+  return base64ToBytes(padded);
+}
+
 // --- Crockford Base32 (for the recovery key) -------------------------------
 // Alphabet excludes I, L, O, U to avoid transcription errors; decoding is
 // case-insensitive and maps the look-alikes (I/L→1, O→0) back.

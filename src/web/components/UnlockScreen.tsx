@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
+import { Fingerprint } from "lucide-react";
 import { VaultWriteError } from "../vault-api.ts";
+import { PasskeyPrfError } from "../lib/passkey-prf.ts";
 import { useVault } from "../vault-context.ts";
 import { AuthShell } from "./AuthShell.tsx";
 import { Button } from "./ui/button.tsx";
@@ -16,7 +18,8 @@ import { PasswordInput } from "./ui/password-input.tsx";
 import { StrengthMeter } from "./StrengthMeter.tsx";
 
 export function UnlockScreen() {
-  const { unlock, recoverAndReset } = useVault();
+  const { unlock, recoverAndReset, passkeyWraps, unlockWithPasskey } =
+    useVault();
   const [mode, setMode] = useState<"passphrase" | "recovery">("passphrase");
   const [value, setValue] = useState("");
   // Recovery implies the passphrase is lost, so that mode also collects its
@@ -24,8 +27,29 @@ export function UnlockScreen() {
   const [newPassphrase, setNewPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
+
+  async function onPasskey() {
+    setError(null);
+    setFieldError(null);
+    setPasskeyBusy(true);
+    try {
+      await unlockWithPasskey();
+      // On success the vault status flips and this screen unmounts.
+    } catch (err) {
+      // A dismissed prompt is not an error worth messaging.
+      if (!(err instanceof PasskeyPrfError && err.code === "cancelled")) {
+        setError(
+          err instanceof PasskeyPrfError
+            ? err.message
+            : "That passkey couldn't unlock your vault.",
+        );
+      }
+      setPasskeyBusy(false);
+    }
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -159,6 +183,18 @@ export function UnlockScreen() {
               </Button>
             </FieldGroup>
           </form>
+          {mode === "passphrase" && passkeyWraps.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 w-full"
+              disabled={busy || passkeyBusy}
+              onClick={() => void onPasskey()}
+            >
+              <Fingerprint />
+              {passkeyBusy ? "Waiting for your passkey..." : "Unlock with a passkey"}
+            </Button>
+          )}
           <Button
             variant="link"
             size="sm"

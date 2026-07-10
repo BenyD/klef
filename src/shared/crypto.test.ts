@@ -3,6 +3,7 @@ import {
   changePassphrase,
   decryptBlob,
   encryptBlob,
+  enrollPasskeyWrap,
   formatRecoveryKey,
   generateRecoveryKey,
   parseRecoveryKey,
@@ -10,6 +11,7 @@ import {
   rotateRecoveryKey,
   setupVault,
   unlockWithPassphrase,
+  unlockWithPrfSecret,
   unlockWithRecoveryKey,
 } from "./crypto.ts";
 import { RECOVERY_KEY } from "./constants.ts";
@@ -226,5 +228,92 @@ describe("recovery-key rotation (re-wrap only)", () => {
     await expect(
       rotateRecoveryKey("wrong-pw", keyMaterial.kdfParams, keyMaterial.wrappedDek),
     ).rejects.toThrow();
+  });
+});
+
+describe("passkey (PRF) unlock", () => {
+  const prfSecret = () => crypto.getRandomValues(new Uint8Array(32));
+
+  it("enrolls with the passphrase and unlocks with the PRF secret", async () => {
+    const passphrase = "a long enough passphrase";
+    const { keyMaterial, dek } = await setupVault(passphrase);
+    const blob = await encryptBlob(dek, "SECRET=1");
+
+    const secret = prfSecret();
+    const wrappedDekPasskey = await enrollPasskeyWrap(
+      passphrase,
+      keyMaterial.kdfParams,
+      keyMaterial.wrappedDek,
+      secret,
+    );
+
+    const unlocked = await unlockWithPrfSecret(secret, wrappedDekPasskey);
+    expect(await decryptBlob(unlocked, blob)).toBe("SECRET=1");
+  });
+
+  it("rejects enrollment with a wrong passphrase", async () => {
+    const { keyMaterial } = await setupVault("right passphrase");
+    await expect(
+      enrollPasskeyWrap(
+        "wrong passphrase",
+        keyMaterial.kdfParams,
+        keyMaterial.wrappedDek,
+        prfSecret(),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("rejects unlock with a different PRF secret", async () => {
+    const passphrase = "a long enough passphrase";
+    const { keyMaterial } = await setupVault(passphrase);
+    const wrapped = await enrollPasskeyWrap(
+      passphrase,
+      keyMaterial.kdfParams,
+      keyMaterial.wrappedDek,
+      prfSecret(),
+    );
+    await expect(unlockWithPrfSecret(prfSecret(), wrapped)).rejects.toThrow();
+  });
+
+  it("keeps passphrase and recovery unlock working after enrollment", async () => {
+    const passphrase = "a long enough passphrase";
+    const { keyMaterial, recoveryKey, dek } = await setupVault(passphrase);
+    const blob = await encryptBlob(dek, "STILL=works");
+
+    await enrollPasskeyWrap(
+      passphrase,
+      keyMaterial.kdfParams,
+      keyMaterial.wrappedDek,
+      prfSecret(),
+    );
+
+    const viaPassphrase = await unlockWithPassphrase(
+      passphrase,
+      keyMaterial.kdfParams,
+      keyMaterial.wrappedDek,
+    );
+    expect(await decryptBlob(viaPassphrase, blob)).toBe("STILL=works");
+
+    const viaRecovery = await unlockWithRecoveryKey(
+      recoveryKey,
+      keyMaterial.wrappedDekRecovery,
+    );
+    expect(await decryptBlob(viaRecovery, blob)).toBe("STILL=works");
+  });
+
+  it("never embeds the PRF secret in the wrap", async () => {
+    const passphrase = "a long enough passphrase";
+    const { keyMaterial } = await setupVault(passphrase);
+    const secret = prfSecret();
+    const wrapped = await enrollPasskeyWrap(
+      passphrase,
+      keyMaterial.kdfParams,
+      keyMaterial.wrappedDek,
+      secret,
+    );
+    const serialized = JSON.stringify(wrapped);
+    // Base64 of the raw secret must not appear anywhere in the material.
+    const b64 = btoa(String.fromCharCode(...secret));
+    expect(serialized).not.toContain(b64);
   });
 });
