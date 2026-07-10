@@ -4,6 +4,9 @@ import { tokenizeEnvLine, type EnvToken } from "../lib/env-syntax.ts";
 
 // Syntax colors: keys cool, string values warm, chrome muted. Chosen apart
 // from the diff greens/reds and the env dots so nothing collides.
+// Trailing whitespace gets a faint tint, not a warning: it's invisible
+// otherwise, parsers disagree on whether it joins the value, and the stored
+// text is never trimmed on the user's behalf.
 const TOKEN_CLASS: Record<EnvToken["type"], string> = {
   comment: "text-muted-foreground",
   export: "text-violet-600 dark:text-violet-400",
@@ -11,6 +14,7 @@ const TOKEN_CLASS: Record<EnvToken["type"], string> = {
   eq: "text-muted-foreground",
   value: "text-foreground",
   string: "text-amber-600 dark:text-amber-400",
+  "trailing-space": "rounded-[3px] bg-amber-500/25 dark:bg-amber-400/20",
   text: "text-foreground",
 };
 
