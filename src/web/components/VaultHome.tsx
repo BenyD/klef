@@ -580,7 +580,7 @@ export function VaultHome({
       defaultOpen={false}
       className="klef-screen **:data-[slot=sidebar-gap]:w-12! h-svh flex-col overflow-hidden"
     >
-      <Banner id="early-access" variant="warning">
+      <Banner id="early-access" variant="brand">
         <span className="font-medium">Klef is in early access.</span>
         <span className="text-muted-foreground">
           {" "}
