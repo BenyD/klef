@@ -317,6 +317,27 @@ export async function changePassphrase(
 }
 
 /**
+ * Reset a forgotten passphrase using the recovery key: recover the DEK bytes
+ * via the recovery wrapping, then re-wrap under a fresh KEK with new KDF
+ * params. The recovery wrapping is unchanged and no blobs are re-encrypted.
+ */
+export async function resetPassphraseWithRecoveryKey(
+  recoveryKeyDisplay: string,
+  newPassphrase: string,
+  wrappedDekRecovery: WrappedKey,
+): Promise<{ kdfParams: KdfParams; wrappedDek: WrappedKey }> {
+  const recoveryBytes = parseRecoveryKey(recoveryKeyDisplay);
+  const recoveryKek = await deriveRecoveryWrappingKey(recoveryBytes);
+  const dekBytes = await unwrapKeyBytes(recoveryKek, wrappedDekRecovery);
+
+  const kdfParams = newKdfParams();
+  const kek = await deriveKek(newPassphrase, kdfParams);
+  const wrappedDek = await wrapKeyBytes(kek, dekBytes);
+
+  return { kdfParams, wrappedDek };
+}
+
+/**
  * Rotate the recovery key: verify the passphrase to recover the DEK bytes,
  * mint a fresh recovery key, and re-wrap the DEK under it. The passphrase
  * wrapping is untouched and no blobs are re-encrypted. The previous recovery

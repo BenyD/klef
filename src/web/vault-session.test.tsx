@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { VaultKeyMaterial } from "../shared/types.ts";
+import type { KdfParams, VaultKeyMaterial, WrappedKey } from "../shared/types.ts";
 import { VaultProvider } from "./vault-session.tsx";
 import { useVault } from "./vault-context.ts";
 
@@ -16,7 +16,10 @@ vi.mock("./vault-api.ts", () => ({
   createVault: async (m: VaultKeyMaterial) => {
     state.stored = m;
   },
-  updateVaultPassphrase: async () => {},
+  updateVaultPassphrase: async (kdfParams: KdfParams, wrappedDek: WrappedKey) => {
+    if (!state.stored) throw new Error("no vault");
+    state.stored = { ...state.stored, kdfParams, wrappedDek };
+  },
   updateVaultRecovery: async () => {},
   confirmRecoverySaved: async () => {},
 }));
@@ -121,5 +124,71 @@ describe("vault session (unlock gate)", () => {
       await afterLock.result.current.recover(recoveryKey);
     });
     expect(afterLock.result.current.status).toBe("unlocked");
+  });
+
+  it("recovery reset persists a new passphrase; the forgotten one is gone", async () => {
+    const seed = renderHook(() => useVault(), { wrapper });
+    await waitFor(() => expect(seed.result.current.status).toBe("needs-setup"));
+    let recoveryKey = "";
+    await act(async () => {
+      recoveryKey = await seed.result.current.runSetup("forgotten pw");
+    });
+
+    // Locked user resets through the recovery flow.
+    const locked = renderHook(() => useVault(), { wrapper });
+    await waitFor(() => expect(locked.result.current.status).toBe("locked"));
+    await act(async () => {
+      await locked.result.current.recoverAndReset(recoveryKey, "brand new pw");
+    });
+    expect(locked.result.current.status).toBe("unlocked");
+    expect(locked.result.current.dek).not.toBeNull();
+
+    // After a lock (fresh provider), the new passphrase unlocks and the
+    // forgotten one no longer does; the recovery key survives the reset.
+    dekState.saved = null;
+    const later = renderHook(() => useVault(), { wrapper });
+    await waitFor(() => expect(later.result.current.status).toBe("locked"));
+    await expect(
+      act(async () => {
+        await later.result.current.unlock("forgotten pw");
+      }),
+    ).rejects.toThrow();
+    await act(async () => {
+      await later.result.current.unlock("brand new pw");
+    });
+    expect(later.result.current.status).toBe("unlocked");
+  });
+
+  it("changePassphrase re-wraps for the new passphrase only", async () => {
+    const seed = renderHook(() => useVault(), { wrapper });
+    await waitFor(() => expect(seed.result.current.status).toBe("needs-setup"));
+    await act(async () => {
+      await seed.result.current.runSetup("original pw");
+    });
+    act(() => seed.result.current.finishSetup());
+
+    // The wrong current passphrase is rejected and writes nothing.
+    await expect(
+      act(async () => {
+        await seed.result.current.changePassphrase("wrong pw", "next pw");
+      }),
+    ).rejects.toThrow();
+
+    await act(async () => {
+      await seed.result.current.changePassphrase("original pw", "next pw");
+    });
+
+    dekState.saved = null;
+    const later = renderHook(() => useVault(), { wrapper });
+    await waitFor(() => expect(later.result.current.status).toBe("locked"));
+    await expect(
+      act(async () => {
+        await later.result.current.unlock("original pw");
+      }),
+    ).rejects.toThrow();
+    await act(async () => {
+      await later.result.current.unlock("next pw");
+    });
+    expect(later.result.current.status).toBe("unlocked");
   });
 });
