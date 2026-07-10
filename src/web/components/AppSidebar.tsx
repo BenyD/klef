@@ -14,12 +14,13 @@ import {
 import { cn } from "../lib/utils.ts";
 import {
   ENVIRONMENTS,
+  isPresetEnvironment,
   type EnvFileNode,
   type Environment,
   type ProjectNode,
   type WorkspaceNode,
 } from "../../shared/api-types.ts";
-import { ENV_META } from "../lib/env-meta.ts";
+import { useEnvMeta } from "../lib/env-meta.ts";
 import { ProjectIcon } from "./ProjectIcon.tsx";
 import type { SettingsTab } from "./SettingsDialog.tsx";
 import {
@@ -58,6 +59,8 @@ interface AppSidebarProps {
   onRenameFile: (file: EnvFileNode) => void;
   onDeleteFile: (file: EnvFileNode) => void;
   onSetEnvironment: (file: EnvFileNode, env: Environment | null) => void;
+  /** Opens the dialog for typing a custom environment label. */
+  onCustomEnvironment: (file: EnvFileNode) => void;
   onEditProject: (project: ProjectNode) => void;
   onOpenSettings: (tab: SettingsTab) => void;
 }
@@ -79,9 +82,11 @@ export function AppSidebar({
   onRenameFile,
   onDeleteFile,
   onSetEnvironment,
+  onCustomEnvironment,
   onEditProject,
   onOpenSettings,
 }: AppSidebarProps) {
+  const envMeta = useEnvMeta();
   const { isMobile, setOpen, setOpenMobile } = useSidebar();
   // Short intent delay before the rail expands, so mousing across it on the
   // way to the content doesn't flare it open. Collapse stays immediate.
@@ -158,7 +163,7 @@ export function AppSidebar({
                               <span
                                 className={cn(
                                   "ml-auto size-1.5 shrink-0 rounded-full",
-                                  ENV_META[file.environment].dot,
+                                  envMeta(file.environment).dot,
                                 )}
                                 title={file.environment}
                                 aria-hidden="true"
@@ -188,16 +193,32 @@ export function AppSidebar({
                               <span
                                 className={cn(
                                   "size-1.5 rounded-full",
-                                  ENV_META[env].dot,
+                                  envMeta(env).dot,
                                 )}
                                 aria-hidden="true"
                               />
-                              {ENV_META[env].label}
+                              {envMeta(env).label}
                               {file.environment === env && (
                                 <Check className="ml-auto size-4" />
                               )}
                             </ContextMenuItem>
                           ))}
+                          <ContextMenuItem
+                            onClick={() => act(() => onCustomEnvironment(file))}
+                          >
+                            <span
+                              className="size-1.5 rounded-full bg-violet-500"
+                              aria-hidden="true"
+                            />
+                            {file.environment &&
+                            !isPresetEnvironment(file.environment)
+                              ? file.environment
+                              : "Custom"}
+                            {file.environment &&
+                              !isPresetEnvironment(file.environment) && (
+                                <Check className="ml-auto size-4" />
+                              )}
+                          </ContextMenuItem>
                           {file.environment && (
                             <ContextMenuItem
                               onClick={() => onSetEnvironment(file, null)}

@@ -59,11 +59,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
              put the loading chip back in flow like the other type chips. */
           loader: "relative! top-auto! left-auto! w-full transform-none!",
           actionButton:
-            "mt-0.5 inline-flex h-7 shrink-0 items-center justify-center rounded-md bg-primary px-2.5 text-[0.8rem] font-medium whitespace-nowrap text-primary-foreground transition-all outline-none select-none hover:bg-primary/80 focus-visible:ring-3 focus-visible:ring-ring/50 active:translate-y-px",
+            "mt-0.5 inline-flex h-7 shrink-0 items-center justify-center rounded-md bg-primary px-2.5 text-[0.8rem] font-medium whitespace-nowrap text-primary-foreground transition-all outline-none select-none hover:bg-primary/80 focus-visible:ring-2 focus-visible:ring-ring/30 active:translate-y-px",
           cancelButton:
-            "mt-0.5 inline-flex h-7 shrink-0 items-center justify-center rounded-md border border-border bg-background px-2.5 text-[0.8rem] font-medium whitespace-nowrap transition-all outline-none select-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 active:translate-y-px dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+            "mt-0.5 inline-flex h-7 shrink-0 items-center justify-center rounded-md border border-border bg-background px-2.5 text-[0.8rem] font-medium whitespace-nowrap transition-all outline-none select-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 active:translate-y-px dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
           closeButton:
-            "absolute top-2 right-2 rounded-sm border-0! bg-transparent! p-1 text-muted-foreground! opacity-0 transition-opacity outline-none group-hover/toast:opacity-100 hover:text-foreground! focus-visible:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50",
+            "absolute top-2 right-2 rounded-sm border-0! bg-transparent! p-1 text-muted-foreground! opacity-0 transition-opacity outline-none group-hover/toast:opacity-100 hover:text-foreground! focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/30",
           success: "[--toast-accent:var(--success)]",
           error: "[--toast-accent:var(--destructive)]",
           warning: "[--toast-accent:var(--warning)]",

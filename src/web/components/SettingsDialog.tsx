@@ -35,11 +35,20 @@ import {
   useAutoLockMinutes,
 } from "../lib/auto-lock.ts";
 import {
+  getEnvLabelOverrides,
+  setConfirmLoadVersion,
   setConfirmSaveReview,
+  setEnvLabelOverride,
+  useConfirmLoadVersion,
   useConfirmSaveReview,
 } from "../lib/preferences.ts";
+import { ENV_META } from "../lib/env-meta.ts";
 import { passkeyProviderName } from "../lib/passkey-provider.ts";
-import type { WorkspaceNode } from "../../shared/api-types.ts";
+import {
+  ENVIRONMENTS,
+  type PresetEnvironment,
+  type WorkspaceNode,
+} from "../../shared/api-types.ts";
 import { useIsMobile } from "../hooks/use-mobile.ts";
 import { LockShortcutKeys } from "./LockShortcutKeys.tsx";
 import { StrengthMeter } from "./StrengthMeter.tsx";
@@ -848,6 +857,7 @@ function PasskeyRow({
 // Per-device behavior toggles (localStorage, not vault data).
 function PreferencesSection() {
   const confirmSave = useConfirmSaveReview();
+  const confirmLoad = useConfirmLoadVersion();
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
@@ -871,6 +881,61 @@ function PreferencesSection() {
           onCheckedChange={setConfirmSaveReview}
         />
       </div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="settings-confirm-load">
+            Warn before replacing unsaved edits
+          </Label>
+          <p className="text-muted-foreground text-sm">
+            Asks to confirm when loading a version would overwrite edits you
+            have not saved.
+          </p>
+        </div>
+        <Switch
+          id="settings-confirm-load"
+          checked={confirmLoad}
+          onCheckedChange={setConfirmLoadVersion}
+        />
+      </div>
+      <div className="mt-2 flex flex-col gap-1">
+        <h3 className="text-sm font-medium">Environment labels</h3>
+        <p className="text-muted-foreground text-sm">
+          Rename the built-in labels on this device. Leave a field empty to
+          use the default.
+        </p>
+      </div>
+      {ENVIRONMENTS.map((env) => (
+        <EnvLabelField key={env} env={env} />
+      ))}
+    </div>
+  );
+}
+
+function EnvLabelField({ env }: { env: PresetEnvironment }) {
+  const [text, setText] = useState(() => getEnvLabelOverrides()[env] ?? "");
+  const meta = ENV_META[env];
+  return (
+    <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
+      <Label
+        htmlFor={`settings-env-label-${env}`}
+        className="flex items-center gap-2 font-normal"
+      >
+        <span
+          className={`size-1.5 shrink-0 rounded-full ${meta.dot}`}
+          aria-hidden="true"
+        />
+        {meta.label}
+      </Label>
+      <Input
+        id={`settings-env-label-${env}`}
+        value={text}
+        maxLength={32}
+        placeholder={meta.label}
+        onChange={(e) => {
+          setText(e.target.value);
+          setEnvLabelOverride(env, e.target.value || null);
+        }}
+      />
     </div>
   );
 }

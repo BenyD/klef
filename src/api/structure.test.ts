@@ -290,6 +290,34 @@ describe("structure routes", () => {
     expect((await app.request(`/projects/${projId}`, patch({}), env)).status).toBe(400);
   });
 
+  it("accepts custom environment labels and folds preset case-variants", async () => {
+    await seedUser("s6c");
+    const app = appForUser("s6c");
+    const wsId = await id(await app.request("/workspaces", post({ name: "W" }), env));
+    const projId = await id(
+      await app.request("/projects", post({ workspaceId: wsId, name: "P" }), env),
+    );
+
+    await app.request(
+      "/files",
+      post({ projectId: projId, name: ".env.staging", environment: "staging" }),
+      env,
+    );
+    const files = async () => (await tree(app)).workspaces[0]!.projects[0]!.files;
+    expect((await files())[0]!.environment).toBe("staging");
+
+    const fileId = (await files())[0]!.id;
+    // Whitespace is trimmed and collapsed; presets fold onto lowercase.
+    expect(
+      (await app.request(`/files/${fileId}`, patch({ environment: "  QA  2 " }), env)).status,
+    ).toBe(200);
+    expect((await files())[0]!.environment).toBe("QA 2");
+    expect(
+      (await app.request(`/files/${fileId}`, patch({ environment: "Production" }), env)).status,
+    ).toBe(200);
+    expect((await files())[0]!.environment).toBe("production");
+  });
+
   it("rejects invalid environment labels and empty updates", async () => {
     await seedUser("s6");
     const app = appForUser("s6");
@@ -298,21 +326,24 @@ describe("structure routes", () => {
       await app.request("/projects", post({ workspaceId: wsId, name: "P" }), env),
     );
 
-    expect(
-      (
-        await app.request(
-          "/files",
-          post({ projectId: projId, name: ".env", environment: "prod" }),
-          env,
-        )
-      ).status,
-    ).toBe(400);
+    // Empty, over-long, bad characters, bad leading character, non-string.
+    for (const environment of ["", "   ", "x".repeat(33), "qa!", "-qa", 5]) {
+      expect(
+        (
+          await app.request(
+            "/files",
+            post({ projectId: projId, name: ".env", environment }),
+            env,
+          )
+        ).status,
+      ).toBe(400);
+    }
 
     const fileId = await id(
       await app.request("/files", post({ projectId: projId, name: ".env" }), env),
     );
     expect(
-      (await app.request(`/files/${fileId}`, patch({ environment: "staging" }), env)).status,
+      (await app.request(`/files/${fileId}`, patch({ environment: "st/aging" }), env)).status,
     ).toBe(400);
     expect((await app.request(`/files/${fileId}`, patch({}), env)).status).toBe(400);
   });

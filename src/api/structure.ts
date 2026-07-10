@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import type { AuthVariables } from "./middleware.ts";
 import {
-  ENVIRONMENTS,
   FRAMEWORKS,
+  normalizeEnvironment,
   type Environment,
   type EnvFileNode,
   type Framework,
@@ -32,16 +32,11 @@ function cleanName(input: unknown): string | null {
   return name;
 }
 
-/** null = no label; a valid label passes through; anything else is invalid. */
+/** null = no label; a valid label normalizes through; anything else is invalid. */
 function cleanEnvironment(input: unknown): Environment | null | undefined {
   if (input === null) return null;
-  if (
-    typeof input === "string" &&
-    (ENVIRONMENTS as readonly string[]).includes(input)
-  ) {
-    return input as Environment;
-  }
-  return undefined;
+  if (typeof input !== "string") return undefined;
+  return normalizeEnvironment(input) ?? undefined;
 }
 
 /** Same contract as cleanEnvironment, for the project framework field. */

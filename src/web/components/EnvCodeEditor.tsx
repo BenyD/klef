@@ -48,7 +48,7 @@ export function EnvCodeEditor({
   return (
     <div
       className={cn(
-        "border-input focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 relative overflow-hidden rounded-md border transition-colors dark:bg-input/30",
+        "border-input focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30 relative overflow-hidden rounded-md border transition-colors dark:bg-input/30",
         className,
       )}
     >
