@@ -124,7 +124,7 @@ export function Banner({
         type="button"
         aria-label="Dismiss"
         onClick={dismiss}
-        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 absolute top-1/2 right-2 -translate-y-1/2 rounded-sm p-1 transition-colors outline-none focus-visible:ring-3"
+        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/30 absolute top-1/2 right-2 -translate-y-1/2 rounded-sm p-1 transition-colors outline-none focus-visible:ring-2"
       >
         <XIcon className="size-3.5" />
       </button>
