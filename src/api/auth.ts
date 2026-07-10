@@ -2,7 +2,10 @@ import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { APIError, getSessionFromCtx } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 import { passkey } from "@better-auth/passkey";
-import { parsePasskeySignupContext } from "./passkey-signup.ts";
+import {
+  defaultPasskeyName,
+  parsePasskeySignupContext,
+} from "./passkey-signup.ts";
 
 /**
  * Inputs that differ between the runtime (Cloudflare D1) and offline schema
@@ -79,10 +82,19 @@ export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
               displayName: signup.name,
             };
           },
-          afterVerification: async ({ ctx, context }) => {
+          afterVerification: async ({ ctx, verification, context }) => {
+            // Stored label for the new credential ("iCloud Keychain · Jul
+            // 2026"). A client-supplied name would take precedence, but Klef
+            // never sends one; unknown AAGUIDs stay unnamed and the UI falls
+            // back to its own display mapping.
+            const name = defaultPasskeyName(
+              verification.registrationInfo?.aaguid,
+            );
             const signup = parsePasskeySignupContext(context);
-            // A signed-in user adding a passkey from settings: nothing to do.
-            if (!signup || (await getSessionFromCtx(ctx))) return;
+            // A signed-in user adding a passkey from settings: just the label.
+            if (!signup || (await getSessionFromCtx(ctx))) {
+              return name ? { name } : undefined;
+            }
             if (await ctx.context.internalAdapter.findUserByEmail(signup.email)) {
               throw new APIError("BAD_REQUEST", {
                 message:
@@ -98,7 +110,7 @@ export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
               user.id,
             );
             await setSessionCookie(ctx, { session, user });
-            return { userId: user.id };
+            return { userId: user.id, ...(name ? { name } : {}) };
           },
         },
       }),
