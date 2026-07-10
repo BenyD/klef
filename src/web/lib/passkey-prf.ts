@@ -5,11 +5,7 @@
 // server (the session already proves identity), only the PRF output is used,
 // as key material for wrapping the DEK. See crypto.ts (klef/passkey-kek/v1).
 
-import {
-  base64UrlToBytes,
-  type Bytes,
-  bytesToBase64Url,
-} from "../../shared/encoding.ts";
+import { base64UrlToBytes, type Bytes } from "../../shared/encoding.ts";
 
 export type PasskeyPrfErrorCode = "cancelled" | "unsupported" | "no-secret";
 
@@ -85,17 +81,37 @@ export async function getPrfSecret(requests: PrfRequest[]): Promise<PrfResult> {
   }
 
   const first = assertion.getClientExtensionResults().prf?.results?.first;
-  if (!first) {
+  const secret = prfOutputToBytes(first);
+  if (!secret || secret.length === 0) {
     throw new PasskeyPrfError(
       "no-secret",
       "This passkey cannot unlock (its authenticator has no PRF support)",
     );
   }
 
-  return {
-    credentialId: bytesToBase64Url(new Uint8Array(assertion.rawId)),
-    secret: new Uint8Array(
-      first instanceof ArrayBuffer ? first : first.buffer.slice(0),
-    ) as Bytes,
-  };
+  // PublicKeyCredential.id is already the base64url of rawId, in exactly the
+  // form Better Auth stores; interceptors that rewrap rawId still set id.
+  return { credentialId: assertion.id, secret };
+}
+
+/**
+ * Normalize a PRF output to bytes. The spec says ArrayBuffer, but WebAuthn
+ * interceptors (password-manager extensions like 1Password) hand back typed
+ * arrays or base64url strings instead. Null when the shape is unreadable.
+ */
+export function prfOutputToBytes(value: unknown): Bytes | null {
+  if (value instanceof ArrayBuffer) return new Uint8Array(value);
+  if (ArrayBuffer.isView(value)) {
+    return new Uint8Array(
+      value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength),
+    ) as Bytes;
+  }
+  if (typeof value === "string" && value.length > 0) {
+    try {
+      return base64UrlToBytes(value);
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
