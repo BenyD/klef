@@ -1,4 +1,9 @@
-import type { Environment, Framework } from "../../shared/api-types.ts";
+import {
+  isPresetEnvironment,
+  type Environment,
+  type Framework,
+  type PresetEnvironment,
+} from "../../shared/api-types.ts";
 
 /** Display names for the tech-stack picker. */
 export const FRAMEWORK_LABELS: Record<Framework, string> = {
@@ -69,7 +74,7 @@ export const STACK_GROUPS: { label: string; stacks: Framework[] }[] = [
   { label: "Other", stacks: ["other"] },
 ];
 
-type Names = Record<Exclude<Environment, never> | "none", string>;
+type Names = Record<PresetEnvironment | "none", string>;
 
 const GENERIC: Names = {
   development: ".env.local",
@@ -130,5 +135,13 @@ export function defaultEnvFileName(
   framework: Framework | null,
   environment: Environment | null,
 ): string {
-  return NAMES[framework ?? "other"][environment ?? "none"];
+  const names = NAMES[framework ?? "other"];
+  if (environment === null) return names.none;
+  if (isPresetEnvironment(environment)) return names[environment];
+  // Custom labels follow the dotenv convention: ".env." + a lowercased slug.
+  const slug = environment
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9._-]/g, "");
+  return slug ? `.env.${slug}` : names.none;
 }

@@ -10,7 +10,7 @@ import { cn } from "../lib/utils.ts";
 import type { EnvFileNode, ProjectNode } from "../../shared/api-types.ts";
 import { FRAMEWORK_LABELS } from "../lib/env-file-names.ts";
 import { getRecentFileIds, sortByRecency } from "../lib/recent-files.ts";
-import { ENV_META } from "../lib/env-meta.ts";
+import { envMeta } from "../lib/env-meta.ts";
 import { FrameworkIcon } from "./FrameworkIcon.tsx";
 import { ProjectIcon } from "./ProjectIcon.tsx";
 import { Button } from "./ui/button.tsx";
@@ -209,7 +209,7 @@ function ProjectCard({
                     <span
                       className={cn(
                         "ml-auto size-1.5 shrink-0 rounded-full",
-                        ENV_META[file.environment].dot,
+                        envMeta(file.environment).dot,
                       )}
                       title={file.environment}
                       aria-hidden="true"
