@@ -254,3 +254,145 @@ describe("vault routes", () => {
     expect(res.status).toBe(404);
   });
 });
+
+// --- passkey unlock wraps ----------------------------------------------------
+
+async function seedPasskey(id: string, userId: string, credentialId: string) {
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO passkey (id, name, publicKey, "userId", "credentialID", counter, deviceType, backedUp, createdAt)
+     VALUES (?, ?, ?, ?, ?, 0, 'singleDevice', 0, ?)`,
+  )
+    .bind(id, "Test key", "pk", userId, credentialId, new Date().toISOString())
+    .run();
+}
+
+const PASSKEY_WRAP = {
+  prfSalt: "cHJmc2FsdHByZnNhbHQ=",
+  wrappedDek: { v: 1, alg: "AES-GCM", nonce: "cGtub25jZXBr", ciphertext: "cGtjaXBoZXI=" },
+};
+
+describe("vault passkey routes", () => {
+  const put = (body: unknown) => ({
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  it("rejects enrollment without a vault", async () => {
+    await seedUser("pk-novault");
+    await seedPasskey("pk-nv-1", "pk-novault", "cred-nv-1");
+    const app = appForUser("pk-novault");
+    const res = await app.request(
+      "/passkey",
+      put({ passkeyId: "pk-nv-1", credentialId: "cred-nv-1", ...PASSKEY_WRAP }),
+      env,
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("rejects a passkey the user does not own or a mismatched credential", async () => {
+    await seedUser("pk-owner");
+    await seedUser("pk-thief");
+    await seedPasskey("pk-o-1", "pk-owner", "cred-o-1");
+    const owner = appForUser("pk-owner");
+    const thief = appForUser("pk-thief");
+    await owner.request("/", json(MATERIAL), env);
+    await thief.request("/", json(MATERIAL), env);
+
+    const stolen = await thief.request(
+      "/passkey",
+      put({ passkeyId: "pk-o-1", credentialId: "cred-o-1", ...PASSKEY_WRAP }),
+      env,
+    );
+    expect(stolen.status).toBe(404);
+
+    const mismatched = await owner.request(
+      "/passkey",
+      put({ passkeyId: "pk-o-1", credentialId: "cred-other", ...PASSKEY_WRAP }),
+      env,
+    );
+    expect(mismatched.status).toBe(404);
+  });
+
+  it("enrolls, returns the wrap from GET, and upserts on re-enroll", async () => {
+    await seedUser("pk-u1");
+    await seedPasskey("pk-1", "pk-u1", "cred-1");
+    const app = appForUser("pk-u1");
+    await app.request("/", json(MATERIAL), env);
+
+    const enrolled = await app.request(
+      "/passkey",
+      put({ passkeyId: "pk-1", credentialId: "cred-1", ...PASSKEY_WRAP }),
+      env,
+    );
+    expect(enrolled.status).toBe(200);
+
+    let body = (await (await app.request("/", {}, env)).json()) as {
+      passkeyWraps: Array<{ passkeyId: string; credentialId: string; prfSalt: string }>;
+    };
+    expect(body.passkeyWraps).toHaveLength(1);
+    expect(body.passkeyWraps[0]).toMatchObject({
+      passkeyId: "pk-1",
+      credentialId: "cred-1",
+      prfSalt: PASSKEY_WRAP.prfSalt,
+    });
+
+    const rewrap = await app.request(
+      "/passkey",
+      put({
+        passkeyId: "pk-1",
+        credentialId: "cred-1",
+        ...PASSKEY_WRAP,
+        prfSalt: "bmV3c2FsdG5ld3NhbHQ=",
+      }),
+      env,
+    );
+    expect(rewrap.status).toBe(200);
+
+    body = (await (await app.request("/", {}, env)).json()) as typeof body;
+    expect(body.passkeyWraps).toHaveLength(1);
+    expect(body.passkeyWraps[0]!.prfSalt).toBe("bmV3c2FsdG5ld3NhbHQ=");
+  });
+
+  it("removes a wrap and 404s when nothing is enrolled", async () => {
+    await seedUser("pk-u2");
+    await seedPasskey("pk-2", "pk-u2", "cred-2");
+    const app = appForUser("pk-u2");
+    await app.request("/", json(MATERIAL), env);
+    await app.request(
+      "/passkey",
+      put({ passkeyId: "pk-2", credentialId: "cred-2", ...PASSKEY_WRAP }),
+      env,
+    );
+
+    const removed = await app.request("/passkey/pk-2", { method: "DELETE" }, env);
+    expect(removed.status).toBe(200);
+
+    const body = (await (await app.request("/", {}, env)).json()) as {
+      passkeyWraps: unknown[];
+    };
+    expect(body.passkeyWraps).toHaveLength(0);
+
+    const again = await app.request("/passkey/pk-2", { method: "DELETE" }, env);
+    expect(again.status).toBe(404);
+  });
+
+  it("drops the wrap when the passkey row is deleted (FK cascade)", async () => {
+    await seedUser("pk-u3");
+    await seedPasskey("pk-3", "pk-u3", "cred-3");
+    const app = appForUser("pk-u3");
+    await app.request("/", json(MATERIAL), env);
+    await app.request(
+      "/passkey",
+      put({ passkeyId: "pk-3", credentialId: "cred-3", ...PASSKEY_WRAP }),
+      env,
+    );
+
+    await env.DB.prepare("DELETE FROM passkey WHERE id = ?").bind("pk-3").run();
+
+    const body = (await (await app.request("/", {}, env)).json()) as {
+      passkeyWraps: unknown[];
+    };
+    expect(body.passkeyWraps).toHaveLength(0);
+  });
+});

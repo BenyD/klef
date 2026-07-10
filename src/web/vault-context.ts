@@ -4,6 +4,7 @@
 // root, every hot edit remounted the whole tree and dropped the user back on
 // the overview.
 import { createContext, useContext } from "react";
+import type { VaultPasskeyWrap } from "../shared/api-types.ts";
 
 export type VaultStatus =
   | "loading"
@@ -44,6 +45,24 @@ export interface VaultContextValue {
   retryLoad(): void;
   /** False when the user never confirmed saving a recovery key (nudge them). */
   recoveryConfirmed: boolean;
+  /** Passkeys enrolled for unlock. Empty until enrollment. */
+  passkeyWraps: VaultPasskeyWrap[];
+  /**
+   * Unlock with an enrolled passkey (WebAuthn PRF). Throws PasskeyPrfError
+   * on cancel/unsupported, or a plain Error when nothing is enrolled.
+   */
+  unlockWithPasskey(): Promise<void>;
+  /**
+   * Enroll a passkey for unlock. The passphrase proves vault access (the
+   * live DEK is non-extractable, so a re-wrap needs it), then a passkey
+   * prompt derives the wrapping secret.
+   */
+  enrollPasskey(
+    passphrase: string,
+    passkey: { id: string; credentialId: string },
+  ): Promise<void>;
+  /** Remove a passkey's unlock wrap. The passkey stays for sign-in. */
+  removePasskeyUnlock(passkeyId: string): Promise<void>;
 }
 
 export const VaultContext = createContext<VaultContextValue | null>(null);
