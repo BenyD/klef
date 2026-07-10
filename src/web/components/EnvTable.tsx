@@ -192,12 +192,12 @@ export function EnvTable({ text, onChange, baseline, comparing = false }: Props)
               rowDiff?.removed.map((r, i) => (
                 <li
                   key={`removed:${i}:${r.key}`}
-                  className="flex items-center gap-2 bg-rose-50/60 py-0.5 pr-2 pl-3 dark:bg-rose-950/30"
+                  className="flex items-center gap-2 bg-diff-remove/5 py-0.5 pr-2 pl-3"
                 >
-                  <span className="w-3 shrink-0 text-center font-mono text-xs text-rose-700/60 select-none dark:text-rose-400/60">
+                  <span className="w-3 shrink-0 text-center font-mono text-xs text-diff-remove/60 select-none">
                     -
                   </span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-xs text-rose-700 line-through dark:text-rose-400">
+                  <span className="min-w-0 flex-1 truncate font-mono text-xs text-diff-remove line-through">
                     {`${r.key}=${r.value}`}
                   </span>
                   <Tooltip>
@@ -207,7 +207,7 @@ export function EnvTable({ text, onChange, baseline, comparing = false }: Props)
                           variant="ghost"
                           size="icon-xs"
                           aria-label="Restore"
-                          className="shrink-0 text-rose-700/70 hover:text-rose-700 dark:text-rose-400/70 dark:hover:text-rose-400"
+                          className="shrink-0 text-diff-remove/70 hover:text-diff-remove"
                           onClick={() =>
                             onChange(appendEntry(text, r.key, r.value))
                           }
@@ -289,11 +289,11 @@ function EntryRow({
       {/* The baseline's line, diff-style, with the current row green below;
           one click puts the old value back. */}
       {change?.status === "modified" && (
-        <div className="flex items-center gap-2 bg-rose-50/60 py-0.5 pr-2 pl-3 dark:bg-rose-950/30">
-          <span className="w-3 shrink-0 text-center font-mono text-xs text-rose-700/60 select-none dark:text-rose-400/60">
+        <div className="flex items-center gap-2 bg-diff-remove/5 py-0.5 pr-2 pl-3">
+          <span className="w-3 shrink-0 text-center font-mono text-xs text-diff-remove/60 select-none">
             -
           </span>
-          <span className="min-w-0 flex-1 truncate font-mono text-xs text-rose-700 line-through dark:text-rose-400">
+          <span className="min-w-0 flex-1 truncate font-mono text-xs text-diff-remove line-through">
             {`${entry.key}=${change.baseValue ?? ""}`}
           </span>
           <Tooltip>
@@ -303,7 +303,7 @@ function EntryRow({
                   variant="ghost"
                   size="icon-xs"
                   aria-label="Revert"
-                  className="shrink-0 text-rose-700/70 hover:text-rose-700 dark:text-rose-400/70 dark:hover:text-rose-400"
+                  className="shrink-0 text-diff-remove/70 hover:text-diff-remove"
                   onClick={() => onEdit({ value: change.baseValue ?? "" })}
                 >
                   <RotateCcw />
@@ -317,7 +317,7 @@ function EntryRow({
       <div
         className={cn(
           "flex items-center gap-2 px-2 py-1",
-          change && "bg-emerald-50/60 dark:bg-emerald-950/25",
+          change && "bg-diff-add/5",
         )}
       >
         <Checkbox

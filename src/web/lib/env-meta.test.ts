@@ -10,7 +10,7 @@ describe("envMeta", () => {
   it("gives custom labels the shared dot and their own text", () => {
     expect(envMeta("staging")).toEqual({
       label: "staging",
-      dot: "bg-violet-500",
+      dot: "bg-env-custom",
     });
   });
 
@@ -26,6 +26,6 @@ describe("envMeta", () => {
   });
 
   it("never renames custom labels", () => {
-    expect(envMeta("qa", { preview: "qa" }).dot).toBe("bg-violet-500");
+    expect(envMeta("qa", { preview: "qa" }).dot).toBe("bg-env-custom");
   });
 });

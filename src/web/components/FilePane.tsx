@@ -297,10 +297,10 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
 
   const diffStatsLine = (
     <span className="font-mono text-xs">
-      <span className="text-emerald-600 dark:text-emerald-400">
+      <span className="text-diff-add">
         +{stats.added}
       </span>{" "}
-      <span className="text-rose-600 dark:text-rose-400">-{stats.removed}</span>
+      <span className="text-diff-remove">-{stats.removed}</span>
     </span>
   );
 
@@ -408,10 +408,10 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
   // shown in place of the timeline with a back affordance.
   const compareStatsLine = compareStats && (
     <span className="font-mono text-xs">
-      <span className="text-emerald-600 dark:text-emerald-400">
+      <span className="text-diff-add">
         +{compareStats.added}
       </span>{" "}
-      <span className="text-rose-600 dark:text-rose-400">
+      <span className="text-diff-remove">
         -{compareStats.removed}
       </span>
     </span>
@@ -506,10 +506,10 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
               }
               className="h-8 gap-1.5 font-mono text-xs"
             >
-              <span className="text-emerald-600 dark:text-emerald-400">
+              <span className="text-diff-add">
                 +{stats.added}
               </span>
-              <span className="text-rose-600 dark:text-rose-400">
+              <span className="text-diff-remove">
                 -{stats.removed}
               </span>
               <span className="font-sans">Review</span>
@@ -690,10 +690,10 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
               <SheetHeader>
                 <SheetTitle>Review changes</SheetTitle>
                 <SheetDescription className="font-mono">
-                  <span className="text-emerald-600 dark:text-emerald-400">
+                  <span className="text-diff-add">
                     +{stats.added}
                   </span>{" "}
-                  <span className="text-rose-600 dark:text-rose-400">
+                  <span className="text-diff-remove">
                     -{stats.removed}
                   </span>{" "}
                   against the saved version
@@ -840,9 +840,9 @@ function DiffList({ ops }: { ops: ReturnType<typeof diffLines> }) {
           className={cn(
             "flex gap-2 px-3",
             op.type === "add"
-              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+              ? "bg-diff-add/10 text-diff-add"
               : op.type === "remove"
-                ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400"
+                ? "bg-diff-remove/10 text-diff-remove"
                 : "text-muted-foreground",
           )}
         >

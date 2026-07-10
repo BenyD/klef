@@ -39,6 +39,14 @@
   --success: oklch(0.6 0.13 160);
   --warning: oklch(0.68 0.14 85);
   --info: oklch(0.588 0.158 241.966);
+  /* Env-label dots and diff colors as tokens so they can be tuned per theme
+     without touching call sites. */
+  --env-development: oklch(0.685 0.169 237.323);
+  --env-preview: oklch(0.769 0.188 70.08);
+  --env-production: oklch(0.645 0.246 16.439);
+  --env-custom: oklch(0.606 0.25 292.717);
+  --diff-add: oklch(0.596 0.145 163.225);
+  --diff-remove: oklch(0.586 0.253 17.585);
   --chart-1: oklch(0.869 0.005 56.366);
   --chart-2: oklch(0.553 0.013 58.071);
   --chart-3: oklch(0.444 0.011 73.639);
@@ -78,6 +86,12 @@
   --success: oklch(0.7 0.14 160);
   --warning: oklch(0.77 0.14 90);
   --info: oklch(0.746 0.16 232.661);
+  --env-development: oklch(0.746 0.16 232.661);
+  --env-preview: oklch(0.828 0.189 84.429);
+  --env-production: oklch(0.712 0.194 13.428);
+  --env-custom: oklch(0.702 0.183 293.541);
+  --diff-add: oklch(0.765 0.177 163.223);
+  --diff-remove: oklch(0.712 0.194 13.428);
   --chart-1: oklch(0.869 0.005 56.366);
   --chart-2: oklch(0.553 0.013 58.071);
   --chart-3: oklch(0.444 0.011 73.639);
@@ -120,6 +134,12 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
+  --color-env-development: var(--env-development);
+  --color-env-preview: var(--env-preview);
+  --color-env-production: var(--env-production);
+  --color-env-custom: var(--env-custom);
+  --color-diff-add: var(--diff-add);
+  --color-diff-remove: var(--diff-remove);
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, "SF Mono", Menlo, monospace;
   --font-heading: var(--font-sans);
