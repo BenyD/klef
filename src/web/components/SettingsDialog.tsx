@@ -44,7 +44,7 @@ import {
   useConfirmSaveReview,
 } from "../lib/preferences.ts";
 import { ENV_META } from "../lib/env-meta.ts";
-import { passkeyProviderName } from "../lib/passkey-provider.ts";
+import { passkeyProviderName } from "../../shared/passkey-provider.ts";
 import {
   ENVIRONMENTS,
   type PresetEnvironment,
