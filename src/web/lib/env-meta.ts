@@ -13,9 +13,9 @@ import {
 // stays Fast Refresh-able.
 /** Default display labels + dot colors for the preset environments. */
 export const ENV_META: Record<PresetEnvironment, { label: string; dot: string }> = {
-  development: { label: "Development", dot: "bg-sky-500" },
-  preview: { label: "Preview", dot: "bg-amber-500" },
-  production: { label: "Production", dot: "bg-rose-500" },
+  development: { label: "Development", dot: "bg-env-development" },
+  preview: { label: "Preview", dot: "bg-env-preview" },
+  production: { label: "Production", dot: "bg-env-production" },
 };
 
 /**
@@ -28,7 +28,7 @@ export function envMeta(
   overrides?: EnvLabelOverrides,
 ): { label: string; dot: string } {
   if (!isPresetEnvironment(environment)) {
-    return { label: environment, dot: "bg-violet-500" };
+    return { label: environment, dot: "bg-env-custom" };
   }
   const meta = ENV_META[environment];
   const renamed = overrides?.[environment];

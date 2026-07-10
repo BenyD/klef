@@ -1525,7 +1525,7 @@ function NameDialogView({
                 ))}
                 <EnvChip
                   label="Custom"
-                  dot="bg-violet-500"
+                  dot="bg-env-custom"
                   active={customOpen}
                   onClick={pickCustom}
                 />

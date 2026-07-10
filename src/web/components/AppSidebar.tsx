@@ -207,7 +207,7 @@ export function AppSidebar({
                             onClick={() => act(() => onCustomEnvironment(file))}
                           >
                             <span
-                              className="size-1.5 rounded-full bg-violet-500"
+                              className="size-1.5 rounded-full bg-env-custom"
                               aria-hidden="true"
                             />
                             {file.environment &&
