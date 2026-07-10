@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   base64ToBytes,
+  base64UrlToBytes,
   bytesToBase64,
+  bytesToBase64Url,
   bytesToCrockford,
   bytesToUtf8,
   crockfordToBytes,
@@ -36,5 +38,28 @@ describe("encoding", () => {
 
   it("throws on an invalid Crockford character", () => {
     expect(() => crockfordToBytes("@@@@", 2)).toThrow();
+  });
+});
+
+describe("base64url", () => {
+  it("round-trips random bytes", () => {
+    const bytes = crypto.getRandomValues(new Uint8Array(33));
+    expect(base64UrlToBytes(bytesToBase64Url(bytes))).toEqual(bytes);
+  });
+
+  it("emits URL-safe output without padding", () => {
+    // 0xfb 0xff produces + and / and padding in standard base64.
+    const bytes = new Uint8Array([0xfb, 0xef, 0xff, 0xfe]);
+    const url = bytesToBase64Url(bytes);
+    expect(url).not.toMatch(/[+/=]/);
+    expect(base64UrlToBytes(url)).toEqual(bytes);
+  });
+
+  it("accepts padded base64url input", () => {
+    const bytes = new Uint8Array([1, 2, 3, 4, 5]);
+    const url = bytesToBase64Url(bytes);
+    const padded = url + "=".repeat((4 - (url.length % 4)) % 4);
+    expect(padded).toContain("=");
+    expect(base64UrlToBytes(padded)).toEqual(bytes);
   });
 });

@@ -27,6 +27,8 @@ import {
   AlertDialogTitle,
 } from "./ui/alert-dialog.tsx";
 import { clearDek } from "../dek-store.ts";
+import { PasskeyPrfError } from "../lib/passkey-prf.ts";
+import { VaultWriteError } from "../vault-api.ts";
 import { useVault } from "../vault-context.ts";
 import {
   AUTO_LOCK_OPTIONS,
@@ -159,6 +161,8 @@ export function SettingsDialog({
             <PasswordSection />
             <Separator />
             <PasskeysSection />
+            <Separator />
+            <PasskeyUnlockSection />
             <Separator />
             <SecuritySection />
             <Separator />
@@ -855,6 +859,146 @@ function PasskeyRow({
         </>
       )}
     </li>
+  );
+}
+
+// Vault unlock via passkey (WebAuthn PRF). Separate from login passkeys:
+// enabling wraps the DEK under a secret only that passkey can re-derive, so
+// each one is enabled individually and needs the passphrase once (the live
+// DEK is non-extractable, so a re-wrap can't reuse it).
+function PasskeyUnlockSection() {
+  const { passkeyWraps, enrollPasskey, removePasskeyUnlock } = useVault();
+  const { data: passkeys } = authClient.useListPasskeys();
+  const [enablingId, setEnablingId] = useState<string | null>(null);
+  const [passphrase, setPassphrase] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const enrolled = new Set(passkeyWraps.map((w) => w.passkeyId));
+  const list = passkeys ?? [];
+
+  function startEnable(id: string) {
+    setEnablingId(id);
+    setPassphrase("");
+    setError(null);
+  }
+
+  async function enable(e: FormEvent) {
+    e.preventDefault();
+    const pk = list.find((p) => p.id === enablingId);
+    if (!pk || !passphrase) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await enrollPasskey(passphrase, {
+        id: pk.id,
+        credentialId: pk.credentialID,
+      });
+      setEnablingId(null);
+      setPassphrase("");
+      toast.success("This passkey can now unlock your vault");
+    } catch (err) {
+      if (err instanceof PasskeyPrfError) {
+        if (err.code !== "cancelled") setError(err.message);
+      } else if (err instanceof VaultWriteError) {
+        setError("Couldn't save. Check your connection and try again.");
+      } else {
+        setError("That passphrase didn't work.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(id: string) {
+    try {
+      await removePasskeyUnlock(id);
+      toast.success("Passkey unlock removed");
+    } catch {
+      toast.error("Couldn't remove passkey unlock");
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h3 className="text-sm font-medium">Passkey unlock</h3>
+        <p className="text-muted-foreground text-sm">
+          Unlock your vault with a passkey instead of typing your passphrase.
+          Your passphrase and recovery key keep working.
+        </p>
+      </div>
+      {list.length === 0 ? (
+        <p className="text-muted-foreground text-sm">
+          Add a passkey above first.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {list.map((pk) => (
+            <li key={pk.id} className="flex items-center gap-3 text-sm">
+              <Fingerprint className="text-muted-foreground size-4 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">
+                {pk.name?.trim() || passkeyProviderName(pk.aaguid) || "Passkey"}
+              </span>
+              {enrolled.has(pk.id) ? (
+                <>
+                  <span className="text-success text-xs font-medium">
+                    Unlock enabled
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void remove(pk.id)}
+                  >
+                    Remove
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy || enablingId === pk.id}
+                  onClick={() => startEnable(pk.id)}
+                >
+                  Enable
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {enablingId !== null && (
+        <form onSubmit={enable} className="flex flex-col gap-3">
+          <div className="grid gap-2">
+            <Label htmlFor="settings-passkey-unlock-passphrase">
+              Master passphrase
+            </Label>
+            <PasswordInput
+              id="settings-passkey-unlock-passphrase"
+              autoComplete="current-password"
+              aria-invalid={!!error}
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+              autoFocus
+            />
+            {error && <p className="text-destructive text-sm">{error}</p>}
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" disabled={busy || !passphrase}>
+              {busy ? "Waiting for your passkey..." : "Confirm and enable"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => setEnablingId(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
 

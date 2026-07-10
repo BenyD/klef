@@ -49,6 +49,15 @@ export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
         // settings still resolve through their session and never hit these.
         registration: {
           requireSession: false,
+          // Ask authenticators to enable PRF on new credentials so they can
+          // later be enrolled for vault unlock (see lib/passkey-prf.ts). The
+          // secret itself is only ever derived client-side. hmacCreateSecret
+          // is the CTAP2 flag PRF rides on for security keys; the `prf` spread
+          // is cast because simplewebauthn's extension types lag WebAuthn L3.
+          extensions: {
+            hmacCreateSecret: true,
+            ...({ prf: {} } as object),
+          },
           resolveUser: async ({ ctx, context }) => {
             const signup = parsePasskeySignupContext(context);
             if (!signup) {

@@ -9,20 +9,28 @@ import {
 } from "react";
 import {
   changePassphrase as changePassphraseWrap,
+  enrollPasskeyWrap,
+  randomBytes,
   resetPassphraseWithRecoveryKey,
   rotateRecoveryKey,
   setupVault,
   unlockWithPassphrase,
+  unlockWithPrfSecret,
   unlockWithRecoveryKey,
 } from "../shared/crypto.ts";
+import { base64ToBytes, bytesToBase64 } from "../shared/encoding.ts";
 import type { VaultKeyMaterial } from "../shared/types.ts";
+import type { VaultPasskeyWrap } from "../shared/api-types.ts";
 import {
   confirmRecoverySaved,
   createVault,
+  deleteVaultPasskey,
   fetchVault,
+  updateVaultPasskey,
   updateVaultPassphrase,
   updateVaultRecovery,
 } from "./vault-api.ts";
+import { getPrfSecret } from "./lib/passkey-prf.ts";
 import { clearDek, loadDek, saveDek, touchDek } from "./dek-store.ts";
 import { getAutoLockMinutes } from "./lib/auto-lock.ts";
 import { VaultContext, type VaultStatus } from "./vault-context.ts";
@@ -50,6 +58,7 @@ export function VaultProvider({
   const [dek, setDek] = useState<CryptoKey | null>(null);
   // Optimistic default so the nudge banner never flashes while loading.
   const [recoveryConfirmed, setRecoveryConfirmed] = useState(true);
+  const [passkeyWraps, setPasskeyWraps] = useState<VaultPasskeyWrap[]>([]);
   const keyMaterial = useRef<VaultKeyMaterial | null>(null);
   // DEK staged during setup, activated once the recovery key is confirmed saved.
   const pendingDek = useRef<CryptoKey | null>(null);
@@ -68,6 +77,7 @@ export function VaultProvider({
           return;
         }
         setRecoveryConfirmed(Boolean(res.recoveryConfirmedAt));
+        setPasskeyWraps(res.passkeyWraps ?? []);
         // Skip the unlock prompt if this user's DEK is still remembered from a
         // previous load (persisted non-extractable, never re-derived).
         const cached = await loadDek(userId, dekMaxAgeMs());
@@ -138,7 +148,9 @@ export function VaultProvider({
   // Falls back to the cached copy only when the refetch itself fails.
   const freshMaterial = useCallback(async (): Promise<VaultKeyMaterial | null> => {
     try {
-      keyMaterial.current = (await fetchVault()).keyMaterial ?? null;
+      const res = await fetchVault();
+      keyMaterial.current = res.keyMaterial ?? null;
+      setPasskeyWraps(res.passkeyWraps ?? []);
     } catch {
       // Offline or transient: better to try the cached material than nothing.
     }
@@ -224,6 +236,83 @@ export function VaultProvider({
     [freshMaterial],
   );
 
+  // Passkey unlock: run the PRF ceremony over every enrolled credential and
+  // unwrap with whichever the user picked. Fresh wraps are fetched first so
+  // an enrollment or removal on another device is respected.
+  const unlockWithPasskey = useCallback(async () => {
+    let wraps = passkeyWraps;
+    try {
+      const res = await fetchVault();
+      keyMaterial.current = res.keyMaterial ?? null;
+      wraps = res.passkeyWraps ?? [];
+      setPasskeyWraps(wraps);
+    } catch {
+      // Offline or transient: try the wraps we already have.
+    }
+    if (wraps.length === 0) {
+      throw new Error("No passkey is set up for unlock");
+    }
+    const result = await getPrfSecret(
+      wraps.map((w) => ({
+        credentialId: w.credentialId,
+        salt: base64ToBytes(w.prfSalt),
+      })),
+    );
+    const wrap = wraps.find((w) => w.credentialId === result.credentialId);
+    if (!wrap) {
+      throw new Error("That passkey is not set up for unlock");
+    }
+    const key = await unlockWithPrfSecret(result.secret, wrap.wrappedDek);
+    setDek(key);
+    await saveDek(userId, key);
+    setStatus("unlocked");
+  }, [userId, passkeyWraps]);
+
+  // Enrollment: validate the passphrase before the passkey prompt (a wrong
+  // passphrase after a biometric ceremony would waste it), then derive the
+  // PRF secret and persist the new wrap.
+  const enrollPasskey = useCallback(
+    async (
+      passphrase: string,
+      passkey: { id: string; credentialId: string },
+    ) => {
+      const material = await freshMaterial();
+      if (!material) throw new Error("No vault");
+      await unlockWithPassphrase(
+        passphrase,
+        material.kdfParams,
+        material.wrappedDek,
+      );
+      const prfSalt = randomBytes(32);
+      const result = await getPrfSecret([
+        { credentialId: passkey.credentialId, salt: prfSalt },
+      ]);
+      const wrappedDek = await enrollPasskeyWrap(
+        passphrase,
+        material.kdfParams,
+        material.wrappedDek,
+        result.secret,
+      );
+      const wrap: VaultPasskeyWrap = {
+        passkeyId: passkey.id,
+        credentialId: passkey.credentialId,
+        prfSalt: bytesToBase64(prfSalt),
+        wrappedDek,
+      };
+      await updateVaultPasskey(wrap);
+      setPasskeyWraps((prev) => [
+        ...prev.filter((w) => w.passkeyId !== passkey.id),
+        wrap,
+      ]);
+    },
+    [freshMaterial],
+  );
+
+  const removePasskeyUnlock = useCallback(async (passkeyId: string) => {
+    await deleteVaultPasskey(passkeyId);
+    setPasskeyWraps((prev) => prev.filter((w) => w.passkeyId !== passkeyId));
+  }, []);
+
   const lock = useCallback(() => {
     setDek(null);
     void clearDek();
@@ -250,6 +339,10 @@ export function VaultProvider({
         lock,
         retryLoad,
         recoveryConfirmed,
+        passkeyWraps,
+        unlockWithPasskey,
+        enrollPasskey,
+        removePasskeyUnlock,
       }}
     >
       {children}

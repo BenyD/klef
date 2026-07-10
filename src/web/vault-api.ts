@@ -1,4 +1,5 @@
 import type { KdfParams, VaultKeyMaterial, WrappedKey } from "../shared/types.ts";
+import type { VaultPasskeyWrap } from "../shared/api-types.ts";
 import { apiFetch } from "./api-fetch.ts";
 
 interface VaultStatus {
@@ -6,6 +7,8 @@ interface VaultStatus {
   keyMaterial?: VaultKeyMaterial;
   /** When the user last confirmed saving their recovery key; null = never. */
   recoveryConfirmedAt?: string | null;
+  /** Passkeys enrolled for PRF unlock (opaque wraps + public salts). */
+  passkeyWraps?: VaultPasskeyWrap[];
 }
 
 async function readError(res: Response): Promise<string> {
@@ -70,5 +73,29 @@ export async function updateVaultRecovery(
 /** Record that the user confirmed saving their recovery key. */
 export async function confirmRecoverySaved(): Promise<void> {
   const res = await apiFetch("/api/vault/recovery-confirmed", { method: "POST" });
+  if (!res.ok) throw new Error(await readError(res));
+}
+
+/** Enroll (or refresh) a passkey unlock wrap. */
+export async function updateVaultPasskey(wrap: VaultPasskeyWrap): Promise<void> {
+  let res: Response;
+  try {
+    res = await apiFetch("/api/vault/passkey", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(wrap),
+    });
+  } catch (e) {
+    throw new VaultWriteError(e instanceof Error ? e.message : String(e));
+  }
+  if (!res.ok) throw new VaultWriteError(await readError(res));
+}
+
+/** Remove a passkey's unlock wrap (the passkey stays for sign-in). */
+export async function deleteVaultPasskey(passkeyId: string): Promise<void> {
+  const res = await apiFetch(
+    `/api/vault/passkey/${encodeURIComponent(passkeyId)}`,
+    { method: "DELETE" },
+  );
   if (!res.ok) throw new Error(await readError(res));
 }

@@ -4,6 +4,24 @@
 // navigation structure (plaintext names) — NOT the crypto contract (see
 // types.ts / BLOB_FORMAT.md).
 
+import type { WrappedKey } from "./types.ts";
+
+/**
+ * A per-passkey DEK wrap for WebAuthn PRF unlock. The wrap is opaque
+ * ciphertext and the salt is a public PRF input; neither lets the server
+ * decrypt anything.
+ */
+export interface VaultPasskeyWrap {
+  /** Better Auth passkey row id (owns the wrap's lifecycle). */
+  passkeyId: string;
+  /** WebAuthn credential id, base64url, as Better Auth stores it. */
+  credentialId: string;
+  /** PRF eval input, base64. */
+  prfSalt: string;
+  /** The DEK wrapped under the PRF-derived key. */
+  wrappedDek: WrappedKey;
+}
+
 /** Built-in environment labels (Vercel-style), shown first in pickers. */
 export const ENVIRONMENTS = ["development", "preview", "production"] as const;
 export type PresetEnvironment = (typeof ENVIRONMENTS)[number];

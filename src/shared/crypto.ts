@@ -238,6 +238,66 @@ async function deriveRecoveryWrappingKey(
   );
 }
 
+// --- passkey (WebAuthn PRF) unlock ------------------------------------------
+
+// HKDF context string for deriving the passkey wrapping key from a WebAuthn
+// PRF secret. Versioned like the recovery info string.
+const PASSKEY_HKDF_INFO = "klef/passkey-kek/v1";
+
+/**
+ * Derive the passkey wrapping key (HKDF-SHA-256) from a 32-byte WebAuthn PRF
+ * secret. Like the recovery key, the PRF output is already uniform random
+ * key material, so the slow KDF is unnecessary; HKDF provides domain
+ * separation.
+ */
+async function derivePasskeyWrappingKey(prfSecret: Bytes): Promise<CryptoKey> {
+  const ikm = await crypto.subtle.importKey("raw", prfSecret, "HKDF", false, [
+    "deriveKey",
+  ]);
+  return crypto.subtle.deriveKey(
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt: new Uint8Array(0),
+      info: utf8ToBytes(PASSKEY_HKDF_INFO),
+    },
+    ikm,
+    { name: AES.name, length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
+/**
+ * Enroll a passkey for unlock: verify the passphrase to recover the DEK
+ * bytes, then wrap them under a key derived from the passkey's PRF secret.
+ * The passphrase and recovery wrappings are untouched and no blobs are
+ * re-encrypted. The passphrase is required because the live DEK CryptoKey is
+ * non-extractable; this mirrors rotateRecoveryKey.
+ */
+export async function enrollPasskeyWrap(
+  passphrase: string,
+  kdfParams: KdfParams,
+  wrappedDek: WrappedKey,
+  prfSecret: Bytes,
+): Promise<WrappedKey> {
+  const kek = await deriveKek(passphrase, kdfParams);
+  const dekBytes = await unwrapKeyBytes(kek, wrappedDek);
+
+  const passkeyKek = await derivePasskeyWrappingKey(prfSecret);
+  return wrapKeyBytes(passkeyKek, dekBytes);
+}
+
+/** Unlock with a passkey's PRF secret: unwrap the DEK, return it live. */
+export async function unlockWithPrfSecret(
+  prfSecret: Bytes,
+  wrappedDekPasskey: WrappedKey,
+): Promise<CryptoKey> {
+  const passkeyKek = await derivePasskeyWrappingKey(prfSecret);
+  const dekBytes = await unwrapKeyBytes(passkeyKek, wrappedDekPasskey);
+  return importAesKey(dekBytes);
+}
+
 // --- high-level vault operations ------------------------------------------
 
 export interface VaultSetupResult {

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { AuthVariables } from "./middleware.ts";
 import type { VaultKeyMaterial, WrappedKey } from "../shared/types.ts";
+import type { VaultPasskeyWrap } from "../shared/api-types.ts";
 
 // These routes assume a session is already established and `user` is set — the
 // auth gate is applied where they're mounted (see index.ts). The stored
@@ -43,6 +44,13 @@ interface VaultRow {
   recovery_confirmed_at: string | null;
 }
 
+interface VaultPasskeyRow {
+  passkey_id: string;
+  credential_id: string;
+  prf_salt: string;
+  wrapped_dek: string;
+}
+
 // The workspace we auto-create on first setup, so the user lands in a named
 // home rather than a blank slate. Derived from their display name (always set:
 // Google provides it, and email signups require it), falling back to the email
@@ -64,6 +72,12 @@ vault.get("/", async (c) => {
 
   if (!row) return c.json({ exists: false });
 
+  const passkeyRows = await c.env.DB.prepare(
+    "SELECT passkey_id, credential_id, prf_salt, wrapped_dek FROM vault_passkey WHERE user_id = ?",
+  )
+    .bind(c.get("user").id)
+    .all<VaultPasskeyRow>();
+
   return c.json({
     exists: true,
     keyMaterial: {
@@ -72,6 +86,14 @@ vault.get("/", async (c) => {
       wrappedDekRecovery: JSON.parse(row.wrapped_dek_recovery),
     } satisfies VaultKeyMaterial,
     recoveryConfirmedAt: row.recovery_confirmed_at,
+    passkeyWraps: passkeyRows.results.map(
+      (p): VaultPasskeyWrap => ({
+        passkeyId: p.passkey_id,
+        credentialId: p.credential_id,
+        prfSalt: p.prf_salt,
+        wrappedDek: JSON.parse(p.wrapped_dek),
+      }),
+    ),
   });
 });
 
@@ -178,6 +200,76 @@ vault.put("/recovery", async (c) => {
 
   if (res.meta.changes === 0) {
     return c.json({ ok: false, error: "No vault to update" }, 404);
+  }
+  return c.json({ ok: true });
+});
+
+// Enroll (or refresh) a passkey unlock wrap. The passkey must belong to the
+// caller and the supplied credential id must match Better Auth's record, so a
+// wrap can never be attached to someone else's credential.
+vault.put("/passkey", async (c) => {
+  const body = (await c.req.json().catch(() => null)) as {
+    passkeyId?: unknown;
+    credentialId?: unknown;
+    prfSalt?: unknown;
+    wrappedDek?: unknown;
+  } | null;
+
+  if (
+    !body ||
+    typeof body.passkeyId !== "string" ||
+    typeof body.credentialId !== "string" ||
+    typeof body.prfSalt !== "string" ||
+    !isWrappedKey(body.wrappedDek)
+  ) {
+    return c.json({ ok: false, error: "Invalid payload" }, 400);
+  }
+
+  const user = c.get("user");
+
+  const hasVault = await c.env.DB.prepare(
+    "SELECT 1 FROM vault WHERE user_id = ?",
+  )
+    .bind(user.id)
+    .first();
+  if (!hasVault) return c.json({ ok: false, error: "No vault" }, 404);
+
+  const passkey = await c.env.DB.prepare(
+    'SELECT "credentialID" AS credential_id FROM passkey WHERE id = ? AND "userId" = ?',
+  )
+    .bind(body.passkeyId, user.id)
+    .first<{ credential_id: string }>();
+  if (!passkey || passkey.credential_id !== body.credentialId) {
+    return c.json({ ok: false, error: "Unknown passkey" }, 404);
+  }
+
+  await c.env.DB.prepare(
+    `INSERT INTO vault_passkey (passkey_id, user_id, credential_id, prf_salt, wrapped_dek)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(passkey_id) DO UPDATE SET prf_salt = excluded.prf_salt, wrapped_dek = excluded.wrapped_dek`,
+  )
+    .bind(
+      body.passkeyId,
+      user.id,
+      body.credentialId,
+      body.prfSalt,
+      JSON.stringify(body.wrappedDek),
+    )
+    .run();
+
+  return c.json({ ok: true });
+});
+
+// Remove a passkey's unlock wrap (the passkey itself stays for sign-in).
+vault.delete("/passkey/:passkeyId", async (c) => {
+  const res = await c.env.DB.prepare(
+    "DELETE FROM vault_passkey WHERE passkey_id = ? AND user_id = ?",
+  )
+    .bind(c.req.param("passkeyId"), c.get("user").id)
+    .run();
+
+  if (res.meta.changes === 0) {
+    return c.json({ ok: false, error: "No unlock wrap for that passkey" }, 404);
   }
   return c.json({ ok: true });
 });
