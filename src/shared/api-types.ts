@@ -4,9 +4,28 @@
 // navigation structure (plaintext names) — NOT the crypto contract (see
 // types.ts / BLOB_FORMAT.md).
 
-/** Fixed environment labels a file can be tagged with (Vercel-style). */
+/** Built-in environment labels (Vercel-style), shown first in pickers. */
 export const ENVIRONMENTS = ["development", "preview", "production"] as const;
-export type Environment = (typeof ENVIRONMENTS)[number];
+export type PresetEnvironment = (typeof ENVIRONMENTS)[number];
+/** Environment label: one of the presets or a short custom label. */
+export type Environment = string;
+
+export function isPresetEnvironment(v: string): v is PresetEnvironment {
+  return (ENVIRONMENTS as readonly string[]).includes(v);
+}
+
+/**
+ * Canonical form of an environment label, or null when invalid. Shared by the
+ * Worker (request validation) and the client (picker input) so both enforce
+ * the same rules: trimmed, ≤32 chars, word chars/spaces/dots/dashes only.
+ * Case-variants of the presets fold onto the canonical lowercase form.
+ */
+export function normalizeEnvironment(input: string): string | null {
+  const label = input.trim().replace(/\s+/g, " ");
+  if (!/^[A-Za-z0-9][A-Za-z0-9 ._-]{0,31}$/.test(label)) return null;
+  const lower = label.toLowerCase();
+  return isPresetEnvironment(lower) ? lower : label;
+}
 
 /**
  * Known tech stacks; picking one tunes default env-file names per environment.

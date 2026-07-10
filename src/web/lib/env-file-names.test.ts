@@ -33,4 +33,10 @@ describe("defaultEnvFileName", () => {
     // Plain server stacks develop against .env directly.
     expect(defaultEnvFileName("node", "development")).toBe(".env");
   });
+
+  it("suggests dotenv-style names for custom environments", () => {
+    expect(defaultEnvFileName(null, "staging")).toBe(".env.staging");
+    expect(defaultEnvFileName("nextjs", "QA 2")).toBe(".env.qa-2");
+    expect(defaultEnvFileName("laravel", "staging")).toBe(".env.staging");
+  });
 });

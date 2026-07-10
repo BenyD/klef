@@ -52,6 +52,8 @@ import * as api from "../structure-api.ts";
 import type { SelectedFile } from "../vault-types.ts";
 import {
   ENVIRONMENTS,
+  isPresetEnvironment,
+  normalizeEnvironment,
   type Environment,
   type EnvFileNode,
   type Framework,
@@ -71,7 +73,7 @@ import { ProjectIcon } from "./ProjectIcon.tsx";
 import { WorkspaceIcon } from "./WorkspaceIcon.tsx";
 import { ProjectsOverview } from "./ProjectsOverview.tsx";
 import { LockShortcutKeys } from "./LockShortcutKeys.tsx";
-import { ENV_META } from "../lib/env-meta.ts";
+import { ENV_META, envMeta } from "../lib/env-meta.ts";
 import { FilePane } from "./FilePane.tsx";
 import { SettingsDialog, type SettingsTab } from "./SettingsDialog.tsx";
 import { ThemeToggle } from "./ThemeToggle.tsx";
@@ -487,6 +489,27 @@ export function VaultHome({
     }
   }
 
+  function openCustomEnvironment(file: EnvFileNode) {
+    setNameDialog({
+      title: "Custom environment",
+      label: "Environment label",
+      initial:
+        file.environment && !isPresetEnvironment(file.environment)
+          ? file.environment
+          : "",
+      submit: async ({ name }) => {
+        const environment = normalizeEnvironment(name);
+        if (!environment) {
+          toast.error(
+            "Labels are letters, numbers, spaces, dots, or dashes (max 32).",
+          );
+          return;
+        }
+        await setFileEnvironment(file, environment);
+      },
+    });
+  }
+
   const currentProject = selected
     ? (projects.find((p) => p.files.some((f) => f.id === selected.id)) ?? null)
     : null;
@@ -678,6 +701,7 @@ export function VaultHome({
           onRenameFile={openRenameFile}
           onDeleteFile={openDeleteFile}
           onSetEnvironment={(file, env) => void setFileEnvironment(file, env)}
+          onCustomEnvironment={openCustomEnvironment}
           onEditProject={openEditProject}
           onOpenSettings={setSettingsTab}
         />
@@ -1116,7 +1140,7 @@ function FileTabs({
                 <span
                   className={cn(
                     "size-1.5 shrink-0 rounded-full",
-                    ENV_META[f.environment].dot,
+                    envMeta(f.environment).dot,
                   )}
                   aria-hidden="true"
                 />
@@ -1242,6 +1266,10 @@ function NameDialogView({
   // Auto-fill the name from the environment pick until the user edits it.
   const [nameDirty, setNameDirty] = useState(false);
   const [environment, setEnvironment] = useState<Environment | null>(null);
+  // The "Custom" chip reveals a free-text label field; the raw text lives
+  // apart from `environment` so typing isn't fought by normalization.
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customText, setCustomText] = useState("");
   const [framework, setFramework] = useState<Framework | null>(null);
   // The stack hint's picker stays collapsed until asked for.
   const [stackOpen, setStackOpen] = useState(false);
@@ -1281,6 +1309,9 @@ function NameDialogView({
     const initialFramework =
       dialog?.withFramework?.initial ?? dialog?.stackHint?.initial ?? null;
     setEnvironment(initialEnv);
+    const initialCustom = initialEnv !== null && !isPresetEnvironment(initialEnv);
+    setCustomOpen(initialCustom);
+    setCustomText(initialCustom ? initialEnv : "");
     setFramework(initialFramework);
     setStackOpen(false);
     setValue(
@@ -1299,11 +1330,26 @@ function NameDialogView({
     setCropSrc(null);
   }, [dialog]);
 
-  function pickEnvironment(env: Environment | null) {
+  function applyEnvironment(env: Environment | null) {
     setEnvironment(env);
     if (!nameDirty && dialog?.defaultNameFor) {
       setValue(dialog.defaultNameFor(env, framework));
     }
+  }
+
+  function pickEnvironment(env: Environment | null) {
+    setCustomOpen(false);
+    applyEnvironment(env);
+  }
+
+  function pickCustom() {
+    setCustomOpen(true);
+    applyEnvironment(normalizeEnvironment(customText));
+  }
+
+  function typeCustom(text: string) {
+    setCustomText(text);
+    applyEnvironment(normalizeEnvironment(text));
   }
 
   // Stack picks from the hint persist to the project right away; the dialog's
@@ -1362,7 +1408,7 @@ function NameDialogView({
               <div className="flex flex-wrap gap-1.5" role="group">
                 <EnvChip
                   label="None"
-                  active={environment === null}
+                  active={!customOpen && environment === null}
                   onClick={() => pickEnvironment(null)}
                 />
                 {ENVIRONMENTS.map((env) => (
@@ -1370,11 +1416,27 @@ function NameDialogView({
                     key={env}
                     label={ENV_META[env].label}
                     dot={ENV_META[env].dot}
-                    active={environment === env}
+                    active={!customOpen && environment === env}
                     onClick={() => pickEnvironment(env)}
                   />
                 ))}
+                <EnvChip
+                  label="Custom"
+                  dot="bg-violet-500"
+                  active={customOpen}
+                  onClick={pickCustom}
+                />
               </div>
+              {customOpen && (
+                <Input
+                  autoFocus
+                  value={customText}
+                  maxLength={32}
+                  placeholder="e.g. staging"
+                  aria-label="Custom environment label"
+                  onChange={(e) => typeCustom(e.target.value)}
+                />
+              )}
             </div>
           )}
           <div className="grid gap-2">
