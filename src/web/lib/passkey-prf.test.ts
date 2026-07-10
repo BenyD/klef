@@ -25,8 +25,20 @@ describe("prfOutputToBytes", () => {
     );
   });
 
-  it("reads a base64url string (1Password-style interceptor output)", () => {
+  it("reads a base64url string interceptor output", () => {
     expect(prfOutputToBytes(bytesToBase64Url(secret))).toEqual(secret);
+  });
+
+  it("reads a plain number Array (1Password's documented output shape)", () => {
+    expect(prfOutputToBytes(Array.from(secret))).toEqual(secret);
+  });
+
+  it("rejects arrays that are not byte arrays", () => {
+    expect(prfOutputToBytes([])).toBeNull();
+    expect(prfOutputToBytes([1, 2, 300])).toBeNull();
+    expect(prfOutputToBytes([1, 2, -1])).toBeNull();
+    expect(prfOutputToBytes([1, 2.5, 3])).toBeNull();
+    expect(prfOutputToBytes(["a", "b"])).toBeNull();
   });
 
   it("returns null for unreadable shapes", () => {

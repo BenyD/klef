@@ -96,8 +96,10 @@ export async function getPrfSecret(requests: PrfRequest[]): Promise<PrfResult> {
 
 /**
  * Normalize a PRF output to bytes. The spec says ArrayBuffer, but WebAuthn
- * interceptors (password-manager extensions like 1Password) hand back typed
- * arrays or base64url strings instead. Null when the shape is unreadable.
+ * interceptors rewrap results for JSON transport: 1Password's extension is
+ * documented to return PRF results as a plain number Array, and base64url
+ * strings and typed arrays exist in the wild too. Null when the shape is
+ * unreadable.
  */
 export function prfOutputToBytes(value: unknown): Bytes | null {
   if (value instanceof ArrayBuffer) return new Uint8Array(value);
@@ -105,6 +107,9 @@ export function prfOutputToBytes(value: unknown): Bytes | null {
     return new Uint8Array(
       value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength),
     ) as Bytes;
+  }
+  if (Array.isArray(value) && value.length > 0 && isByteArray(value)) {
+    return new Uint8Array(value) as Bytes;
   }
   if (typeof value === "string" && value.length > 0) {
     try {
@@ -114,4 +119,10 @@ export function prfOutputToBytes(value: unknown): Bytes | null {
     }
   }
   return null;
+}
+
+function isByteArray(value: unknown[]): value is number[] {
+  return value.every(
+    (b) => typeof b === "number" && Number.isInteger(b) && b >= 0 && b <= 255,
+  );
 }
