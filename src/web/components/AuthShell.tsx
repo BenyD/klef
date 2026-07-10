@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
-import { KeyRound, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
+import { KlefMark } from "./KlefMark.tsx";
 import { signOut } from "../auth.ts";
 import { clearDek } from "../dek-store.ts";
 import { Button } from "./ui/button.tsx";
@@ -33,7 +34,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
 
       <div className="flex flex-col items-center gap-3">
         <div className="bg-primary text-primary-foreground flex size-11 items-center justify-center rounded-xl">
-          <KeyRound className="size-6" />
+          <KlefMark className="size-6" />
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Klef</h1>
       </div>
