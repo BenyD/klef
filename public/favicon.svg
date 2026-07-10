@@ -1,15 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <style>
-    .bg { fill: #c2410c }
-    .fg { stroke: #ffffff }
-    @media (prefers-color-scheme: dark) {
-      .bg { fill: #fb923c }
-      .fg { stroke: #1c1917 }
-    }
-  </style>
-  <rect class="bg" width="32" height="32" rx="7" />
-  <!-- Klef mark: the masked value. Six even spokes, radius 9.5, centered. -->
-  <g class="fg" fill="none" stroke-width="3" stroke-linecap="round">
+  <!-- Klef mark: the masked value. One brand tile for both color schemes:
+       bright ember with the ink asterisk. Six even spokes, radius 9.5. -->
+  <rect width="32" height="32" rx="7" fill="#fb923c" />
+  <g fill="none" stroke="#1c1917" stroke-width="3" stroke-linecap="round">
     <path d="M16 6.5v19" />
     <path d="M7.77 11.25 24.23 20.75" />
     <path d="M24.23 11.25 7.77 20.75" />
