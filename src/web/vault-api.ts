@@ -1,4 +1,5 @@
 import type { KdfParams, VaultKeyMaterial, WrappedKey } from "../shared/types.ts";
+import { apiFetch } from "./api-fetch.ts";
 
 interface VaultStatus {
   exists: boolean;
@@ -14,14 +15,14 @@ async function readError(res: Response): Promise<string> {
 
 /** Does the current user have a vault, and its (opaque) key material if so. */
 export async function fetchVault(): Promise<VaultStatus> {
-  const res = await fetch("/api/vault");
+  const res = await apiFetch("/api/vault");
   if (!res.ok) throw new Error(await readError(res));
   return res.json();
 }
 
 /** First-run: persist the wrapped DEKs + KDF params. */
 export async function createVault(material: VaultKeyMaterial): Promise<void> {
-  const res = await fetch("/api/vault", {
+  const res = await apiFetch("/api/vault", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(material),
@@ -34,7 +35,7 @@ export async function updateVaultPassphrase(
   kdfParams: KdfParams,
   wrappedDek: WrappedKey,
 ): Promise<void> {
-  const res = await fetch("/api/vault/passphrase", {
+  const res = await apiFetch("/api/vault/passphrase", {
     method: "PUT",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ kdfParams, wrappedDek }),
@@ -46,7 +47,7 @@ export async function updateVaultPassphrase(
 export async function updateVaultRecovery(
   wrappedDekRecovery: WrappedKey,
 ): Promise<void> {
-  const res = await fetch("/api/vault/recovery", {
+  const res = await apiFetch("/api/vault/recovery", {
     method: "PUT",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ wrappedDekRecovery }),
@@ -56,6 +57,6 @@ export async function updateVaultRecovery(
 
 /** Record that the user confirmed saving their recovery key. */
 export async function confirmRecoverySaved(): Promise<void> {
-  const res = await fetch("/api/vault/recovery-confirmed", { method: "POST" });
+  const res = await apiFetch("/api/vault/recovery-confirmed", { method: "POST" });
   if (!res.ok) throw new Error(await readError(res));
 }
