@@ -12,6 +12,8 @@ const KEY = "dek";
 interface StoredDek {
   userId: string;
   dek: CryptoKey;
+  /** Freshness stamp; refreshed while the vault stays unlocked (touchDek). */
+  savedAt?: number;
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -47,7 +49,7 @@ function withStore<T>(
 export async function saveDek(userId: string, dek: CryptoKey): Promise<void> {
   try {
     await withStore("readwrite", (s) =>
-      s.put({ userId, dek } satisfies StoredDek, KEY),
+      s.put({ userId, dek, savedAt: Date.now() } satisfies StoredDek, KEY),
     );
   } catch {
     // IndexedDB may be unavailable (private mode, disabled) — fall back to
@@ -55,15 +57,41 @@ export async function saveDek(userId: string, dek: CryptoKey): Promise<void> {
   }
 }
 
-/** Restore the DEK iff one is stored for this exact user. */
-export async function loadDek(userId: string): Promise<CryptoKey | null> {
+/** Refresh the freshness stamp so an active session isn't aged out. */
+export async function touchDek(userId: string): Promise<void> {
   try {
     const rec = await withStore<StoredDek | undefined>("readonly", (s) =>
       s.get(KEY),
     );
-    if (rec && rec.userId === userId && rec.dek instanceof CryptoKey) {
+    if (rec?.userId === userId) {
+      await withStore("readwrite", (s) =>
+        s.put({ ...rec, savedAt: Date.now() } satisfies StoredDek, KEY),
+      );
+    }
+  } catch {
+    // best-effort
+  }
+}
+
+/**
+ * Restore the DEK iff one is stored for this exact user and is no older than
+ * maxAgeMs (aligning "remembered across reloads" with the auto-lock window).
+ * A record for a different user or past its age is evicted, not just skipped.
+ */
+export async function loadDek(
+  userId: string,
+  maxAgeMs = Infinity,
+): Promise<CryptoKey | null> {
+  try {
+    const rec = await withStore<StoredDek | undefined>("readonly", (s) =>
+      s.get(KEY),
+    );
+    if (!rec) return null;
+    const fresh = Date.now() - (rec.savedAt ?? 0) <= maxAgeMs;
+    if (rec.userId === userId && rec.dek instanceof CryptoKey && fresh) {
       return rec.dek;
     }
+    await clearDek();
   } catch {
     // ignore and require a passphrase
   }

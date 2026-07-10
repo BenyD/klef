@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { VaultWriteError } from "../vault-api.ts";
 import { useVault } from "../vault-context.ts";
 import { AuthShell } from "./AuthShell.tsx";
 import { Button } from "./ui/button.tsx";
@@ -45,11 +46,14 @@ export function UnlockScreen() {
       if (mode === "passphrase") await unlock(value);
       else await recoverAndReset(value, newPassphrase);
       // On success the vault status flips to "unlocked" and this screen unmounts.
-    } catch {
+    } catch (err) {
+      // A write failure means the recovery key was RIGHT; don't blame it.
       setError(
-        mode === "passphrase"
-          ? "That passphrase didn't work."
-          : "That recovery key didn't work.",
+        err instanceof VaultWriteError
+          ? "Your new passphrase couldn't be saved. Check your connection and try again."
+          : mode === "passphrase"
+            ? "That passphrase didn't work."
+            : "That recovery key didn't work.",
       );
       setBusy(false);
     }

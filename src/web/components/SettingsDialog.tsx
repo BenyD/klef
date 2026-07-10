@@ -26,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "./ui/alert-dialog.tsx";
+import { clearDek } from "../dek-store.ts";
 import { useVault } from "../vault-context.ts";
 import {
   AUTO_LOCK_OPTIONS,
@@ -361,6 +362,8 @@ function DeleteAccountSection({ email }: { email: string }) {
       toast.error(res.error.message ?? "Couldn't delete account");
       return;
     }
+    // The account is gone; don't leave its cached DEK behind in IndexedDB.
+    await clearDek();
     window.location.assign("/");
   }
 
