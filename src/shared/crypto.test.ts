@@ -6,6 +6,7 @@ import {
   formatRecoveryKey,
   generateRecoveryKey,
   parseRecoveryKey,
+  resetPassphraseWithRecoveryKey,
   rotateRecoveryKey,
   setupVault,
   unlockWithPassphrase,
@@ -147,6 +148,47 @@ describe("passphrase change (re-wrap only)", () => {
 
     // Re-wrap used fresh KDF salt.
     expect(kdfParams.salt).not.toBe(keyMaterial.kdfParams.salt);
+  });
+});
+
+describe("passphrase reset via recovery key (re-wrap only)", () => {
+  it("new passphrase unlocks, old fails, recovery + old blobs still work", async () => {
+    const { keyMaterial, recoveryKey, dek } = await setupVault("forgotten-pw");
+    const blob = await encryptBlob(dek, SAMPLE_ENV); // encrypted before the reset
+
+    const { kdfParams, wrappedDek } = await resetPassphraseWithRecoveryKey(
+      recoveryKey,
+      "fresh-pw",
+      keyMaterial.wrappedDekRecovery,
+    );
+
+    // The new passphrase works and decrypts pre-reset blobs (DEK unchanged).
+    const viaNew = await unlockWithPassphrase("fresh-pw", kdfParams, wrappedDek);
+    expect(await decryptBlob(viaNew, blob)).toBe(SAMPLE_ENV);
+
+    // The forgotten passphrase no longer unlocks the re-wrapped DEK.
+    await expect(
+      unlockWithPassphrase("forgotten-pw", kdfParams, wrappedDek),
+    ).rejects.toThrow();
+
+    // The recovery wrapping is untouched, so the same key still works.
+    const viaRecovery = await unlockWithRecoveryKey(
+      recoveryKey,
+      keyMaterial.wrappedDekRecovery,
+    );
+    expect(await decryptBlob(viaRecovery, blob)).toBe(SAMPLE_ENV);
+  });
+
+  it("requires the correct recovery key", async () => {
+    const { keyMaterial } = await setupVault("pw");
+    const { recoveryKey: otherKey } = await setupVault("other");
+    await expect(
+      resetPassphraseWithRecoveryKey(
+        otherKey,
+        "fresh-pw",
+        keyMaterial.wrappedDekRecovery,
+      ),
+    ).rejects.toThrow();
   });
 });
 
