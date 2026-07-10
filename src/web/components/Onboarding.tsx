@@ -9,8 +9,6 @@ import { useNavigate } from "react-router";
 import {
   ArrowRight,
   Check,
-  Copy,
-  Download,
   KeyRound,
   LifeBuoy,
   Lock,
@@ -26,6 +24,7 @@ import { Button } from "./ui/button.tsx";
 import { Checkbox } from "./ui/checkbox.tsx";
 import { Field, FieldError, FieldGroup, FieldLabel } from "./ui/field.tsx";
 import { PasswordInput } from "./ui/password-input.tsx";
+import { RecoveryKeyPanel } from "./RecoveryKeyPanel.tsx";
 import { StrengthMeter } from "./StrengthMeter.tsx";
 import { ThemeToggle } from "./ThemeToggle.tsx";
 
@@ -48,7 +47,7 @@ const schema = z
     path: ["confirm"],
   });
 
-export function Onboarding() {
+export function Onboarding({ email }: { email: string }) {
   const { runSetup, finishSetup } = useVault();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("welcome");
@@ -77,29 +76,6 @@ export function Onboarding() {
     } finally {
       setBusy(false);
     }
-  }
-
-  function copy() {
-    void navigator.clipboard?.writeText(recoveryKey);
-    toast.success("Recovery key copied");
-  }
-
-  function download() {
-    const blob = new Blob(
-      [
-        `Klef recovery key\n\n${recoveryKey}\n\n`,
-        "Keep this somewhere safe and private. It's the only way back into your\n",
-        "vault if you forget your passphrase. Klef can't reset it for you.\n",
-      ],
-      { type: "text/plain" },
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "klef-recovery-key.txt";
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Recovery key downloaded");
   }
 
   async function onSignOut() {
@@ -272,29 +248,7 @@ export function Onboarding() {
                 description="You'll only see this key once, and it's the only way back in if you forget your passphrase. Klef can't reset it for you."
               />
               <div className="mt-5 flex flex-col gap-4">
-                <pre className="bg-muted rounded-md border p-4 text-center font-mono text-sm tracking-wide break-all whitespace-pre-wrap">
-                  {recoveryKey}
-                </pre>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={copy}
-                  >
-                    <Copy />
-                    Copy
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={download}
-                  >
-                    <Download />
-                    Download
-                  </Button>
-                </div>
+                <RecoveryKeyPanel recoveryKey={recoveryKey} email={email} />
                 <label className="text-muted-foreground flex items-center gap-2 text-sm">
                   <Checkbox
                     checked={saved}

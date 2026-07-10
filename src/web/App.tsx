@@ -84,7 +84,7 @@ function VaultGate({
       // place instantly rather than flashing a brand moment.
       return <AppShellSkeleton />;
     case "needs-setup":
-      return <Onboarding />;
+      return <Onboarding email={email} />;
     case "locked":
       return <UnlockScreen />;
     case "unlocked":
