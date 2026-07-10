@@ -24,6 +24,7 @@ import { Button } from "./ui/button.tsx";
 import { Checkbox } from "./ui/checkbox.tsx";
 import { Field, FieldError, FieldGroup, FieldLabel } from "./ui/field.tsx";
 import { PasswordInput } from "./ui/password-input.tsx";
+import { KlefMark } from "./KlefMark.tsx";
 import { RecoveryKeyPanel } from "./RecoveryKeyPanel.tsx";
 import { StrengthMeter } from "./StrengthMeter.tsx";
 import { ThemeToggle } from "./ThemeToggle.tsx";
@@ -106,7 +107,7 @@ export function Onboarding({ email }: { email: string }) {
         <aside className="bg-muted/40 hidden w-56 shrink-0 flex-col gap-8 border-r p-6 sm:flex">
           <div className="flex items-center gap-2">
             <div className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-lg">
-              <KeyRound className="size-4" />
+              <KlefMark className="size-4" />
             </div>
             <span className="text-sm font-semibold tracking-tight">Klef</span>
           </div>
@@ -162,7 +163,7 @@ export function Onboarding({ email }: { email: string }) {
           <div className="mb-6 flex items-center justify-between sm:hidden">
             <div className="flex items-center gap-2">
               <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-                <KeyRound className="size-3.5" />
+                <KlefMark className="size-3.5" />
               </div>
               <span className="text-sm font-semibold tracking-tight">Klef</span>
             </div>

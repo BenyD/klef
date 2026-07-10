@@ -16,7 +16,6 @@ import {
   ChevronsUpDown,
   FolderPlus,
   Image as ImageIcon,
-  KeyRound,
   Lock,
   LogOut,
   Plus,
@@ -69,6 +68,7 @@ import { AppSidebar } from "./AppSidebar.tsx";
 import { Banner } from "./Banner.tsx";
 import { CommandPalette, PaletteShortcutKeys } from "./CommandPalette.tsx";
 import { FrameworkIcon } from "./FrameworkIcon.tsx";
+import { KlefMark } from "./KlefMark.tsx";
 import { ProjectIcon } from "./ProjectIcon.tsx";
 import { WorkspaceIcon } from "./WorkspaceIcon.tsx";
 import { ProjectsOverview } from "./ProjectsOverview.tsx";
@@ -580,7 +580,7 @@ export function VaultHome({
       defaultOpen={false}
       className="klef-screen **:data-[slot=sidebar-gap]:w-12! h-svh flex-col overflow-hidden"
     >
-      <Banner id="early-access" variant="warning">
+      <Banner id="early-access" variant="brand">
         <span className="font-medium">Klef is in early access.</span>
         <span className="text-muted-foreground">
           {" "}
@@ -647,7 +647,7 @@ export function VaultHome({
             selected && "max-sm:hidden",
           )}
         >
-          <KeyRound className="size-3.5" />
+          <KlefMark className="size-3.5" />
         </button>
 
         <Slash className={cn(selected && "max-sm:hidden")} />

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { KeyRound } from "lucide-react";
+import { KlefMark } from "./KlefMark.tsx";
 import { ThemeGlyph } from "./ThemeToggle.tsx";
 import { useThemeSwitch } from "../lib/use-theme-switch.ts";
 import "../styles/marketing.css";
@@ -13,7 +13,7 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
       <nav className="marketing-nav">
         <Link to="/" className="marketing-brand">
           <span className="marketing-brand-mark">
-            <KeyRound className="size-3.5" />
+            <KlefMark className="size-3.5" />
           </span>
           Klef
         </Link>

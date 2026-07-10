@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
-import { ArrowLeft, Fingerprint, KeyRound } from "lucide-react";
+import { ArrowLeft, Fingerprint } from "lucide-react";
+import { KlefMark } from "./KlefMark.tsx";
 import { z } from "zod";
 import {
   authClient,
@@ -141,7 +142,7 @@ export function AuthPage() {
       </div>
       <Link to="/" className="flex flex-col items-center gap-3">
         <div className="bg-primary text-primary-foreground flex size-11 items-center justify-center rounded-xl">
-          <KeyRound className="size-6" />
+          <KlefMark className="size-6" />
         </div>
         <span className="text-2xl font-semibold tracking-tight">Klef</span>
       </Link>
