@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#c2410c" />
-  <!-- Klef mark: the masked value. Six even spokes, radius 9.5, centered. -->
-  <g fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round">
+  <!-- Klef mark: the masked value. Same brand tile as favicon.svg. -->
+  <rect width="32" height="32" rx="7" fill="#fb923c" />
+  <g fill="none" stroke="#1c1917" stroke-width="3" stroke-linecap="round">
     <path d="M16 6.5v19" />
     <path d="M7.77 11.25 24.23 20.75" />
     <path d="M24.23 11.25 7.77 20.75" />

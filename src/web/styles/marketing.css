@@ -13,9 +13,10 @@
   --m-dim: #a3a3a3;
   --m-border: var(--border);
   --m-card: #fafafa; /* off-white card vs the app's flat white */
-  --m-primary-bg: var(--m-fg);
-  --m-primary-fg: var(--background);
-  --m-primary-hover: #2a2a2a;
+  /* Primary CTAs wear the ember accent, same fill in light and dark. */
+  --m-primary-bg: var(--primary);
+  --m-primary-fg: var(--primary-foreground);
+  --m-primary-hover: color-mix(in oklab, var(--primary) 88%, black);
   --m-hover: rgba(0, 0, 0, 0.05);
   --m-outline-hover: #d4d4d4;
   --m-add: #16a34a;
@@ -44,7 +45,7 @@
   --m-muted: #a1a1a1;
   --m-dim: #6b6b6b;
   --m-card: #101010;
-  --m-primary-hover: #e2e2e2;
+  --m-primary-hover: color-mix(in oklab, var(--primary) 88%, white);
   --m-hover: rgba(255, 255, 255, 0.06);
   --m-outline-hover: #3f3f3f;
   --m-add: #4ade80;
