@@ -20,7 +20,7 @@ import {
   type ProjectNode,
   type WorkspaceNode,
 } from "../../shared/api-types.ts";
-import { ENV_META, envMeta } from "../lib/env-meta.ts";
+import { useEnvMeta } from "../lib/env-meta.ts";
 import { ProjectIcon } from "./ProjectIcon.tsx";
 import type { SettingsTab } from "./SettingsDialog.tsx";
 import {
@@ -86,6 +86,7 @@ export function AppSidebar({
   onEditProject,
   onOpenSettings,
 }: AppSidebarProps) {
+  const envMeta = useEnvMeta();
   const { isMobile, setOpen, setOpenMobile } = useSidebar();
   // Short intent delay before the rail expands, so mousing across it on the
   // way to the content doesn't flare it open. Collapse stays immediate.
@@ -192,11 +193,11 @@ export function AppSidebar({
                               <span
                                 className={cn(
                                   "size-1.5 rounded-full",
-                                  ENV_META[env].dot,
+                                  envMeta(env).dot,
                                 )}
                                 aria-hidden="true"
                               />
-                              {ENV_META[env].label}
+                              {envMeta(env).label}
                               {file.environment === env && (
                                 <Check className="ml-auto size-4" />
                               )}
