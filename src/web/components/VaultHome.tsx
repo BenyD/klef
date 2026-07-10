@@ -542,7 +542,7 @@ export function VaultHome({
           <span className="font-medium">Save your recovery key.</span>
           <span className="text-muted-foreground">
             {" "}
-            If you forget your passphrase, it is the only way back in.{" "}
+            If you forget your passphrase, it's the only way back in.{" "}
           </span>
           <button
             type="button"
