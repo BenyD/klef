@@ -538,7 +538,7 @@ export function VaultHome({
       {/* No stored dismissal: the real dismiss is saving a key (rotation or
           the setup checkbox), which clears this across devices. */}
       {!recoveryConfirmed && (
-        <Banner variant="warning">
+        <Banner variant="info">
           <span className="font-medium">Save your recovery key.</span>
           <span className="text-muted-foreground">
             {" "}

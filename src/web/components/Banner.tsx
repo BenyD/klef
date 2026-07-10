@@ -20,7 +20,7 @@ const ICONS: Record<BannerVariant, typeof InfoIcon> = {
 /* Same accent scheme as the toasts (ui/sonner.tsx): the variant sets
    --banner-accent and every tinted piece derives from it. */
 const ACCENTS: Record<BannerVariant, string> = {
-  info: "[--banner-accent:var(--foreground)]",
+  info: "[--banner-accent:var(--info)]",
   success: "[--banner-accent:var(--success)]",
   warning: "[--banner-accent:var(--warning)]",
   error: "[--banner-accent:var(--destructive)]",
