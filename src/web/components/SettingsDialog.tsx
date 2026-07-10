@@ -393,7 +393,7 @@ function DeleteAccountSection({ email }: { email: string }) {
             <AlertDialogTitle>Delete your account?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently deletes your account, workspaces, projects, and
-              files. It cannot be undone.
+              files. It can't be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="grid gap-2">
@@ -997,7 +997,7 @@ function RecoverySection() {
       setNewKey(key);
       setPassphrase("");
     } catch {
-      toast.error("Incorrect passphrase.");
+      toast.error("That passphrase didn't work.");
     } finally {
       setBusy(false);
     }
@@ -1014,8 +1014,8 @@ function RecoverySection() {
     const blob = new Blob(
       [
         `Klef recovery key\n\n${newKey}\n\n`,
-        "Keep this somewhere safe and private. It is the ONLY way back into your\n",
-        "vault if you forget your passphrase. Klef cannot recover it for you.\n",
+        "Keep this somewhere safe and private. It's the only way back into your\n",
+        "vault if you forget your passphrase. Klef can't reset it for you.\n",
       ],
       { type: "text/plain" },
     );
