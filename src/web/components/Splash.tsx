@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { KeyRound } from "lucide-react";
+import { KlefMark } from "./KlefMark.tsx";
 
 const CHARSET = "ABCDEF0123456789#%&$<>/=*+-";
 const ENV_WORDS = [
@@ -38,7 +38,7 @@ export function Splash() {
     return (
       <div className="flex min-h-svh flex-col items-center justify-center gap-6">
         <div className="klef-splash-mark bg-primary text-primary-foreground flex size-12 items-center justify-center rounded-xl">
-          <KeyRound className="size-7" />
+          <KlefMark className="size-7" />
         </div>
         <span className="text-muted-foreground font-mono text-sm tracking-wordmark">
           KLEF
@@ -56,7 +56,7 @@ export function Splash() {
         aria-label="Loading"
       >
         <div className="klef-splash-mark bg-primary text-primary-foreground flex size-12 items-center justify-center rounded-xl">
-          <KeyRound className="size-7" />
+          <KlefMark className="size-7" />
         </div>
         <Scramble
           value="KLEF"
