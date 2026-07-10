@@ -102,10 +102,10 @@ export function CommandPalette({
       open={open}
       onOpenChange={onOpenChange}
       title="Command palette"
-      description="Search files, projects and actions"
+      description="Search files, projects, and actions"
     >
       <Command filter={paletteFilter} loop>
-        <CommandInput placeholder="Search files, projects, actions..." />
+        <CommandInput placeholder="Search files, projects, and actions..." />
         <CommandList>
           <CommandEmpty>No results.</CommandEmpty>
 

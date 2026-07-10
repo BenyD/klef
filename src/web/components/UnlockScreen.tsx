@@ -31,8 +31,8 @@ export function UnlockScreen() {
     } catch {
       setError(
         mode === "passphrase"
-          ? "Incorrect passphrase."
-          : "That recovery key didn’t work.",
+          ? "That passphrase didn't work."
+          : "That recovery key didn't work.",
       );
       setBusy(false);
     }
