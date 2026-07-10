@@ -5,7 +5,13 @@
 // the overview.
 import { createContext, useContext } from "react";
 
-export type VaultStatus = "loading" | "needs-setup" | "locked" | "unlocked";
+export type VaultStatus =
+  | "loading"
+  | "needs-setup"
+  | "locked"
+  | "unlocked"
+  /** The initial vault fetch failed (transient/server); retry, don't setup. */
+  | "error";
 
 export interface VaultContextValue {
   status: VaultStatus;
@@ -17,8 +23,6 @@ export interface VaultContextValue {
   finishSetup(): void;
   /** Unlock with the passphrase. Throws on a wrong passphrase. */
   unlock(passphrase: string): Promise<void>;
-  /** Unlock with the recovery key. Throws if it doesn't match. */
-  recover(recoveryKey: string): Promise<void>;
   /**
    * Recover with the key AND set a new passphrase in one step (the standard
    * forgot-passphrase path). Throws before unlocking if either part fails.
@@ -36,6 +40,8 @@ export interface VaultContextValue {
   rotateRecovery(passphrase: string): Promise<string>;
   /** Clear the DEK from memory without logging out. */
   lock(): void;
+  /** Re-run the initial vault fetch after a load error. */
+  retryLoad(): void;
   /** False when the user never confirmed saving a recovery key (nudge them). */
   recoveryConfirmed: boolean;
 }
