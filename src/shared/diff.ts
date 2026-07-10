@@ -19,9 +19,13 @@ export interface DiffStats {
 }
 
 function splitLines(text: string): string[] {
-  if (text === "") return [];
   // Normalize CRLF so a platform difference alone doesn't read as a change.
-  return text.replace(/\r\n/g, "\n").split("\n");
+  const normalized = text.replace(/\r\n/g, "\n");
+  if (normalized === "") return [];
+  // Git-style: a trailing newline terminates the last line rather than
+  // opening a phantom empty one, so "A\nB\n" is two lines, not three.
+  const body = normalized.endsWith("\n") ? normalized.slice(0, -1) : normalized;
+  return body.split("\n");
 }
 
 /**
@@ -76,6 +80,25 @@ export function diffStats(ops: DiffOp[]): DiffStats {
     else if (op.type === "remove") removed++;
   }
   return { added, removed };
+}
+
+/**
+ * Note for a final-newline state the line ops can't express, git's
+ * "\ No newline at end of file". Without it, "A\n" -> "A" would review as
+ * +0 -0 with Save enabled and nothing visibly different. Null when there is
+ * nothing to say.
+ */
+export function finalNewlineNote(
+  oldText: string,
+  newText: string,
+): string | null {
+  if (newText !== "" && !newText.endsWith("\n")) {
+    return "No newline at end of file";
+  }
+  if (newText !== "" && oldText !== "" && !oldText.endsWith("\n")) {
+    return "Newline added at end of file";
+  }
+  return null;
 }
 
 /** True when the two texts are identical (after CRLF normalization). */

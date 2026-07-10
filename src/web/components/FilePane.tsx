@@ -17,7 +17,12 @@ import {
 import { toast } from "sonner";
 import { cn } from "../lib/utils.ts";
 import { decryptBlob, encryptBlob } from "../../shared/crypto.ts";
-import { diffLines, diffStats, isUnchanged } from "../../shared/diff.ts";
+import {
+  diffLines,
+  diffStats,
+  finalNewlineNote,
+  isUnchanged,
+} from "../../shared/diff.ts";
 import {
   getCurrentVersion,
   getVersion,
@@ -142,6 +147,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
 
   const ops = useMemo(() => diffLines(stored, draft), [stored, draft]);
   const stats = useMemo(() => diffStats(ops), [ops]);
+  const newlineNote = finalNewlineNote(stored, draft);
   const changed = !isUnchanged(stored, draft);
 
   useEffect(() => {
@@ -438,12 +444,15 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
 
   const compareBody = compareOps && compareStats && (
     <>
-      {compareStats.added + compareStats.removed === 0 && (
+      {compare && isUnchanged(compare.text, stored) && (
         <p className="text-muted-foreground border-b px-3 py-2 text-xs">
           Same content as the current version.
         </p>
       )}
-      <DiffList ops={compareOps} />
+      <DiffList
+        ops={compareOps}
+        note={compare ? finalNewlineNote(compare.text, stored) : null}
+      />
     </>
   );
 
@@ -660,7 +669,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
                   )}
                 >
                   {activePanel === "review" ? (
-                    <DiffList ops={ops} />
+                    <DiffList ops={ops} note={newlineNote} />
                   ) : compare ? (
                     compareBody
                   ) : (
@@ -701,7 +710,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
               </SheetHeader>
               <div className="flex-1 overflow-y-auto px-4">
                 <div className="rounded-md border">
-                  <DiffList ops={ops} />
+                  <DiffList ops={ops} note={newlineNote} />
                 </div>
               </div>
               <SheetFooter className="flex-row justify-end gap-2">
@@ -751,7 +760,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-72 overflow-y-auto rounded-md border">
-            <DiffList ops={ops} />
+            <DiffList ops={ops} note={newlineNote} />
           </div>
           <DialogFooter className="items-center gap-3 sm:justify-between">
             <div className="flex items-center gap-2">
@@ -830,7 +839,14 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
 
 // Diff lines are file content, so they render at the editor's size; the two
 // often sit side by side and a size mismatch reads as sloppy.
-function DiffList({ ops }: { ops: ReturnType<typeof diffLines> }) {
+function DiffList({
+  ops,
+  note,
+}: {
+  ops: ReturnType<typeof diffLines>;
+  /** Final-newline note (git's "\ No newline at end of file"), if any. */
+  note?: string | null;
+}) {
   return (
     <div className="font-mono text-sm leading-relaxed">
       {ops.map((op, i) => (
@@ -852,6 +868,14 @@ function DiffList({ ops }: { ops: ReturnType<typeof diffLines> }) {
           <span className="break-all whitespace-pre-wrap">{op.text || " "}</span>
         </div>
       ))}
+      {note && (
+        <div className="text-muted-foreground flex gap-2 px-3">
+          <span className="w-3 shrink-0 text-center opacity-60 select-none">
+            \
+          </span>
+          <span className="italic">{note}</span>
+        </div>
+      )}
     </div>
   );
 }
