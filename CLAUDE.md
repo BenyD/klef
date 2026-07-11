@@ -5,11 +5,16 @@
 - **main is PR-only.** A ruleset ("protect-main") blocks direct pushes, force
   pushes, and deletion - for everyone, including the owner. Never try to push
   to main; push a branch and open a PR (`gh pr create`).
-- **Merges require the "Typecheck, test, build" CI check to pass** (from
-  `.github/workflows/ci.yml`: `pnpm typecheck` + `pnpm test` + `pnpm build`).
-  Zero approvals required (solo repo; bump when a second collaborator lands).
-- **DCO**: PR commits should be signed off (`git commit -s`); the DCO check is
-  visible on PRs but not merge-blocking today.
+- **Merges require the "Typecheck, test, build" and "Check sign-off" checks
+  to pass** (from `.github/workflows/ci.yml`: `pnpm typecheck` + `pnpm test`
+  + `pnpm build`, plus DCO sign-off). Zero approvals required (solo repo;
+  bump when a second collaborator lands). Auto-merge is enabled if you want
+  a PR to merge itself when checks pass.
+- **DCO is merge-blocking**: always sign off commits (`git commit -s`); web
+  UI commits are signed off automatically.
+- GitHub Actions are restricted to GitHub-owned and verified-creator actions
+  (plus `pnpm/action-setup`); a new third-party action in a workflow needs
+  allow-listing in repo settings first.
 - Dependabot: vulnerability alerts on, auto-PRs deliberately off.
 
 ## Commands
