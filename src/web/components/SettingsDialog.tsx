@@ -438,7 +438,9 @@ function DeleteAccountSection({ email }: { email: string }) {
 // layout should say so.
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+    // Negative margin pulls the first section up against its label; the
+    // panel's gap-6 otherwise leaves the eyebrow floating between groups.
+    <p className="text-muted-foreground -mb-4 text-xs font-medium tracking-wide uppercase">
       {children}
     </p>
   );
