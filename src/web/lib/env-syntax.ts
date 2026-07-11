@@ -4,14 +4,35 @@
 // as plain continuation lines by design).
 
 export interface EnvToken {
-  type: "comment" | "export" | "key" | "eq" | "value" | "string" | "text";
+  type:
+    | "comment"
+    | "export"
+    | "key"
+    | "eq"
+    | "value"
+    | "string"
+    | "trailing-space"
+    | "text";
   text: string;
 }
 
 const COMMENT_RE = /^(\s*)(#.*)$/;
 const ENTRY_RE = /^(\s*)(export\s+)?([A-Za-z_][A-Za-z0-9_.-]*)(\s*=\s*)(.*)$/;
+const TRAILING_WS_RE = /[ \t]+$/;
 
+// Whitespace at the end of a line is invisible but real: parsers disagree on
+// whether `KEY=value ` keeps the space, so it gets its own token for the
+// editor to make visible. Peeled off before the grammar so the other tokens
+// stay clean; Klef never trims it from the stored text.
 export function tokenizeEnvLine(line: string): EnvToken[] {
+  const ws = TRAILING_WS_RE.exec(line);
+  if (!ws) return tokenizeBody(line);
+  const tokens = tokenizeBody(line.slice(0, ws.index));
+  tokens.push({ type: "trailing-space", text: ws[0] });
+  return tokens;
+}
+
+function tokenizeBody(line: string): EnvToken[] {
   const comment = COMMENT_RE.exec(line);
   if (comment) {
     const tokens: EnvToken[] = [];
