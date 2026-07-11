@@ -158,17 +158,17 @@ export function SettingsDialog({
           </TabsContent>
 
           <TabsContent value="security" className={panelClass}>
+            <GroupLabel>Signing in</GroupLabel>
             <PasswordSection />
             <Separator />
             <PasskeysSection />
-            <Separator />
+            <GroupLabel>Vault</GroupLabel>
+            <PassphraseSection />
             <PasskeyUnlockSection />
             <Separator />
-            <SecuritySection />
-            <Separator />
-            <PassphraseSection />
-            <Separator />
             <RecoverySection email={email} />
+            <Separator />
+            <SecuritySection />
           </TabsContent>
 
           <TabsContent value="workspace" className={panelClass}>
@@ -433,11 +433,30 @@ function DeleteAccountSection({ email }: { email: string }) {
   );
 }
 
+// Visual grouping for the security tab: sign-in credentials vs vault keys.
+// The two worlds are deliberately separate (auth is not unlock), and the tab
+// layout should say so.
+function GroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+      {children}
+    </p>
+  );
+}
+
 function PasswordSection() {
+  const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
+
+  function close() {
+    setOpen(false);
+    setCurrent("");
+    setNext("");
+    setConfirm("");
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -460,55 +479,74 @@ function PasswordSection() {
       toast.error(res.error.message ?? "Couldn't change password");
     } else {
       toast.success("Password changed");
-      setCurrent("");
-      setNext("");
-      setConfirm("");
+      close();
     }
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-medium">Change password</h3>
+        <h3 className="text-sm font-medium">Account password</h3>
         <p className="text-muted-foreground text-sm">
-          Not your master passphrase. Changing it signs you out everywhere
-          else.
+          Signs you in. Changing it signs you out everywhere else.
         </p>
       </div>
-      <div className="grid gap-2">
-        <Label htmlFor="settings-current">Current password</Label>
-        <PasswordInput
-          id="settings-current"
-          autoComplete="current-password"
-          value={current}
-          onChange={(e) => setCurrent(e.target.value)}
-        />
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="settings-new">New password</Label>
-        <PasswordInput
-          id="settings-new"
-          autoComplete="new-password"
-          value={next}
-          onChange={(e) => setNext(e.target.value)}
-        />
-        <StrengthMeter value={next} />
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="settings-confirm">Confirm new password</Label>
-        <PasswordInput
-          id="settings-confirm"
-          autoComplete="new-password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-        />
-      </div>
-      <div>
-        <Button type="submit" disabled={busy || !current || !next || !confirm}>
-          {busy ? "Changing..." : "Change password"}
-        </Button>
-      </div>
-    </form>
+      {open ? (
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="settings-current">Current password</Label>
+            <PasswordInput
+              id="settings-current"
+              autoComplete="current-password"
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="settings-new">New password</Label>
+            <PasswordInput
+              id="settings-new"
+              autoComplete="new-password"
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+            />
+            <StrengthMeter value={next} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="settings-confirm">Confirm new password</Label>
+            <PasswordInput
+              id="settings-confirm"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              disabled={busy || !current || !next || !confirm}
+            >
+              {busy ? "Changing..." : "Change password"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={close}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <div>
+          <Button variant="outline" onClick={() => setOpen(true)}>
+            Change password
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -922,8 +960,14 @@ function PasskeyUnlockSection() {
     }
   }
 
+  // Meaningless without a passkey; the section appears once one exists
+  // (brings its own separator so the layout stays clean when absent).
+  if (list.length === 0) return null;
+
   return (
-    <div className="flex flex-col gap-4">
+    <>
+      <Separator />
+      <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h3 className="text-sm font-medium">Passkey unlock</h3>
         <p className="text-muted-foreground text-sm">
@@ -931,13 +975,8 @@ function PasskeyUnlockSection() {
           Your passphrase and recovery key keep working.
         </p>
       </div>
-      {list.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          Add a passkey above first.
-        </p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {list.map((pk) => (
+      <ul className="flex flex-col gap-2">
+        {list.map((pk) => (
             <li key={pk.id} className="flex items-center gap-3 text-sm">
               <Fingerprint className="text-muted-foreground size-4 shrink-0" />
               <span className="min-w-0 flex-1 truncate">
@@ -972,8 +1011,7 @@ function PasskeyUnlockSection() {
               )}
             </li>
           ))}
-        </ul>
-      )}
+      </ul>
       {enablingId !== null && (
         <form onSubmit={enable} className="flex flex-col gap-3">
           <div className="grid gap-2">
@@ -1009,7 +1047,8 @@ function PasskeyUnlockSection() {
           </div>
         </form>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -1138,17 +1177,22 @@ function SecuritySection() {
   );
 }
 
-// Rotate the recovery key for users who lost theirs (e.g. skipped saving it
-// during onboarding). Requires the master passphrase; the new key is shown
-// once and the old one stops working.
 // Change the master passphrase (the unlock gate, not the account password).
 // Only the DEK wrapping is redone; blobs and the recovery key are untouched.
 function PassphraseSection() {
   const { changePassphrase } = useVault();
+  const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
+
+  function close() {
+    setOpen(false);
+    setCurrent("");
+    setNext("");
+    setConfirm("");
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -1163,10 +1207,8 @@ function PassphraseSection() {
     setBusy(true);
     try {
       await changePassphrase(current, next);
-      setCurrent("");
-      setNext("");
-      setConfirm("");
       toast.success("Passphrase changed");
+      close();
     } catch {
       toast.error("That passphrase didn't work.");
     } finally {
@@ -1175,50 +1217,74 @@ function PassphraseSection() {
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h3 className="text-sm font-medium">Master passphrase</h3>
         <p className="text-muted-foreground text-sm">
-          Changes what unlocks your vault everywhere. Your recovery key keeps
-          working.
+          Unlocks your vault. Changing it re-keys every device; your recovery
+          key keeps working.
         </p>
       </div>
-      <div className="grid gap-2">
-        <Label htmlFor="settings-passphrase-current">Current passphrase</Label>
-        <PasswordInput
-          id="settings-passphrase-current"
-          autoComplete="current-password"
-          value={current}
-          onChange={(e) => setCurrent(e.target.value)}
-        />
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="settings-passphrase-new">New passphrase</Label>
-        <PasswordInput
-          id="settings-passphrase-new"
-          autoComplete="new-password"
-          value={next}
-          onChange={(e) => setNext(e.target.value)}
-        />
-        <StrengthMeter value={next} />
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="settings-passphrase-confirm">
-          Confirm new passphrase
-        </Label>
-        <PasswordInput
-          id="settings-passphrase-confirm"
-          autoComplete="new-password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-        />
-      </div>
-      <div>
-        <Button type="submit" disabled={busy || !current || !next || !confirm}>
-          {busy ? "Changing..." : "Change passphrase"}
-        </Button>
-      </div>
-    </form>
+      {open ? (
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="settings-passphrase-current">
+              Current passphrase
+            </Label>
+            <PasswordInput
+              id="settings-passphrase-current"
+              autoComplete="current-password"
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="settings-passphrase-new">New passphrase</Label>
+            <PasswordInput
+              id="settings-passphrase-new"
+              autoComplete="new-password"
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+            />
+            <StrengthMeter value={next} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="settings-passphrase-confirm">
+              Confirm new passphrase
+            </Label>
+            <PasswordInput
+              id="settings-passphrase-confirm"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              disabled={busy || !current || !next || !confirm}
+            >
+              {busy ? "Changing..." : "Change passphrase"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={close}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <div>
+          <Button variant="outline" onClick={() => setOpen(true)}>
+            Change passphrase
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 
