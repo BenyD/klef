@@ -12,5 +12,6 @@ export const auth = betterAuth(
     secret: "schema-generation-only-not-a-real-secret",
     baseURL: "http://localhost:5173",
     google: { clientId: "schema-gen", clientSecret: "schema-gen" },
+    github: { clientId: "schema-gen", clientSecret: "schema-gen" },
   }),
 );

@@ -13,7 +13,8 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
-import { authClient, isPasskeyCancel } from "../auth.ts";
+import { authClient } from "../auth.ts";
+import { isPasskeyCancel } from "../lib/passkey-cancel.ts";
 import { AvatarCropDialog } from "./AvatarCropDialog.tsx";
 import { WorkspaceIcon } from "./WorkspaceIcon.tsx";
 import {
@@ -104,8 +105,9 @@ interface SettingsDialogProps {
 }
 
 // Profile = the person (avatar, display name). Security = secrets and locking
-// (password, auto-lock, recovery key). Workspace = the data, including its
-// destructive actions — those live only here, not in the sidebar switcher.
+// (passkeys, passphrase, auto-lock, recovery key). Workspace = the data,
+// including its destructive actions — those live only here, not in the
+// sidebar switcher.
 export function SettingsDialog({
   open,
   onOpenChange,
@@ -159,8 +161,6 @@ export function SettingsDialog({
 
           <TabsContent value="security" className={panelClass}>
             <GroupLabel>Signing in</GroupLabel>
-            <PasswordSection />
-            <Separator />
             <PasskeysSection />
             <GroupLabel>Vault</GroupLabel>
             <PassphraseSection />
@@ -443,112 +443,6 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
     <p className="text-muted-foreground -mb-4 text-xs font-medium tracking-wide uppercase">
       {children}
     </p>
-  );
-}
-
-function PasswordSection() {
-  const [open, setOpen] = useState(false);
-  const [current, setCurrent] = useState("");
-  const [next, setNext] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  function close() {
-    setOpen(false);
-    setCurrent("");
-    setNext("");
-    setConfirm("");
-  }
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    if (next.length < 8) {
-      toast.error("Use at least 8 characters");
-      return;
-    }
-    if (next !== confirm) {
-      toast.error("New passwords don't match");
-      return;
-    }
-    setBusy(true);
-    const res = await authClient.changePassword({
-      currentPassword: current,
-      newPassword: next,
-      revokeOtherSessions: true,
-    });
-    setBusy(false);
-    if (res.error) {
-      toast.error(res.error.message ?? "Couldn't change password");
-    } else {
-      toast.success("Password changed");
-      close();
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-medium">Account password</h3>
-        <p className="text-muted-foreground text-sm">
-          Signs you in. Changing it signs you out everywhere else.
-        </p>
-      </div>
-      {open ? (
-        <form onSubmit={submit} className="flex flex-col gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="settings-current">Current password</Label>
-            <PasswordInput
-              id="settings-current"
-              autoComplete="current-password"
-              value={current}
-              onChange={(e) => setCurrent(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="settings-new">New password</Label>
-            <PasswordInput
-              id="settings-new"
-              autoComplete="new-password"
-              value={next}
-              onChange={(e) => setNext(e.target.value)}
-            />
-            <StrengthMeter value={next} />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="settings-confirm">Confirm new password</Label>
-            <PasswordInput
-              id="settings-confirm"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
-              type="submit"
-              disabled={busy || !current || !next || !confirm}
-            >
-              {busy ? "Changing..." : "Change password"}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={busy}
-              onClick={close}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <div>
-          <Button variant="outline" onClick={() => setOpen(true)}>
-            Change password
-          </Button>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -1182,7 +1076,7 @@ function SecuritySection() {
 // Change the master passphrase (the unlock gate, not the account password).
 // Only the DEK wrapping is redone; blobs and the recovery key are untouched.
 function PassphraseSection() {
-  const { changePassphrase } = useVault();
+  const { changePassphrase, lock } = useVault();
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -1240,6 +1134,19 @@ function PassphraseSection() {
               onChange={(e) => setCurrent(e.target.value)}
               autoFocus
             />
+            {/* The recovery reset lives on the unlock screen; locking is how
+                you get there while signed in. */}
+            <p className="text-muted-foreground text-sm">
+              Forgot it?{" "}
+              <button
+                type="button"
+                onClick={lock}
+                className="text-foreground underline underline-offset-2"
+              >
+                Lock your vault
+              </button>{" "}
+              and reset it with your recovery key.
+            </p>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="settings-passphrase-new">New passphrase</Label>
