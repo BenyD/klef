@@ -6,8 +6,7 @@ import { RecoveryKeyPanel } from "./RecoveryKeyPanel.tsx";
 const KEY = "KLEF-ABCDE-FGHIJ-KLMNO";
 const EMAIL = "beny@example.com";
 
-// happy-dom provides neither the Credential Management API nor a writable
-// clipboard; both are stubbed per test.
+// happy-dom has no writable clipboard; it's stubbed per test.
 beforeEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -35,36 +34,4 @@ describe("RecoveryKeyPanel", () => {
     expect(writeText).toHaveBeenCalledWith(KEY);
   });
 
-  it("hides the password-manager button when the API is unavailable", () => {
-    render(<RecoveryKeyPanel recoveryKey={KEY} email={EMAIL} />);
-    expect(
-      screen.queryByRole("button", { name: /password manager/i }),
-    ).toBeNull();
-  });
-
-  it("stores a credential via the Credential Management API", async () => {
-    class FakePasswordCredential {
-      id: string;
-      name: string;
-      password: string;
-      constructor(init: { id: string; name: string; password: string }) {
-        this.id = init.id;
-        this.name = init.name;
-        this.password = init.password;
-      }
-    }
-    const store = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal("PasswordCredential", FakePasswordCredential);
-    // window is the global in happy-dom, so stubbing the global also makes
-    // the `"PasswordCredential" in window` feature check pass.
-    vi.stubGlobal("navigator", { ...navigator, credentials: { store } });
-
-    render(<RecoveryKeyPanel recoveryKey={KEY} email={EMAIL} />);
-    fireEvent.click(screen.getByRole("button", { name: /password manager/i }));
-
-    expect(store).toHaveBeenCalledTimes(1);
-    const credential = store.mock.calls[0]![0] as FakePasswordCredential;
-    expect(credential.id).toBe(EMAIL);
-    expect(credential.password).toBe(KEY);
-  });
 });
