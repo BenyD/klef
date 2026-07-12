@@ -1,16 +1,23 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { ArrowLeft, Fingerprint } from "lucide-react";
+import { ArrowLeft, CircleAlert, Fingerprint } from "lucide-react";
 import { KlefMark } from "./KlefMark.tsx";
 import {
-  isPasskeyCancel,
   signInWithGitHub,
   signInWithGoogle,
   signInWithPasskey,
 } from "../auth.ts";
+import { isPasskeyCancel } from "../lib/passkey-cancel.ts";
 import { useReturnPath } from "../lib/return-path.ts";
 import { Button, buttonVariants } from "./ui/button.tsx";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card.tsx";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "./ui/card.tsx";
 import { ThemeToggle } from "./ThemeToggle.tsx";
 
 export function AuthPage() {
@@ -18,27 +25,27 @@ export function AuthPage() {
   // Where to land after auth: the workspace URL that bounced here, or /app.
   const returnPath = useReturnPath() ?? "/app";
   const [busy, setBusy] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // OAuth: the provider redirects away on success, so only failures return.
   async function onOAuth(start: (callbackURL: string) => Promise<unknown>) {
     setBusy(true);
-    setFormError(null);
+    setError(null);
     try {
       await start(returnPath);
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      setError(e instanceof Error ? e.message : String(e));
       setBusy(false);
     }
   }
 
   async function onPasskeySignIn() {
     setBusy(true);
-    setFormError(null);
+    setError(null);
     const res = await signInWithPasskey();
     if (res?.error) {
       if (!isPasskeyCancel(res.error)) {
-        setFormError(res.error.message ?? "Couldn't sign in with a passkey");
+        setError(res.error.message ?? "Couldn't sign in with a passkey");
       }
       setBusy(false);
       return;
@@ -67,28 +74,47 @@ export function AuthPage() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl font-semibold tracking-tight">
-            Sign in
+            Welcome to Klef
           </CardTitle>
+          <CardDescription>Sign in or create your account.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => void onOAuth(signInWithGoogle)}
-            disabled={busy}
-          >
-            <GoogleMark />
-            Continue with Google
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => void onOAuth(signInWithGitHub)}
-            disabled={busy}
-          >
-            <GitHubMark />
-            Continue with GitHub
-          </Button>
+          {error && (
+            <div
+              role="alert"
+              className="border-destructive/30 bg-destructive/10 text-destructive flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm"
+            >
+              <CircleAlert className="mt-0.5 size-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => void onOAuth(signInWithGoogle)}
+              disabled={busy}
+            >
+              <GoogleMark />
+              Continue with Google
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => void onOAuth(signInWithGitHub)}
+              disabled={busy}
+            >
+              <GitHubMark />
+              Continue with GitHub
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="bg-border h-px flex-1" />
+            <span className="text-muted-foreground text-sm">or</span>
+            <span className="bg-border h-px flex-1" />
+          </div>
+
           <Button
             variant="outline"
             className="w-full"
@@ -98,11 +124,26 @@ export function AuthPage() {
             <Fingerprint />
             Sign in with a passkey
           </Button>
-          {formError && <p className="text-destructive text-sm">{formError}</p>}
-          <p className="text-muted-foreground text-center text-sm">
-            No account yet? Signing in with Google or GitHub creates one.
-          </p>
         </CardContent>
+        <CardFooter>
+          <p className="text-muted-foreground w-full text-center text-xs leading-relaxed">
+            By continuing, you agree to Klef's{" "}
+            <Link
+              to="/terms"
+              className="hover:text-foreground underline underline-offset-2"
+            >
+              Terms
+            </Link>{" "}
+            and{" "}
+            <Link
+              to="/privacy"
+              className="hover:text-foreground underline underline-offset-2"
+            >
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        </CardFooter>
       </Card>
     </div>
   );

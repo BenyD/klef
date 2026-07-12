@@ -17,14 +17,6 @@ export function signInWithGitHub(callbackURL = "/app") {
   return signIn.social({ provider: "github", callbackURL });
 }
 
-// The user closing the WebAuthn prompt is a no-op, not an error to surface.
-const PASSKEY_CANCEL_CODES = new Set(["ERROR_CEREMONY_ABORTED", "AUTH_CANCELLED"]);
-export function isPasskeyCancel(
-  error: { code?: string; message?: string } | null | undefined,
-) {
-  return !!error?.code && PASSKEY_CANCEL_CODES.has(error.code);
-}
-
 export function signInWithPasskey() {
   return signIn.passkey();
 }
