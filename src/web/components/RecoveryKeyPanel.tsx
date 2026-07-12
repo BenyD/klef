@@ -1,4 +1,4 @@
-import { Copy, Download, Save } from "lucide-react";
+import { Copy, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui/button.tsx";
 import { PasswordInput } from "./ui/password-input.tsx";
@@ -6,10 +6,8 @@ import { PasswordInput } from "./ui/password-input.tsx";
 /**
  * A freshly generated recovery key with every way to save it. The field
  * carries real credential semantics (form + username + new-password), so
- * extension password managers like 1Password and Bitwarden attach their own
- * save UI to it. The explicit button uses the Credential Management API,
- * which Chromium browsers support; elsewhere it stays hidden and Copy or
- * Download cover the manual route.
+ * password managers attach their own save UI to it; Copy and Download
+ * cover the manual route.
  */
 export function RecoveryKeyPanel({
   recoveryKey,
@@ -18,10 +16,6 @@ export function RecoveryKeyPanel({
   recoveryKey: string;
   email: string;
 }) {
-  const canStoreCredential =
-    "PasswordCredential" in window &&
-    typeof navigator.credentials?.store === "function";
-
   function copy() {
     void navigator.clipboard?.writeText(recoveryKey);
     toast.success("Recovery key copied");
@@ -43,20 +37,6 @@ export function RecoveryKeyPanel({
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Recovery key downloaded");
-  }
-
-  async function saveToManager() {
-    try {
-      const credential = new PasswordCredential({
-        id: email,
-        name: "Klef recovery key",
-        password: recoveryKey,
-      });
-      // The browser's own prompt takes it from here; no toast on success.
-      await navigator.credentials.store(credential);
-    } catch {
-      toast.error("Couldn't save to the password manager.");
-    }
   }
 
   return (
@@ -104,18 +84,6 @@ export function RecoveryKeyPanel({
           <Download />
           Download
         </Button>
-        {canStoreCredential && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={() => void saveToManager()}
-          >
-            <Save />
-            Save to password manager
-          </Button>
-        )}
       </div>
     </div>
   );

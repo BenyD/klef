@@ -33,4 +33,29 @@ describe("auth", () => {
     expect(typeof body.url).toBe("string");
     expect(body.url).toContain("accounts.google.com");
   });
+
+  it("exposes GitHub as a configured social sign-in", async () => {
+    const res = await SELF.fetch("https://klef.test/api/auth/sign-in/social", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ provider: "github", callbackURL: "/" }),
+    });
+    expect(res.status).toBeLessThan(500);
+    const body = (await res.json()) as { url?: string; redirect?: boolean };
+    expect(typeof body.url).toBe("string");
+    expect(body.url).toContain("github.com");
+  });
+
+  it("rejects email/password sign-up (login is OAuth or passkey only)", async () => {
+    const res = await SELF.fetch("https://klef.test/api/auth/sign-up/email", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: "Ada",
+        email: "ada@example.com",
+        password: "correct-horse-battery",
+      }),
+    });
+    expect(res.status).toBeGreaterThanOrEqual(400);
+  });
 });

@@ -1,11 +1,6 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth";
-import { APIError, getSessionFromCtx } from "better-auth/api";
-import { setSessionCookie } from "better-auth/cookies";
 import { passkey } from "@better-auth/passkey";
-import {
-  defaultPasskeyName,
-  parsePasskeySignupContext,
-} from "./passkey-signup.ts";
+import { defaultPasskeyName } from "./passkey-name.ts";
 
 /**
  * Inputs that differ between the runtime (Cloudflare D1) and offline schema
@@ -18,6 +13,7 @@ export interface AuthDeps {
   /** Full origin, e.g. http://localhost:5173 — used for baseURL + passkey RP. */
   baseURL: string;
   google: { clientId: string; clientSecret: string };
+  github: { clientId: string; clientSecret: string };
 }
 
 export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
@@ -27,10 +23,9 @@ export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
     database: deps.database,
     secret: deps.secret,
     baseURL: deps.baseURL,
-    // Login methods (the auth gate, separate from the crypto unlock gate). The
-    // login password is NOT the vault passphrase; the master passphrase still
-    // decrypts data and never touches the server.
-    emailAndPassword: { enabled: true },
+    // Login methods (the auth gate, separate from the crypto unlock gate):
+    // Google/GitHub OAuth to sign up or sign in, passkeys to sign in. The
+    // master passphrase still decrypts data and never touches the server.
     // Account deletion needs a fresh session. Every app table (vault,
     // workspaces, and Better Auth's own) cascades from user(id), so the one
     // DELETE wipes all of the account's data.
@@ -40,18 +35,19 @@ export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
         clientId: deps.google.clientId,
         clientSecret: deps.google.clientSecret,
       },
+      github: {
+        clientId: deps.github.clientId,
+        clientSecret: deps.github.clientSecret,
+      },
     },
     plugins: [
       passkey({
         rpID: url.hostname,
         rpName: "Klef",
         origin: url.origin,
-        // Passkey-first sign-up: with no session, the client sends its form
-        // fields as the WebAuthn `context`. No user row is created until the
-        // credential actually verifies; signed-in users adding a passkey from
-        // settings still resolve through their session and never hit these.
+        // Registration is session-only: passkeys are added from settings by a
+        // signed-in user. Sign-up happens with Google or email/password first.
         registration: {
-          requireSession: false,
           // Ask authenticators to enable PRF on new credentials so they can
           // later be enrolled for vault unlock (see lib/passkey-prf.ts). The
           // secret itself is only ever derived client-side. hmacCreateSecret
@@ -61,28 +57,7 @@ export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
             hmacCreateSecret: true,
             ...({ prf: {} } as object),
           },
-          resolveUser: async ({ ctx, context }) => {
-            const signup = parsePasskeySignupContext(context);
-            if (!signup) {
-              throw new APIError("BAD_REQUEST", {
-                message: "Enter your name and email to sign up with a passkey.",
-              });
-            }
-            if (await ctx.context.internalAdapter.findUserByEmail(signup.email)) {
-              throw new APIError("BAD_REQUEST", {
-                message:
-                  "An account with this email already exists. Sign in instead.",
-              });
-            }
-            // Provisional identity for the WebAuthn ceremony only; the real
-            // user row is created in afterVerification.
-            return {
-              id: `signup:${signup.email}`,
-              name: signup.email,
-              displayName: signup.name,
-            };
-          },
-          afterVerification: async ({ ctx, verification, context }) => {
+          afterVerification: async ({ verification }) => {
             // Stored label for the new credential ("iCloud Keychain · Jul
             // 2026"). A client-supplied name would take precedence, but Klef
             // never sends one; unknown AAGUIDs stay unnamed and the UI falls
@@ -90,27 +65,7 @@ export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
             const name = defaultPasskeyName(
               verification.registrationInfo?.aaguid,
             );
-            const signup = parsePasskeySignupContext(context);
-            // A signed-in user adding a passkey from settings: just the label.
-            if (!signup || (await getSessionFromCtx(ctx))) {
-              return name ? { name } : undefined;
-            }
-            if (await ctx.context.internalAdapter.findUserByEmail(signup.email)) {
-              throw new APIError("BAD_REQUEST", {
-                message:
-                  "An account with this email already exists. Sign in instead.",
-              });
-            }
-            const user = await ctx.context.internalAdapter.createUser({
-              name: signup.name,
-              email: signup.email,
-              emailVerified: false,
-            });
-            const session = await ctx.context.internalAdapter.createSession(
-              user.id,
-            );
-            await setSessionCookie(ctx, { session, user });
-            return { userId: user.id, ...(name ? { name } : {}) };
+            return name ? { name } : undefined;
           },
         },
       }),
@@ -128,6 +83,10 @@ export function createAuth(env: Env) {
       google: {
         clientId: env.GOOGLE_CLIENT_ID,
         clientSecret: env.GOOGLE_CLIENT_SECRET,
+      },
+      github: {
+        clientId: env.GITHUB_CLIENT_ID,
+        clientSecret: env.GITHUB_CLIENT_SECRET,
       },
     }),
   );

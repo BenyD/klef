@@ -32,11 +32,9 @@ export function AuthShell({ children }: { children: ReactNode }) {
         </Button>
       </div>
 
-      <div className="flex flex-col items-center gap-3">
-        <div className="bg-primary text-primary-foreground flex size-11 items-center justify-center rounded-xl">
-          <KlefMark className="size-6" />
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight">Klef</h1>
+      <div className="bg-primary text-primary-foreground flex size-11 items-center justify-center rounded-xl">
+        <KlefMark className="size-6" />
+        <h1 className="sr-only">Klef</h1>
       </div>
 
       {children}
