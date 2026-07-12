@@ -13,7 +13,8 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
-import { authClient, isPasskeyCancel } from "../auth.ts";
+import { authClient } from "../auth.ts";
+import { isPasskeyCancel } from "../lib/passkey-cancel.ts";
 import { AvatarCropDialog } from "./AvatarCropDialog.tsx";
 import { WorkspaceIcon } from "./WorkspaceIcon.tsx";
 import {
