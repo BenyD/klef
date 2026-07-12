@@ -11,7 +11,7 @@ jobs:
   auto-merge:
     name: Arm auto-merge
     # Only Dependabot's own PRs, and only in this repo (not forks).
-    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'BenyD/klef'
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'BenyD/Klef'
     runs-on: ubuntu-latest
     steps:
       - name: Fetch Dependabot metadata
