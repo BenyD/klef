@@ -15,7 +15,10 @@
 - GitHub Actions are restricted to GitHub-owned and verified-creator actions
   (plus `pnpm/action-setup`); a new third-party action in a workflow needs
   allow-listing in repo settings first.
-- Dependabot: vulnerability alerts on, auto-PRs deliberately off.
+- Dependabot: weekly grouped version PRs (`.github/dependabot.yml`) with a
+  7-day cooldown against fresh releases. Patch/minor PRs arm their own
+  auto-merge (`.github/workflows/dependabot-auto-merge.yml`); majors wait
+  for human review. Vulnerability alerts and security-update PRs are on.
 
 ## Commands
 
