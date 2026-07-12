@@ -3,11 +3,15 @@
 version: 2
 updates:
   # npm: one weekly PR for all minor/patch bumps; majors arrive individually.
+  # Cooldown: never propose a version released less than 7 days ago, so
+  # compromised releases get caught and yanked before they reach us.
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     groups:
       minor-and-patch:
         applies-to: version-updates
@@ -18,12 +22,14 @@ updates:
       prefix: chore(deps)
     open-pull-requests-limit: 10
 
-  # GitHub Actions: one weekly PR for everything.
+  # GitHub Actions: one weekly PR for everything, same 7-day cooldown.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns:
