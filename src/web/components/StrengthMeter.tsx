@@ -5,12 +5,11 @@ import { Check } from "lucide-react";
 // "Strong" means the same thing everywhere.
 
 // Contextual strength levels on the semantic tokens: destructive (weak) ->
-// warning (fair/good) -> success (strong).
+// warning (fair) -> success (strong).
 const STRENGTH = [
   { label: "Weak", bar: "bg-destructive", text: "text-destructive" },
   { label: "Weak", bar: "bg-destructive", text: "text-destructive" },
   { label: "Fair", bar: "bg-warning", text: "text-warning" },
-  { label: "Good", bar: "bg-warning", text: "text-warning" },
   { label: "Strong", bar: "bg-success", text: "text-success" },
 ] as const;
 
@@ -19,7 +18,6 @@ const STRENGTH = [
 // path to "Strong" is explicit.
 const CHECKS = [
   { label: "8+ characters", test: (p: string) => p.length >= 8 },
-  { label: "14+ characters", test: (p: string) => p.length >= 14 },
   {
     label: "Upper & lowercase",
     test: (p: string) => /[a-z]/.test(p) && /[A-Z]/.test(p),
@@ -40,7 +38,7 @@ export function StrengthMeter({ value }: { value: string }) {
       {value !== "" && (
         <div className="flex items-center gap-2">
           <div className="flex flex-1 gap-1">
-            {[1, 2, 3, 4].map((n) => (
+            {[1, 2, 3].map((n) => (
               <span
                 key={n}
                 className={`h-1 flex-1 rounded-full transition-colors ${

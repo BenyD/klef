@@ -6,6 +6,7 @@ import {
   type FormEvent,
 } from "react";
 import {
+  CircleAlert,
   Fingerprint,
   Pencil,
   Plus,
@@ -1199,6 +1200,7 @@ function PassphraseSection() {
 
 function RecoverySection({ email }: { email: string }) {
   const { rotateRecovery } = useVault();
+  const [open, setOpen] = useState(false);
   const [passphrase, setPassphrase] = useState("");
   const [busy, setBusy] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
@@ -1210,6 +1212,7 @@ function RecoverySection({ email }: { email: string }) {
     try {
       const key = await rotateRecovery(passphrase);
       setNewKey(key);
+      setOpen(false);
       setPassphrase("");
     } catch {
       toast.error("That passphrase didn't work.");
@@ -1234,8 +1237,21 @@ function RecoverySection({ email }: { email: string }) {
             You'll only see it once, so save it before closing settings.
           </p>
         </div>
-      ) : (
+      ) : open ? (
+        // Inline confirm step; settings is already a dialog, so the warning
+        // must not stack another one on top.
         <form onSubmit={submit} className="flex flex-col gap-4">
+          <div
+            role="alert"
+            className="border-destructive/30 bg-destructive/10 text-destructive flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm"
+          >
+            <CircleAlert className="mt-0.5 size-4 shrink-0" />
+            <span>
+              Your current recovery key stops working the moment the new one
+              is generated. If you lose the new key and forget your
+              passphrase, Klef can't get your vault back.
+            </span>
+          </div>
           <div className="grid gap-2">
             <Label htmlFor="settings-rotate-passphrase">
               Master passphrase
@@ -1245,14 +1261,32 @@ function RecoverySection({ email }: { email: string }) {
               autoComplete="current-password"
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
+              autoFocus
             />
           </div>
-          <div>
+          <div className="flex gap-2">
             <Button type="submit" disabled={busy || !passphrase}>
               {busy ? "Generating..." : "Generate new recovery key"}
             </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                setOpen(false);
+                setPassphrase("");
+              }}
+            >
+              Cancel
+            </Button>
           </div>
         </form>
+      ) : (
+        <div>
+          <Button variant="outline" onClick={() => setOpen(true)}>
+            Generate new recovery key
+          </Button>
+        </div>
       )}
     </div>
   );
