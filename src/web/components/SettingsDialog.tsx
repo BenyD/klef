@@ -46,6 +46,7 @@ import {
   useConfirmSaveReview,
 } from "../lib/preferences.ts";
 import { ENV_META } from "../lib/env-meta.ts";
+import { discoverIcon, resolveIconUrl } from "../lib/project-icon.ts";
 import { passkeyProviderName } from "../../shared/passkey-provider.ts";
 import {
   ENVIRONMENTS,
@@ -61,6 +62,7 @@ import { Button } from "./ui/button.tsx";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog.tsx";
@@ -126,8 +128,10 @@ export function SettingsDialog({
   // Landscape layout with a left tab rail on desktop; on phones the dialog is
   // near-square, so the rail folds back into a horizontal strip up top.
   const isMobile = useIsMobile();
+  // min-w-0 lets the panel shrink inside the vertical tab row; without it a
+  // wide child would push the whole dialog past its max width and clip.
   const panelClass =
-    "flex max-h-[60svh] flex-col gap-6 overflow-y-auto sm:min-h-96 sm:pr-1";
+    "flex min-w-0 max-h-[60svh] flex-col gap-6 overflow-y-auto sm:min-h-96 sm:pr-1";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
@@ -458,31 +462,9 @@ function WorkspaceSection({
 }) {
   const [wsName, setWsName] = useState(workspace?.name ?? "");
   const busyRef = useRef(false);
-  const iconFileRef = useRef<HTMLInputElement>(null);
-  // Object URL of a freshly picked file, shown in the crop dialog.
-  const [cropSrc, setCropSrc] = useState<string | null>(null);
-
-  function onPickIcon(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setCropSrc(URL.createObjectURL(file));
-  }
-
-  function closeCrop() {
-    if (cropSrc) URL.revokeObjectURL(cropSrc);
-    setCropSrc(null);
-  }
-
-  async function onCropped(dataUrl: string) {
-    closeCrop();
-    try {
-      await onUpdateIcon(dataUrl);
-      toast.success("Workspace icon updated");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
-    }
-  }
+  // The icon picker (paste a link or upload) lives in its own dialog so the
+  // settings panel stays a tidy preview + button — no wide field to overflow.
+  const [iconOpen, setIconOpen] = useState(false);
 
   function removeIcon() {
     onUpdateIcon(null)
@@ -522,7 +504,7 @@ function WorkspaceSection({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
+    <form onSubmit={submit} className="flex min-w-0 flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h3 className="text-sm font-medium">Workspace</h3>
         <p className="text-muted-foreground text-sm">
@@ -541,23 +523,16 @@ function WorkspaceSection({
       </div>
       <div className="grid gap-2">
         <Label>Icon</Label>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <WorkspaceIcon workspace={workspace} size="md" />
-          <input
-            ref={iconFileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={onPickIcon}
-          />
           <Button
             type="button"
             variant="outline"
             disabled={!workspace}
-            onClick={() => iconFileRef.current?.click()}
+            onClick={() => setIconOpen(true)}
           >
             <Upload />
-            {workspace?.icon ? "Replace icon" : "Upload icon"}
+            {workspace?.icon ? "Change icon" : "Add icon"}
           </Button>
           {workspace?.icon && (
             <Button
@@ -572,15 +547,186 @@ function WorkspaceSection({
           )}
         </div>
       </div>
-      {cropSrc && (
-        <AvatarCropDialog
-          key={cropSrc}
-          src={cropSrc}
-          onCancel={closeCrop}
-          onCropped={onCropped}
+      {workspace && (
+        <WorkspaceIconDialog
+          open={iconOpen}
+          onOpenChange={setIconOpen}
+          workspace={workspace}
+          onSave={onUpdateIcon}
         />
       )}
     </form>
+  );
+}
+
+// Pick a workspace icon by pasting a link (site, GitHub, or image URL, resolved
+// to a favicon/avatar the same private way projects derive theirs) or uploading
+// an image. Kept in its own modal so the settings panel needs only a button.
+function WorkspaceIconDialog({
+  open,
+  onOpenChange,
+  workspace,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  workspace: WorkspaceNode;
+  onSave: (icon: string | null) => Promise<void>;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [iconInput, setIconInput] = useState("");
+  const [iconUpload, setIconUpload] = useState<string | null>(null);
+  const [iconDiscovered, setIconDiscovered] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const iconGuess =
+    iconUpload ?? (iconInput.trim() ? resolveIconUrl(iconInput) : null);
+  // What Save commits; falls back to the current icon so the tile still shows.
+  const pendingIcon = iconDiscovered ?? iconGuess;
+  const preview = pendingIcon ?? workspace.icon ?? null;
+
+  // Reset every time the dialog opens so a prior draft doesn't linger.
+  useEffect(() => {
+    if (open) {
+      setIconInput("");
+      setIconUpload(null);
+      setIconDiscovered(null);
+      setCropSrc(null);
+    }
+  }, [open]);
+
+  // A /favicon.ico guess is just a convention; many sites only declare icons
+  // in their HTML head. Ask the Worker to look once the input settles.
+  useEffect(() => {
+    setIconDiscovered(null);
+    if (!iconGuess?.endsWith("/favicon.ico")) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void discoverIcon(iconGuess.slice(0, -"favicon.ico".length)).then(
+        (found) => {
+          if (!cancelled && found) setIconDiscovered(found);
+        },
+      );
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [iconGuess]);
+
+  function onPickFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setCropSrc(URL.createObjectURL(file));
+  }
+
+  function closeCrop() {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  }
+
+  async function save() {
+    if (!pendingIcon || busy) return;
+    setBusy(true);
+    try {
+      await onSave(pendingIcon);
+      toast.success("Workspace icon updated");
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Workspace icon</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <WorkspaceIcon
+              workspace={{ name: workspace.name, icon: preview }}
+              size="md"
+            />
+            <p className="text-muted-foreground min-w-0 text-sm">
+              Paste a link or upload an image. It loads straight from its own
+              site — Klef never stores a copy elsewhere.
+            </p>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="workspace-icon-url">Link</Label>
+            <div className="flex min-w-0 items-center gap-2">
+              <Input
+                id="workspace-icon-url"
+                autoFocus
+                placeholder="Site, GitHub, or image URL"
+                value={iconInput}
+                onChange={(e) => {
+                  setIconInput(e.target.value);
+                  setIconUpload(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void save();
+                  }
+                }}
+              />
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onPickFile}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Upload image"
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload />
+              </Button>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={busy}
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            disabled={!pendingIcon || busy}
+            onClick={() => void save()}
+          >
+            {busy ? "Saving..." : "Save icon"}
+          </Button>
+        </DialogFooter>
+        {cropSrc && (
+          <AvatarCropDialog
+            key={cropSrc}
+            src={cropSrc}
+            onCancel={closeCrop}
+            onCropped={(dataUrl) => {
+              setIconUpload(dataUrl);
+              setIconInput("");
+              closeCrop();
+            }}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
