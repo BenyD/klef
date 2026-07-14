@@ -376,6 +376,21 @@ describe("structure routes", () => {
     ).toBe(400);
     expect((await app.request(`/workspaces/${wsId}`, patch({}), env)).status).toBe(400);
   });
+
+  it("accepts an icon at workspace creation and rejects junk ones", async () => {
+    await seedUser("s12");
+    const app = appForUser("s12");
+
+    const iconUrl = "https://team.example/favicon.ico";
+    await id(await app.request("/workspaces", post({ name: "Launched", icon: iconUrl }), env));
+    expect((await tree(app)).workspaces[0]!.icon).toBe(iconUrl);
+
+    // A bad icon fails the create outright rather than silently dropping it.
+    expect(
+      (await app.request("/workspaces", post({ name: "Bad", icon: "javascript:alert(1)" }), env))
+        .status,
+    ).toBe(400);
+  });
 });
 
 const BLOB = { v: 1, alg: "AES-GCM", nonce: "bm9uY2Vub25j", ciphertext: "Y2lwaGVy" };

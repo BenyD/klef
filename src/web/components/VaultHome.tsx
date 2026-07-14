@@ -16,6 +16,7 @@ import {
   ChevronsUpDown,
   FolderPlus,
   Image as ImageIcon,
+  LayoutGrid,
   Lock,
   LogOut,
   Plus,
@@ -174,7 +175,7 @@ type NameDialog = {
   withEnvironment?: { initial: Environment | null };
   /** When set, the dialog also shows a framework picker (projects only). */
   withFramework?: { initial: Framework | null };
-  /** When set, the dialog also shows the icon field (projects only). */
+  /** When set, the dialog also shows the icon field (projects, workspaces). */
   withIcon?: { initial: string | null };
   /** Suggested name per environment; applied until the user edits the name. */
   defaultNameFor?: (
@@ -430,8 +431,9 @@ export function VaultHome({
       title: "New workspace",
       label: "Workspace name",
       initial: "",
-      submit: async ({ name }) => {
-        const { id } = await api.createWorkspace(name);
+      withIcon: { initial: null },
+      submit: async ({ name, icon }) => {
+        const { id } = await api.createWorkspace(name, icon);
         await reload();
         navigate(`/${workspaceSlug(name, id)}`);
         setSelected(null);
@@ -684,21 +686,35 @@ export function VaultHome({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {selected && currentProject && (
+        {projects.length > 0 && (
           <>
-            <Slash className="max-sm:hidden" />
+            {/* On mobile the project crumb only shows on the overview; once a
+                file is open the workspace crumb takes that scarce room. */}
+            <Slash className={cn(selected && "max-sm:hidden")} />
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="max-w-40 gap-1.5 px-1.5 max-sm:hidden"
+                    className={cn(
+                      "max-w-40 gap-1.5 px-1.5",
+                      selected && "max-sm:hidden",
+                    )}
                   />
                 }
               >
-                <ProjectIcon project={currentProject} size="sm" />
-                <span className="truncate">{currentProject.name}</span>
+                {currentProject ? (
+                  <>
+                    <ProjectIcon project={currentProject} size="sm" />
+                    <span className="truncate">{currentProject.name}</span>
+                  </>
+                ) : (
+                  <>
+                    <LayoutGrid className="text-muted-foreground size-4" />
+                    <span className="truncate">All projects</span>
+                  </>
+                )}
                 <ChevronsUpDown className="text-muted-foreground size-3 shrink-0" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="min-w-56">
@@ -706,7 +722,7 @@ export function VaultHome({
                   <DropdownMenuItem key={p.id} onClick={() => showProject(p)}>
                     <ProjectIcon project={p} size="sm" />
                     <span className="truncate">{p.name}</span>
-                    {p.id === currentProject.id && (
+                    {p.id === currentProject?.id && (
                       <Check className="ml-auto size-4" />
                     )}
                   </DropdownMenuItem>
@@ -718,7 +734,6 @@ export function VaultHome({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
           </>
         )}
 

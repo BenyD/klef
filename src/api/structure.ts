@@ -213,17 +213,24 @@ structure.get("/tree", async (c) => {
 // --- workspaces ------------------------------------------------------------
 
 structure.post("/workspaces", async (c) => {
-  const body = (await c.req.json().catch(() => ({}))) as { name?: unknown };
+  const body = (await c.req.json().catch(() => ({}))) as {
+    name?: unknown;
+    icon?: unknown;
+  };
   const name = cleanName(body.name);
   if (!name) return c.json({ ok: false, error: "Invalid name" }, 400);
+  const icon = cleanIcon(body.icon ?? null);
+  if (icon === undefined) {
+    return c.json({ ok: false, error: "Invalid icon" }, 400);
+  }
   const slugError = await workspaceNameError(c.env.DB, c.get("user").id, name);
   if (slugError) return c.json({ ok: false, error: slugError }, 400);
 
   const id = crypto.randomUUID();
   await c.env.DB.prepare(
-    "INSERT INTO workspaces (id, user_id, name) VALUES (?, ?, ?)",
+    "INSERT INTO workspaces (id, user_id, name, icon) VALUES (?, ?, ?, ?)",
   )
-    .bind(id, c.get("user").id, name)
+    .bind(id, c.get("user").id, name, icon)
     .run();
   return c.json({ id, name }, 201);
 });

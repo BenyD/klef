@@ -19,8 +19,8 @@ const jsonBody = (method: string, body: unknown): RequestInit => ({
 
 export const getTree = () => req<VaultTree>("/api/tree");
 
-export const createWorkspace = (name: string) =>
-  req<{ id: string }>("/api/workspaces", jsonBody("POST", { name }));
+export const createWorkspace = (name: string, icon: string | null = null) =>
+  req<{ id: string }>("/api/workspaces", jsonBody("POST", { name, icon }));
 export const updateWorkspace = (
   id: string,
   fields: { name?: string; icon?: string | null },
