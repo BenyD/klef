@@ -174,7 +174,7 @@ type NameDialog = {
   withEnvironment?: { initial: Environment | null };
   /** When set, the dialog also shows a framework picker (projects only). */
   withFramework?: { initial: Framework | null };
-  /** When set, the dialog also shows the icon field (projects only). */
+  /** When set, the dialog also shows the icon field (projects, workspaces). */
   withIcon?: { initial: string | null };
   /** Suggested name per environment; applied until the user edits the name. */
   defaultNameFor?: (
@@ -430,8 +430,9 @@ export function VaultHome({
       title: "New workspace",
       label: "Workspace name",
       initial: "",
-      submit: async ({ name }) => {
-        const { id } = await api.createWorkspace(name);
+      withIcon: { initial: null },
+      submit: async ({ name, icon }) => {
+        const { id } = await api.createWorkspace(name, icon);
         await reload();
         navigate(`/${workspaceSlug(name, id)}`);
         setSelected(null);
