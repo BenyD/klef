@@ -4,6 +4,7 @@ import {
   Code,
   Copy,
   Download,
+  Eraser,
   GitCompare,
   History,
   Import,
@@ -12,6 +13,7 @@ import {
   RotateCcw,
   Save,
   Table2,
+  TriangleAlert,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -30,6 +32,7 @@ import {
   saveVersion,
   type VersionSummary,
 } from "../structure-api.ts";
+import { cleanEnvWhitespace, lintEnvText } from "../lib/env-lint.ts";
 import { absoluteTime, relativeTime } from "../lib/format-time.ts";
 import {
   getConfirmLoadVersion,
@@ -149,6 +152,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
   const stats = useMemo(() => diffStats(ops), [ops]);
   const newlineNote = finalNewlineNote(stored, draft);
   const changed = !isUnchanged(stored, draft);
+  const lint = useMemo(() => lintEnvText(draft), [draft]);
 
   useEffect(() => {
     onDirtyChange?.(changed);
@@ -564,12 +568,22 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
         className="min-h-0 flex-1"
       >
         <ResizablePanel defaultSize={60} minSize={30} className="min-w-0">
-          <TabsContent value="editor" keepMounted className="h-full">
+          <TabsContent
+            value="editor"
+            keepMounted
+            className="flex h-full flex-col"
+          >
+            {lint.hasIssues && (
+              <WhitespaceWarning
+                lint={lint}
+                onClean={() => setDraft(cleanEnvWhitespace(draft))}
+              />
+            )}
             <EnvCodeEditor
               value={draft}
               onChange={setDraft}
               placeholder="Paste your .env contents here..."
-              className="h-full min-h-80"
+              className="min-h-80 flex-1"
             />
           </TabsContent>
 
@@ -752,14 +766,14 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
 
       {/* Save confirmation: the last look before a version is written. */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Review changes</DialogTitle>
             <DialogDescription className="font-mono text-xs">
               {file.name} {diffStatsLine}
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-72 overflow-y-auto rounded-md border">
+          <div className="max-h-[65vh] min-h-40 overflow-y-auto rounded-md border">
             <DiffList ops={ops} note={newlineNote} />
           </div>
           <DialogFooter className="items-center gap-3 sm:justify-between">
@@ -839,6 +853,52 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
 
 // Diff lines are file content, so they render at the editor's size; the two
 // often sit side by side and a size mismatch reads as sloppy.
+function WhitespaceWarning({
+  lint,
+  onClean,
+}: {
+  lint: ReturnType<typeof lintEnvText>;
+  onClean: () => void;
+}) {
+  const parts: string[] = [];
+  const n = lint.trailingSpaceLines.length;
+  if (n > 0) {
+    parts.push(
+      n === 1
+        ? `Line ${lint.trailingSpaceLines[0]} has a trailing space`
+        : `${n} lines have trailing spaces`,
+    );
+  }
+  if (lint.trailingBlankLines > 0) {
+    parts.push(
+      lint.trailingBlankLines === 1
+        ? "the file ends with a blank line"
+        : `the file ends with ${lint.trailingBlankLines} blank lines`,
+    );
+  }
+  // Sentence-case the joined clauses: "3 lines… and the file ends…".
+  const message = parts.join(" and ");
+
+  return (
+    <div className="border-warning/30 bg-warning/10 text-warning flex items-center gap-2 border-b px-3 py-2 text-xs">
+      <TriangleAlert className="size-3.5 shrink-0" />
+      <span className="flex-1">
+        {message}. Invisible whitespace is saved as-is and can break some
+        parsers.
+      </span>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-warning hover:text-warning h-6 shrink-0 px-2"
+        onClick={onClean}
+      >
+        <Eraser className="size-3.5" />
+        Clean up
+      </Button>
+    </div>
+  );
+}
+
 function DiffList({
   ops,
   note,
