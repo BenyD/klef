@@ -655,7 +655,7 @@ function WorkspaceIconDialog({
             />
             <p className="text-muted-foreground min-w-0 text-sm">
               Paste a link or upload an image. It loads straight from its own
-              site — Klef never stores a copy elsewhere.
+              site, so Klef never stores a copy elsewhere.
             </p>
           </div>
           <div className="grid gap-2">
