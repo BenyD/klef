@@ -568,23 +568,31 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
         className="min-h-0 flex-1"
       >
         <ResizablePanel defaultSize={60} minSize={30} className="min-w-0">
-          <TabsContent
-            value="editor"
-            keepMounted
-            className="flex h-full flex-col"
-          >
-            {lint.hasIssues && (
-              <WhitespaceWarning
-                lint={lint}
-                onClean={() => setDraft(cleanEnvWhitespace(draft))}
+          <TabsContent value="editor" keepMounted className="h-full">
+            {lint.hasIssues ? (
+              // Banner and editor read as one framed unit: the wrapper owns
+              // the border, rounding, and focus ring; the banner fills the
+              // rounded top and the editor drops its own frame.
+              <div className="border-input focus-within:border-ring focus-within:ring-ring/30 flex h-full min-h-80 flex-col overflow-hidden rounded-md border transition-colors focus-within:ring-2 dark:bg-input/30">
+                <WhitespaceWarning
+                  lint={lint}
+                  onClean={() => setDraft(cleanEnvWhitespace(draft))}
+                />
+                <EnvCodeEditor
+                  value={draft}
+                  onChange={setDraft}
+                  placeholder="Paste your .env contents here..."
+                  className="min-h-0 flex-1 rounded-none border-0 focus-within:ring-0 dark:bg-transparent"
+                />
+              </div>
+            ) : (
+              <EnvCodeEditor
+                value={draft}
+                onChange={setDraft}
+                placeholder="Paste your .env contents here..."
+                className="h-full min-h-80"
               />
             )}
-            <EnvCodeEditor
-              value={draft}
-              onChange={setDraft}
-              placeholder="Paste your .env contents here..."
-              className="min-h-80 flex-1"
-            />
           </TabsContent>
 
           <TabsContent
