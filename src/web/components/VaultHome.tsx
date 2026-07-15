@@ -74,6 +74,7 @@ import { KlefMark } from "./KlefMark.tsx";
 import { ProjectIcon } from "./ProjectIcon.tsx";
 import { WorkspaceIcon } from "./WorkspaceIcon.tsx";
 import { ProjectsOverview } from "./ProjectsOverview.tsx";
+import { CompareEnvironmentsDialog } from "./CompareEnvironmentsDialog.tsx";
 import { LockShortcutKeys } from "./LockShortcutKeys.tsx";
 import { envMeta, useEnvMeta } from "../lib/env-meta.ts";
 import { FilePane } from "./FilePane.tsx";
@@ -224,6 +225,9 @@ export function VaultHome({
   const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null);
   const [nameDialog, setNameDialog] = useState<NameDialog | null>(null);
   const [movingProject, setMovingProject] = useState<ProjectNode | null>(null);
+  const [comparingProject, setComparingProject] = useState<ProjectNode | null>(
+    null,
+  );
   const [pendingDelete, setPendingDelete] = useState<{
     kind: Kind;
     id: string;
@@ -502,6 +506,9 @@ export function VaultHome({
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     }
+  }
+  function openCompareEnvironments(project: ProjectNode) {
+    setComparingProject(project);
   }
 
   function openNewFile(project: ProjectNode) {
@@ -883,6 +890,7 @@ export function VaultHome({
               onNewProject={openNewProject}
               onEditProject={openEditProject}
               onMoveProject={openMoveProject}
+              onCompareEnvironments={openCompareEnvironments}
               onDeleteProject={openDeleteProject}
             />
           )}
@@ -942,6 +950,11 @@ export function VaultHome({
         currentWorkspaceId={workspace?.id ?? null}
         onClose={() => setMovingProject(null)}
         onMove={moveProjectTo}
+      />
+
+      <CompareEnvironmentsDialog
+        project={comparingProject}
+        onClose={() => setComparingProject(null)}
       />
 
       <AlertDialog
