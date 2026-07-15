@@ -75,6 +75,7 @@ import { ProjectIcon } from "./ProjectIcon.tsx";
 import { WorkspaceIcon } from "./WorkspaceIcon.tsx";
 import { ProjectsOverview } from "./ProjectsOverview.tsx";
 import { CompareEnvironmentsDialog } from "./CompareEnvironmentsDialog.tsx";
+import { KeySearchDialog } from "./KeySearchDialog.tsx";
 import { LockShortcutKeys } from "./LockShortcutKeys.tsx";
 import { envMeta, useEnvMeta } from "../lib/env-meta.ts";
 import { FilePane } from "./FilePane.tsx";
@@ -211,6 +212,7 @@ export function VaultHome({
   // (requestLock below); only idle auto-lock skips it.
   useLockShortcut(() => requestLock());
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [keySearchOpen, setKeySearchOpen] = useState(false);
   usePaletteShortcut(useCallback(() => setPaletteOpen((o) => !o), []));
   const navigate = useNavigate();
   // The workspace lives in the URL (klef.sh/<slug>); /app has no param and
@@ -912,6 +914,14 @@ export function VaultHome({
         onNewWorkspace={openNewWorkspace}
         onLock={requestLock}
         onOpenSettings={setSettingsTab}
+        onSearchKeys={() => setKeySearchOpen(true)}
+      />
+
+      <KeySearchDialog
+        open={keySearchOpen}
+        onClose={() => setKeySearchOpen(false)}
+        workspaces={workspaces}
+        onSelectFile={selectFile}
       />
 
       <SettingsDialog
