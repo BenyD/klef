@@ -2,6 +2,7 @@ import {
   FilePlus2,
   FileText,
   FolderPlus,
+  KeyRound,
   Lock,
   Plus,
   Settings,
@@ -59,6 +60,7 @@ interface CommandPaletteProps {
   onNewWorkspace: () => void;
   onLock: () => void;
   onOpenSettings: (tab: SettingsTab) => void;
+  onSearchKeys: () => void;
 }
 
 /**
@@ -80,6 +82,7 @@ export function CommandPalette({
   onNewWorkspace,
   onLock,
   onOpenSettings,
+  onSearchKeys,
 }: CommandPaletteProps) {
   const projects = workspace?.projects ?? [];
   // "New file" lands next to what's being worked on: the selected file's
@@ -178,6 +181,17 @@ export function CommandPalette({
                 New project
               </CommandItem>
             )}
+            <CommandItem
+              value="Search keys"
+              keywords={["find", "variable", "env", "where"]}
+              onSelect={() => run(onSearchKeys)}
+            >
+              <KeyRound className="text-muted-foreground" />
+              Search keys
+              <span className="text-muted-foreground truncate text-xs">
+                across all files
+              </span>
+            </CommandItem>
             <CommandItem
               value="Lock vault"
               keywords={["security"]}
