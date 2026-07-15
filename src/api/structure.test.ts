@@ -88,6 +88,53 @@ describe("structure routes", () => {
     expect((await tree(app)).workspaces.map((w) => w.name)).toEqual(["Keep"]);
   });
 
+  it("moves a project and its files to another owned workspace", async () => {
+    await seedUser("s-move");
+    const app = appForUser("s-move");
+    const from = await id(await app.request("/workspaces", post({ name: "From" }), env));
+    const to = await id(await app.request("/workspaces", post({ name: "To" }), env));
+    const projId = await id(
+      await app.request("/projects", post({ workspaceId: from, name: "svc" }), env),
+    );
+    await app.request("/files", post({ projectId: projId, name: ".env" }), env);
+
+    expect(
+      (await app.request(`/projects/${projId}`, patch({ workspaceId: to }), env)).status,
+    ).toBe(200);
+
+    const t = await tree(app);
+    const fromWs = t.workspaces.find((w) => w.id === from)!;
+    const toWs = t.workspaces.find((w) => w.id === to)!;
+    expect(fromWs.projects).toHaveLength(0);
+    expect(toWs.projects.map((p) => p.name)).toEqual(["svc"]);
+    // The file follows the project into the destination workspace.
+    expect(toWs.projects[0]!.files.map((f) => f.name)).toEqual([".env"]);
+  });
+
+  it("won't move a project into a workspace you don't own", async () => {
+    await seedUser("s-move-a");
+    await seedUser("s-move-b");
+    const a = appForUser("s-move-a");
+    const b = appForUser("s-move-b");
+    const aWs = await id(await a.request("/workspaces", post({ name: "Mine" }), env));
+    const proj = await id(
+      await a.request("/projects", post({ workspaceId: aWs, name: "p" }), env),
+    );
+    const bWs = await id(await b.request("/workspaces", post({ name: "Theirs" }), env));
+
+    // A foreign or unknown destination is rejected and the project stays put.
+    expect(
+      (await a.request(`/projects/${proj}`, patch({ workspaceId: bWs }), env)).status,
+    ).toBe(400);
+    expect(
+      (await a.request(`/projects/${proj}`, patch({ workspaceId: "nope" }), env)).status,
+    ).toBe(400);
+    const t = await tree(a);
+    expect(
+      t.workspaces.find((w) => w.id === aWs)!.projects.map((p) => p.name),
+    ).toEqual(["p"]);
+  });
+
   it("refuses to delete the account's only workspace", async () => {
     await seedUser("s7");
     const app = appForUser("s7");

@@ -345,9 +345,11 @@ structure.patch("/projects/:id", async (c) => {
     name?: unknown;
     framework?: unknown;
     icon?: unknown;
+    workspaceId?: unknown;
   };
 
-  // Accept name and/or framework; at least one must be present and valid.
+  // Accept name, framework, icon, and/or workspaceId (a move); at least one
+  // must be present and valid.
   const sets: string[] = [];
   const binds: (string | null)[] = [];
   if (body.name !== undefined) {
@@ -371,6 +373,19 @@ structure.patch("/projects/:id", async (c) => {
     }
     sets.push("icon = ?");
     binds.push(icon);
+  }
+  if ("workspaceId" in body) {
+    // Reparenting the project moves its files too (they reference the project,
+    // not the workspace). The destination must belong to the same user, so
+    // one DEK still covers everything — no re-encryption.
+    if (
+      typeof body.workspaceId !== "string" ||
+      !(await ownsWorkspace(c.env.DB, c.get("user").id, body.workspaceId))
+    ) {
+      return c.json({ ok: false, error: "Invalid workspace" }, 400);
+    }
+    sets.push("workspace_id = ?");
+    binds.push(body.workspaceId);
   }
   if (sets.length === 0) return c.json({ ok: false, error: "Empty update" }, 400);
 
