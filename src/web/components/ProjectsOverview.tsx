@@ -182,7 +182,7 @@ function ProjectCard({
                 </Button>
               }
             />
-            <DropdownMenuContent align="end" className="min-w-44">
+            <DropdownMenuContent align="end" className="min-w-52 whitespace-nowrap">
               <DropdownMenuItem onClick={() => onNewFile(project)}>
                 <FilePlus2 />
                 New file
