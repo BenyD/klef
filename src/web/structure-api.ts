@@ -42,7 +42,13 @@ export const createProject = (
   );
 export const updateProject = (
   id: string,
-  fields: { name?: string; framework?: Framework | null; icon?: string | null },
+  fields: {
+    name?: string;
+    framework?: Framework | null;
+    icon?: string | null;
+    /** Move the project (and its files) to another owned workspace. */
+    workspaceId?: string;
+  },
 ) => req(`/api/projects/${id}`, jsonBody("PATCH", fields));
 export const deleteProject = (id: string) =>
   req(`/api/projects/${id}`, { method: "DELETE" });

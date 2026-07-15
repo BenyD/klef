@@ -58,6 +58,7 @@ import {
   type EnvFileNode,
   type Framework,
   type ProjectNode,
+  type WorkspaceNode,
 } from "../../shared/api-types.ts";
 import { workspaceSlug } from "../../shared/slug.ts";
 import {
@@ -222,6 +223,7 @@ export function VaultHome({
   const [dirtyIds, setDirtyIds] = useState<ReadonlySet<string>>(new Set());
   const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null);
   const [nameDialog, setNameDialog] = useState<NameDialog | null>(null);
+  const [movingProject, setMovingProject] = useState<ProjectNode | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{
     kind: Kind;
     id: string;
@@ -485,6 +487,21 @@ export function VaultHome({
       name: project.name,
       run: () => api.deleteProject(project.id),
     });
+  }
+  // Moving carries the project's files along (same DEK, no re-encryption). Only
+  // offered when there's somewhere else to move to.
+  function openMoveProject(project: ProjectNode) {
+    if (workspaces.length > 1) setMovingProject(project);
+  }
+  async function moveProjectTo(project: ProjectNode, workspaceId: string) {
+    setMovingProject(null);
+    try {
+      await run(api.updateProject(project.id, { workspaceId }));
+      const dest = workspaces.find((w) => w.id === workspaceId);
+      toast.success(`Moved "${project.name}" to ${dest?.name ?? "workspace"}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
   }
 
   function openNewFile(project: ProjectNode) {
@@ -865,6 +882,7 @@ export function VaultHome({
               onNewFile={openNewFile}
               onNewProject={openNewProject}
               onEditProject={openEditProject}
+              onMoveProject={openMoveProject}
               onDeleteProject={openDeleteProject}
             />
           )}
@@ -916,6 +934,14 @@ export function VaultHome({
       <NameDialogView
         dialog={nameDialog}
         onClose={() => setNameDialog(null)}
+      />
+
+      <MoveProjectDialog
+        project={movingProject}
+        workspaces={workspaces}
+        currentWorkspaceId={workspace?.id ?? null}
+        onClose={() => setMovingProject(null)}
+        onMove={moveProjectTo}
       />
 
       <AlertDialog
@@ -1663,6 +1689,49 @@ function NameDialogView({
           }}
         />
       )}
+    </Dialog>
+  );
+}
+
+// Picking a destination moves the project immediately (its files ride along).
+// A short list of workspaces, so buttons beat a Select here.
+function MoveProjectDialog({
+  project,
+  workspaces,
+  currentWorkspaceId,
+  onClose,
+  onMove,
+}: {
+  project: ProjectNode | null;
+  workspaces: WorkspaceNode[];
+  currentWorkspaceId: string | null;
+  onClose: () => void;
+  onMove: (project: ProjectNode, workspaceId: string) => void;
+}) {
+  const targets = workspaces.filter((w) => w.id !== currentWorkspaceId);
+  return (
+    <Dialog open={project !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Move "{project?.name}"</DialogTitle>
+        </DialogHeader>
+        <p className="text-muted-foreground -mt-1 text-sm">
+          Its files move too. Choose a workspace.
+        </p>
+        <div className="flex flex-col gap-1">
+          {targets.map((w) => (
+            <button
+              key={w.id}
+              type="button"
+              onClick={() => project && onMove(project, w.id)}
+              className="hover:bg-muted flex items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors"
+            >
+              <WorkspaceIcon workspace={w} />
+              <span className="truncate font-medium">{w.name}</span>
+            </button>
+          ))}
+        </div>
+      </DialogContent>
     </Dialog>
   );
 }

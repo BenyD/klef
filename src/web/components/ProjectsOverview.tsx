@@ -1,6 +1,7 @@
 import {
   FilePlus2,
   FileText,
+  FolderInput,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -38,6 +39,7 @@ interface ProjectsOverviewProps {
   onNewFile: (project: ProjectNode) => void;
   onNewProject: () => void;
   onEditProject: (project: ProjectNode) => void;
+  onMoveProject: (project: ProjectNode) => void;
   onDeleteProject: (project: ProjectNode) => void;
 }
 
@@ -49,6 +51,7 @@ export function ProjectsOverview({
   onNewFile,
   onNewProject,
   onEditProject,
+  onMoveProject,
   onDeleteProject,
 }: ProjectsOverviewProps) {
   return (
@@ -76,6 +79,7 @@ export function ProjectsOverview({
             onSelectFile={onSelectFile}
             onNewFile={onNewFile}
             onEditProject={onEditProject}
+            onMoveProject={onMoveProject}
             onDeleteProject={onDeleteProject}
           />
         ))}
@@ -98,12 +102,14 @@ function ProjectCard({
   onSelectFile,
   onNewFile,
   onEditProject,
+  onMoveProject,
   onDeleteProject,
 }: {
   project: ProjectNode;
   onSelectFile: (project: ProjectNode, file: EnvFileNode) => void;
   onNewFile: (project: ProjectNode) => void;
   onEditProject: (project: ProjectNode) => void;
+  onMoveProject: (project: ProjectNode) => void;
   onDeleteProject: (project: ProjectNode) => void;
 }) {
   const hasFiles = project.files.length > 0;
@@ -178,6 +184,10 @@ function ProjectCard({
               <DropdownMenuItem onClick={() => onEditProject(project)}>
                 <Pencil />
                 Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onMoveProject(project)}>
+                <FolderInput />
+                Move to workspace
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
