@@ -78,6 +78,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "./ui/sheet.tsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select.tsx";
 import { Skeleton } from "./ui/skeleton.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip.tsx";
@@ -108,13 +115,18 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
   const [view, setView] = useState("editor");
   const [panel, setPanel] = useState<SidePanel>(null);
   const [history, setHistory] = useState<VersionSummary[] | null>(null);
-  // Drill-in inside the history panel: an older version decrypted for a
-  // read-only diff against the current saved version.
+  // Drill-in inside the history panel: one version decrypted as the "base" of
+  // a read-only diff. The other side is chosen separately (`against`) and
+  // defaults to the current saved version.
   const [compare, setCompare] = useState<{
     id: string;
     createdAt: string;
     text: string;
   } | null>(null);
+  // The left/old side of the compare: a version id, or null for "current".
+  // Decrypted into `againstText` so the diff stays synchronous.
+  const [againstId, setAgainstId] = useState<string | null>(null);
+  const [againstText, setAgainstText] = useState("");
   // Save confirmation: a final look at the diff before a version is written.
   // Preference-gated; the checkbox turns it off for this device.
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -169,9 +181,11 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
 
   // Old version on the left, current saved version on the right, so "+" reads
   // as "added since then".
+  // Old side (against) on the left, base version on the right, so "+" reads as
+  // "added going from the against side to this version".
   const compareOps = useMemo(
-    () => (compare ? diffLines(compare.text, stored) : null),
-    [compare, stored],
+    () => (compare ? diffLines(againstText, compare.text) : null),
+    [compare, againstText],
   );
   const compareStats = useMemo(
     () => (compareOps ? diffStats(compareOps) : null),
@@ -289,8 +303,9 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
     }
   }
 
-  // Decrypt an older version for a read-only comparison; nothing touches the
-  // draft until the user explicitly loads it.
+  // Decrypt a version as the base of a read-only comparison; the other side
+  // starts as the current saved version. Nothing touches the draft until the
+  // user explicitly loads it.
   async function openCompare(v: VersionSummary) {
     if (!dek) return;
     try {
@@ -300,6 +315,25 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
         createdAt: v.createdAt,
         text: await decryptBlob(dek, version.blob),
       });
+      setAgainstId(null);
+      setAgainstText(stored);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // Pick which version sits on the other side of the diff (null = current).
+  async function chooseAgainst(id: string | null) {
+    if (!dek) return;
+    if (id === null) {
+      setAgainstId(null);
+      setAgainstText(stored);
+      return;
+    }
+    try {
+      const { version } = await getVersion(file.id, id);
+      setAgainstId(id);
+      setAgainstText(await decryptBlob(dek, version.blob));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     }
@@ -447,24 +481,43 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
       >
         <ChevronLeft />
       </Button>
-      <span className="truncate text-sm">
-        {absoluteTime(new Date(compare.createdAt))}
+      <span className="shrink-0 truncate text-sm">
+        {relativeTime(new Date(compare.createdAt))}
       </span>
-      <span className="text-muted-foreground shrink-0 text-xs">vs current</span>
+      <span className="text-muted-foreground shrink-0 text-xs">vs</span>
+      {/* Any version can sit on the other side of the diff, not just current. */}
+      <Select
+        value={againstId ?? "current"}
+        onValueChange={(v) => void chooseAgainst(v === "current" ? null : v)}
+      >
+        <SelectTrigger size="sm" className="h-7 w-auto gap-1">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="current">Current</SelectItem>
+          {(history ?? [])
+            .filter((v) => !v.isCurrent && v.id !== compare.id)
+            .map((v) => (
+              <SelectItem key={v.id} value={v.id}>
+                {relativeTime(new Date(v.createdAt))}
+              </SelectItem>
+            ))}
+        </SelectContent>
+      </Select>
       <span className="ml-auto shrink-0">{compareStatsLine}</span>
     </div>
   );
 
   const compareBody = compareOps && compareStats && (
     <>
-      {compare && isUnchanged(compare.text, stored) && (
+      {compare && isUnchanged(compare.text, againstText) && (
         <p className="text-muted-foreground border-b px-3 py-2 text-xs">
-          Same content as the current version.
+          These two versions have the same content.
         </p>
       )}
       <DiffList
         ops={compareOps}
-        note={compare ? finalNewlineNote(compare.text, stored) : null}
+        note={compare ? finalNewlineNote(againstText, compare.text) : null}
       />
     </>
   );
