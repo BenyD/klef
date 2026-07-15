@@ -17,7 +17,7 @@ import {
 } from "./ui/dialog.tsx";
 
 // Compares the dotenv files in a project by key presence, all decrypted in the
-// browser. Values are never fetched into the view — only which keys each
+// browser. Values are never fetched into the view, only which keys each
 // environment has. Non-dotenv files are skipped (their keys don't parse the
 // same way); the drift engine and the CLI share the same comparison.
 export function CompareEnvironmentsDialog({
@@ -76,7 +76,7 @@ export function CompareEnvironmentsDialog({
         <DialogHeader>
           <DialogTitle>Compare environments</DialogTitle>
           <DialogDescription>
-            {project?.name} — which keys each environment has. Values stay
+            Which keys each environment in {project?.name} has. Values stay
             hidden.
           </DialogDescription>
         </DialogHeader>
@@ -97,7 +97,7 @@ export function CompareEnvironmentsDialog({
             <p className="text-sm">
               {report.drifted.length === 0 ? (
                 <span className="text-success">
-                  No drift — every environment has the same keys.
+                  No drift. Every environment has the same keys.
                 </span>
               ) : (
                 <span className="text-warning">
