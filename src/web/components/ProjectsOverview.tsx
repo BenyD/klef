@@ -2,6 +2,7 @@ import {
   FilePlus2,
   FileText,
   FolderInput,
+  Columns3,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -40,6 +41,7 @@ interface ProjectsOverviewProps {
   onNewProject: () => void;
   onEditProject: (project: ProjectNode) => void;
   onMoveProject: (project: ProjectNode) => void;
+  onCompareEnvironments: (project: ProjectNode) => void;
   onDeleteProject: (project: ProjectNode) => void;
 }
 
@@ -52,6 +54,7 @@ export function ProjectsOverview({
   onNewProject,
   onEditProject,
   onMoveProject,
+  onCompareEnvironments,
   onDeleteProject,
 }: ProjectsOverviewProps) {
   return (
@@ -80,6 +83,7 @@ export function ProjectsOverview({
             onNewFile={onNewFile}
             onEditProject={onEditProject}
             onMoveProject={onMoveProject}
+            onCompareEnvironments={onCompareEnvironments}
             onDeleteProject={onDeleteProject}
           />
         ))}
@@ -103,6 +107,7 @@ function ProjectCard({
   onNewFile,
   onEditProject,
   onMoveProject,
+  onCompareEnvironments,
   onDeleteProject,
 }: {
   project: ProjectNode;
@@ -110,6 +115,7 @@ function ProjectCard({
   onNewFile: (project: ProjectNode) => void;
   onEditProject: (project: ProjectNode) => void;
   onMoveProject: (project: ProjectNode) => void;
+  onCompareEnvironments: (project: ProjectNode) => void;
   onDeleteProject: (project: ProjectNode) => void;
 }) {
   const hasFiles = project.files.length > 0;
@@ -188,6 +194,10 @@ function ProjectCard({
               <DropdownMenuItem onClick={() => onMoveProject(project)}>
                 <FolderInput />
                 Move to workspace
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onCompareEnvironments(project)}>
+                <Columns3 />
+                Compare environments
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
