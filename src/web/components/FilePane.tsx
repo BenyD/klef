@@ -33,6 +33,7 @@ import {
   type VersionSummary,
 } from "../structure-api.ts";
 import { cleanEnvWhitespace, lintEnvText } from "../lib/env-lint.ts";
+import { detectFormat, isDotenv } from "../lib/config-format.ts";
 import { absoluteTime, relativeTime } from "../lib/format-time.ts";
 import {
   getConfirmLoadVersion,
@@ -153,6 +154,14 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
   const newlineNote = finalNewlineNote(stored, draft);
   const changed = !isUnchanged(stored, draft);
   const lint = useMemo(() => lintEnvText(draft), [draft]);
+  // dotenv gets the KV table and key features; other formats fall back to the
+  // raw editor. The name usually decides it; content only settles ambiguous,
+  // extensionless names.
+  const format = useMemo(
+    () => detectFormat(file.name, draft),
+    [file.name, draft],
+  );
+  const dotenv = isDotenv(format);
 
   useEffect(() => {
     onDirtyChange?.(changed);
@@ -475,7 +484,9 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
 
   return (
     <Tabs
-      value={view}
+      /* Only dotenv exposes the table lens; other formats stay in the code
+         view, so pin the effective value there. */
+      value={dotenv ? view : "editor"}
       onValueChange={setView}
       /* min-h-0 keeps the pane viewport-bound so the side panel and table
          scroll internally instead of growing the page. */
@@ -484,29 +495,38 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
       <div className="flex flex-wrap items-center gap-2">
         {/* View switch: same draft, two lenses. Icons, not labeled tabs;
             the code view is the byte-for-byte source of truth, the table is
-            the KV lens over it. */}
-        <TabsList>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <TabsTrigger value="editor" aria-label="Code view">
-                  <Code />
-                </TabsTrigger>
-              }
-            />
-            <TooltipContent>Code</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <TabsTrigger value="table" aria-label="Table view">
-                  <Table2 />
-                </TabsTrigger>
-              }
-            />
-            <TooltipContent>Table</TooltipContent>
-          </Tooltip>
-        </TabsList>
+            the KV lens over it. Non-dotenv files have no table, so we show
+            their detected format instead. */}
+        {dotenv ? (
+          <TabsList>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <TabsTrigger value="editor" aria-label="Code view">
+                    <Code />
+                  </TabsTrigger>
+                }
+              />
+              <TooltipContent>Code</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <TabsTrigger value="table" aria-label="Table view">
+                    <Table2 />
+                  </TabsTrigger>
+                }
+              />
+              <TooltipContent>Table</TooltipContent>
+            </Tooltip>
+          </TabsList>
+        ) : (
+          format !== "other" && (
+            <Badge variant="secondary" className="uppercase">
+              {format}
+            </Badge>
+          )
+        )}
 
         <div className="ml-auto flex items-center gap-1">
           {changed && (
@@ -581,7 +601,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
                 <EnvCodeEditor
                   value={draft}
                   onChange={setDraft}
-                  placeholder="Paste your .env contents here..."
+                  placeholder="Paste your config here..."
                   className="min-h-0 flex-1 rounded-none border-0 focus-within:ring-0 dark:bg-transparent"
                 />
               </div>
@@ -589,28 +609,30 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
               <EnvCodeEditor
                 value={draft}
                 onChange={setDraft}
-                placeholder="Paste your .env contents here..."
+                placeholder="Paste your config here..."
                 className="h-full min-h-80"
               />
             )}
           </TabsContent>
 
-          <TabsContent
-            value="table"
-            keepMounted
-            className="h-full overflow-y-auto"
-          >
-            {/* Rows normally diff against the saved version; while a version
-                is open in the compare panel, they diff against that instead,
-                so any older version can be reviewed (and cherry-picked from)
-                in place. */}
-            <EnvTable
-              text={draft}
-              onChange={setDraft}
-              baseline={compare?.text ?? stored}
-              comparing={compare !== null}
-            />
-          </TabsContent>
+          {dotenv && (
+            <TabsContent
+              value="table"
+              keepMounted
+              className="h-full overflow-y-auto"
+            >
+              {/* Rows normally diff against the saved version; while a version
+                  is open in the compare panel, they diff against that instead,
+                  so any older version can be reviewed (and cherry-picked from)
+                  in place. */}
+              <EnvTable
+                text={draft}
+                onChange={setDraft}
+                baseline={compare?.text ?? stored}
+                comparing={compare !== null}
+              />
+            </TabsContent>
+          )}
         </ResizablePanel>
 
         {/* One docked slot for review and history: resizable, and the split
