@@ -962,31 +962,18 @@ function WhitespaceWarning({
   lint: ReturnType<typeof lintEnvText>;
   onClean: () => void;
 }) {
-  const parts: string[] = [];
   const n = lint.trailingSpaceLines.length;
-  if (n > 0) {
-    parts.push(
-      n === 1
-        ? `Line ${lint.trailingSpaceLines[0]} has a trailing space`
-        : `${n} lines have trailing spaces`,
-    );
-  }
-  if (lint.trailingBlankLines > 0) {
-    parts.push(
-      lint.trailingBlankLines === 1
-        ? "the file ends with a blank line"
-        : `the file ends with ${lint.trailingBlankLines} blank lines`,
-    );
-  }
-  // Sentence-case the joined clauses: "3 lines… and the file ends…".
-  const message = parts.join(" and ");
+  const message =
+    n === 1
+      ? `Line ${lint.trailingSpaceLines[0]} has a trailing space`
+      : `${n} lines have trailing spaces`;
 
   return (
     <div className="border-warning/30 bg-warning/10 text-warning flex items-center gap-2 border-b px-3 py-2 text-xs">
       <TriangleAlert className="size-3.5 shrink-0" />
       <span className="flex-1">
-        {message}. Invisible whitespace is saved as-is and can break some
-        parsers.
+        {message}. Some parsers keep that space as part of the value, so it's
+        safest to remove it.
       </span>
       <Button
         variant="ghost"
