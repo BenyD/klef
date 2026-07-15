@@ -179,8 +179,6 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
     onDirtyChange?.(changed);
   }, [changed, onDirtyChange]);
 
-  // Old version on the left, current saved version on the right, so "+" reads
-  // as "added since then".
   // Old side (against) on the left, base version on the right, so "+" reads as
   // "added going from the against side to this version".
   const compareOps = useMemo(
@@ -717,12 +715,33 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
                       >
                         <ChevronLeft />
                       </Button>
-                      <span className="truncate text-sm font-medium">
-                        {absoluteTime(new Date(compare.createdAt))}
+                      <span className="shrink-0 truncate text-sm font-medium">
+                        {relativeTime(new Date(compare.createdAt))}
                       </span>
                       <span className="text-muted-foreground shrink-0 text-xs">
-                        vs current
+                        vs
                       </span>
+                      {/* Diff the base against any version, not just current. */}
+                      <Select
+                        value={againstId ?? "current"}
+                        onValueChange={(v) =>
+                          void chooseAgainst(v === "current" ? null : v)
+                        }
+                      >
+                        <SelectTrigger size="sm" className="h-7 w-auto gap-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="current">Current</SelectItem>
+                          {(history ?? [])
+                            .filter((v) => !v.isCurrent && v.id !== compare.id)
+                            .map((v) => (
+                              <SelectItem key={v.id} value={v.id}>
+                                {relativeTime(new Date(v.createdAt))}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                       <span className="ml-auto shrink-0">
                         {compareStatsLine}
                       </span>
