@@ -46,7 +46,7 @@ describe("FilePane (the save loop)", () => {
   it("encrypts the pasted text and persists a blob that decrypts back", async () => {
     render(<FilePane file={{ id: "f1", name: ".env", project: "p", workspace: "w", environment: null }} onSaved={() => {}} />);
 
-    const textarea = await screen.findByPlaceholderText(/Paste your .env/i);
+    const textarea = await screen.findByPlaceholderText(/Paste your config/i);
     const content = "API_KEY=abc123\n# comment\nDB_URL=postgres://x\n";
     fireEvent.change(textarea, { target: { value: content } });
 
@@ -107,5 +107,31 @@ describe("FilePane (the save loop)", () => {
     fireEvent.change(textarea, { target: { value: "A=1" } });
     expect(save().disabled).toBe(true);
     expect(screen.queryByRole("button", { name: /review/i })).toBeNull();
+  });
+});
+
+describe("FilePane format gating", () => {
+  it("offers the table view for a dotenv file", async () => {
+    render(
+      <FilePane
+        file={{ id: "fd", name: ".env", project: "p", workspace: "w", environment: null }}
+        onSaved={() => {}}
+      />,
+    );
+    await screen.findByPlaceholderText(/Paste your config/i);
+    expect(screen.getByRole("tab", { name: /table view/i })).toBeTruthy();
+  });
+
+  it("hides the table and shows the format for a non-dotenv file", async () => {
+    render(
+      <FilePane
+        file={{ id: "fj", name: "config.json", project: "p", workspace: "w", environment: null }}
+        onSaved={() => {}}
+      />,
+    );
+    await screen.findByPlaceholderText(/Paste your config/i);
+    // No KV table lens for JSON; the detected format is shown instead.
+    expect(screen.queryByRole("tab", { name: /table view/i })).toBeNull();
+    expect(screen.getByText("json")).toBeTruthy();
   });
 });
