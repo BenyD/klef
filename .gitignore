@@ -35,5 +35,6 @@ PRD.md
 
 # Local agent tooling (machine-local settings and vendored skills)
 .claude/settings.local.json
+.claude/skills/
 .agents/
 skills-lock.json
