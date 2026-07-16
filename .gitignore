@@ -32,3 +32,8 @@ coverage/
 
 # Personal (kept local, not part of the public repo)
 PRD.md
+
+# Local agent tooling (machine-local settings and vendored skills)
+.claude/settings.local.json
+.agents/
+skills-lock.json
