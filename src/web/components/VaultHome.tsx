@@ -36,6 +36,7 @@ import {
   fileToDataUrl,
   fileToIconDataUrl,
   resolveIconUrl,
+  settleIcon,
 } from "../lib/project-icon.ts";
 import {
   AUTO_LOCK_OPTIONS,
@@ -1001,7 +1002,7 @@ export function VaultHome({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
+              variant="destructive-solid"
               disabled={
                 pendingDelete?.kind === "workspace" &&
                 deleteConfirmText.trim() !== pendingDelete.name
@@ -1035,7 +1036,7 @@ export function VaultHome({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
+              variant="destructive-solid"
               onClick={() => {
                 const pd = pendingDiscard;
                 setPendingDiscard(null);
@@ -1555,7 +1556,14 @@ function NameDialogView({
     if (!name || !dialog) return;
     setBusy(true);
     try {
-      await dialog.submit({ name, environment, framework, icon });
+      // A fast type-and-save can beat the debounced discovery; settle first
+      // so the committed icon matches what the preview would have shown.
+      await dialog.submit({
+        name,
+        environment,
+        framework,
+        icon: await settleIcon(iconGuess, iconDiscovered),
+      });
       onClose();
     } finally {
       setBusy(false);

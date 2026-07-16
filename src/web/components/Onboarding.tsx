@@ -249,7 +249,11 @@ export function Onboarding({ email }: { email: string }) {
                 description="You'll only see this key once, and it's the only way back in if you forget your passphrase. Klef can't reset it for you."
               />
               <div className="mt-5 flex flex-col gap-4">
-                <RecoveryKeyPanel recoveryKey={recoveryKey} email={email} />
+                <RecoveryKeyPanel
+                  recoveryKey={recoveryKey}
+                  email={email}
+                  onSaved={() => setSaved(true)}
+                />
                 <label className="text-muted-foreground flex items-center gap-2 text-sm">
                   <Checkbox
                     checked={saved}

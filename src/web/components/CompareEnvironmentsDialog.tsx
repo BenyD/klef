@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Loader2, Minus } from "lucide-react";
+import { Check, Columns3, Loader2, Minus, TriangleAlert } from "lucide-react";
 import { cn } from "../lib/utils.ts";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "./ui/empty.tsx";
 import { decryptBlob } from "../../shared/crypto.ts";
 import { getCurrentVersion } from "../structure-api.ts";
 import { compareEnvs, type DriftFile } from "../lib/env-drift.ts";
@@ -82,26 +89,45 @@ export function CompareEnvironmentsDialog({
         </DialogHeader>
 
         {error ? (
-          <p className="text-destructive text-sm">{error}</p>
+          <div
+            role="alert"
+            className="border-destructive/30 bg-destructive/10 text-destructive flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm"
+          >
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <span className="text-pretty">{error}</span>
+          </div>
         ) : !report ? (
-          <div className="text-muted-foreground flex items-center gap-2 py-8 text-sm">
-            <Loader2 className="size-4 animate-spin" />
+          <div
+            role="status"
+            aria-live="polite"
+            className="text-muted-foreground flex items-center gap-2 py-8 text-sm"
+          >
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             Decrypting environments…
           </div>
         ) : report.columns.length < 2 ? (
-          <p className="text-muted-foreground py-8 text-center text-sm">
-            Add at least two dotenv files to this project to compare them.
-          </p>
+          <Empty className="py-8">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Columns3 />
+              </EmptyMedia>
+              <EmptyTitle>Nothing to compare yet</EmptyTitle>
+              <EmptyDescription>
+                Add at least two dotenv files to this project to compare their
+                keys.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <div className="flex flex-col gap-3">
-            <p className="text-sm">
+            <p className="text-sm text-pretty">
               {report.drifted.length === 0 ? (
                 <span className="text-success">
                   No drift. Every environment has the same keys.
                 </span>
               ) : (
                 <span className="text-warning">
-                  {report.drifted.length}{" "}
+                  <span className="tabular-nums">{report.drifted.length}</span>{" "}
                   {report.drifted.length === 1 ? "key" : "keys"} missing from
                   some environments.
                 </span>

@@ -185,6 +185,18 @@
   html {
     @apply font-sans;
   }
+  /* Headings balance across lines; body text avoids orphans. Keeps multi-line
+     titles and descriptions from breaking awkwardly without any per-call
+     markup. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
 }
 
 /* Theme switch: circular reveal (see lib/theme.ts). Disable the default
