@@ -51,6 +51,22 @@ export async function discoverIcon(siteUrl: string): Promise<string | null> {
   }
 }
 
+/**
+ * The icon a save should commit. The debounced discovery normally upgrades a
+ * /favicon.ico guess before the user saves, but a fast type-and-save can beat
+ * it; in that case run the lookup inline so the committed icon matches what
+ * the settled preview would have shown, not a guess the site may 404.
+ */
+export async function settleIcon(
+  guess: string | null,
+  discovered: string | null,
+): Promise<string | null> {
+  if (discovered) return discovered;
+  if (!guess?.endsWith("/favicon.ico")) return guess;
+  const found = await discoverIcon(guess.slice(0, -"favicon.ico".length));
+  return found ?? guess;
+}
+
 /** Read a picked file verbatim as a data URL (crop dialogs need the full image). */
 export function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {

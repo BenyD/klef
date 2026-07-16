@@ -7,18 +7,22 @@ import { PasswordInput } from "./ui/password-input.tsx";
  * A freshly generated recovery key with every way to save it. The field
  * carries real credential semantics (form + username + new-password), so
  * password managers attach their own save UI to it; Copy and Download
- * cover the manual route.
+ * cover the manual route. Both report back via onSaved so the caller can
+ * treat the key as saved.
  */
 export function RecoveryKeyPanel({
   recoveryKey,
   email,
+  onSaved,
 }: {
   recoveryKey: string;
   email: string;
+  onSaved?: () => void;
 }) {
   function copy() {
     void navigator.clipboard?.writeText(recoveryKey);
     toast.success("Recovery key copied");
+    onSaved?.();
   }
 
   function download() {
@@ -37,6 +41,7 @@ export function RecoveryKeyPanel({
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Recovery key downloaded");
+    onSaved?.();
   }
 
   return (

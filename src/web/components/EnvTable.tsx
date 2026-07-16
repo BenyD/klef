@@ -141,7 +141,7 @@ export function EnvTable({ text, onChange, baseline, comparing = false }: Props)
                     <Diff />
                     {dirty && !showDiff && (
                       <span
-                        className="bg-primary absolute top-1 right-1 size-1.5 rounded-full"
+                        className="bg-primary ring-background absolute top-0.5 right-0.5 size-2 rounded-full ring-2"
                         aria-hidden="true"
                       />
                     )}

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Fingerprint } from "lucide-react";
 import { VaultWriteError } from "../vault-api.ts";
 import { PasskeyPrfError } from "../lib/passkey-prf.ts";
@@ -30,6 +30,17 @@ export function UnlockScreen() {
   const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
+
+  // Passkey unlock is the least-effort path, so ask for it on arrival
+  // instead of waiting for a click. Once per visit: a dismissed prompt
+  // falls back to the passphrase form without an error, and the button
+  // stays for a second try.
+  const autoPrompted = useRef(false);
+  useEffect(() => {
+    if (autoPrompted.current || passkeyWraps.length === 0) return;
+    autoPrompted.current = true;
+    void onPasskey();
+  });
 
   async function onPasskey() {
     setError(null);

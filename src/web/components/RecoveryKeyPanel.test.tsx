@@ -34,4 +34,29 @@ describe("RecoveryKeyPanel", () => {
     expect(writeText).toHaveBeenCalledWith(KEY);
   });
 
+  it("reports the key as saved after copying", () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+    const onSaved = vi.fn();
+    render(
+      <RecoveryKeyPanel recoveryKey={KEY} email={EMAIL} onSaved={onSaved} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /copy/i }));
+    expect(onSaved).toHaveBeenCalledOnce();
+  });
+
+  it("reports the key as saved after downloading", () => {
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn(() => "blob:test"),
+      revokeObjectURL: vi.fn(),
+    });
+    const onSaved = vi.fn();
+    render(
+      <RecoveryKeyPanel recoveryKey={KEY} email={EMAIL} onSaved={onSaved} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /download/i }));
+    expect(onSaved).toHaveBeenCalledOnce();
+  });
+
 });
