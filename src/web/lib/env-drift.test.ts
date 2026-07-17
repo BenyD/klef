@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareEnvs, keysOf } from "./env-drift.ts";
+import { compareEnvs, keysOf, valuesOf } from "./env-drift.ts";
 
 describe("keysOf", () => {
   it("collects entry keys, ignoring comments and blanks", () => {
@@ -7,6 +7,19 @@ describe("keysOf", () => {
   });
   it("collapses duplicate keys to first-seen order", () => {
     expect(keysOf("B=1\nA=2\nB=3")).toEqual(["B", "A"]);
+  });
+});
+
+describe("valuesOf", () => {
+  it("maps entry keys to values, ignoring comments and blanks", () => {
+    const v = valuesOf("# c\nA=1\n\nexport B=two\n");
+    expect([...v]).toEqual([
+      ["A", "1"],
+      ["B", "two"],
+    ]);
+  });
+  it("resolves duplicate keys to the last occurrence", () => {
+    expect(valuesOf("A=1\nB=2\nA=3").get("A")).toBe("3");
   });
 });
 
@@ -42,6 +55,39 @@ describe("compareEnvs", () => {
     // B missing in prod; C missing in staging and prod → 3 gaps.
     expect(r.drifted.map((d) => d.key)).toEqual(["B", "C"]);
     expect(r.gaps).toBe(3);
+  });
+
+  it("flags keys whose values differ between environments", () => {
+    const r = compareEnvs([
+      { id: "a", label: "dev", text: "A=1\nB=2\nC=3" },
+      { id: "b", label: "prod", text: "A=1\nB=9\nC=3" },
+    ]);
+    expect(r.changed.map((c) => c.key)).toEqual(["B"]);
+    expect(r.changed[0]!.values).toEqual(["2", "9"]);
+    // Same keys everywhere, so the only diff is the changed value.
+    expect(r.drifted).toEqual([]);
+    expect(r.diff.map((d) => d.key)).toEqual(["B"]);
+  });
+
+  it("collects missing and changed keys into one diff", () => {
+    const r = compareEnvs([
+      { id: "a", label: "dev", text: "A=1\nB=2" },
+      { id: "b", label: "prod", text: "A=8" },
+    ]);
+    expect(r.diff.map((d) => d.key)).toEqual(["A", "B"]);
+    // A missing value slot is null, never confused with an empty value.
+    expect(r.diff[1]!.values).toEqual(["2", null]);
+    expect(r.diff[1]!.changed).toBe(false);
+  });
+
+  it("treats an empty value as present and comparable", () => {
+    const r = compareEnvs([
+      { id: "a", label: "dev", text: "A=" },
+      { id: "b", label: "prod", text: "A=x" },
+    ]);
+    expect(r.rows[0]!.present).toEqual([true, true]);
+    expect(r.rows[0]!.values).toEqual(["", "x"]);
+    expect(r.changed.map((c) => c.key)).toEqual(["A"]);
   });
 
   it("sorts the full key matrix stably", () => {
