@@ -27,6 +27,12 @@ function siteUrlFrom(input: string | undefined): URL | null {
   return url;
 }
 
+/** Hosts compare equal with or without a www prefix; exported for tests. */
+export function isSameSite(a: string, b: string): boolean {
+  const strip = (host: string) => host.replace(/^www\./, "");
+  return strip(a) === strip(b);
+}
+
 interface IconCandidate {
   href: string;
   rel: string;
@@ -103,6 +109,14 @@ async function probeFallbackIcon(origin: string): Promise<string | null> {
 icon.get("/", async (c) => {
   const site = siteUrlFrom(c.req.query("url"));
   if (!site) return c.json({ ok: false, error: "Invalid url" }, 400);
+
+  // Cloudflare blocks a Worker's subrequests to its own domain, so discovery
+  // below would always fail for Klef itself. Answer with the app's own icon
+  // (the one index.html declares) without fetching.
+  const self = new URL(c.req.url);
+  if (isSameSite(site.hostname, self.hostname)) {
+    return c.json({ icon: `https://${self.hostname}/favicon.svg` });
+  }
 
   let html = "";
   try {

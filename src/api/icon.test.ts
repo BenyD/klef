@@ -1,6 +1,6 @@
 import { SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { pickIconFromHtml } from "./icon.ts";
+import { icon, isSameSite, pickIconFromHtml } from "./icon.ts";
 
 const BASE = new URL("https://lensdrop.app");
 
@@ -54,6 +54,30 @@ describe("icon discovery", () => {
       pickIconFromHtml(`<link rel="icon" href="data:image/png;base64,AA">`, BASE),
     ).toBeNull();
     expect(pickIconFromHtml("<html><body>hi</body></html>", BASE)).toBeNull();
+  });
+});
+
+describe("own-domain short-circuit", () => {
+  // The Worker cannot fetch its own domain (Cloudflare blocks same-zone
+  // subrequests), so /api/icon answers for the app's host without fetching.
+  const ask = (requestHost: string, siteUrl: string) =>
+    icon.request(`https://${requestHost}/?url=${encodeURIComponent(siteUrl)}`);
+
+  it("returns the app's own declared icon without fetching", async () => {
+    const res = await ask("klef.sh", "https://klef.sh");
+    expect(await res.json()).toEqual({ icon: "https://klef.sh/favicon.svg" });
+  });
+
+  it("treats the www variant as the same site", async () => {
+    const res = await ask("klef.sh", "https://www.klef.sh");
+    expect(await res.json()).toEqual({ icon: "https://klef.sh/favicon.svg" });
+  });
+
+  it("compares hosts ignoring only a www prefix", () => {
+    expect(isSameSite("klef.sh", "klef.sh")).toBe(true);
+    expect(isSameSite("www.klef.sh", "klef.sh")).toBe(true);
+    expect(isSameSite("notklef.sh", "klef.sh")).toBe(false);
+    expect(isSameSite("sub.klef.sh", "klef.sh")).toBe(false);
   });
 });
 
