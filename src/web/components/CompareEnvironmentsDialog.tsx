@@ -10,7 +10,11 @@ import {
 } from "./ui/empty.tsx";
 import { decryptBlob } from "../../shared/crypto.ts";
 import { getCurrentVersion } from "../structure-api.ts";
-import { compareEnvs, type DriftFile } from "../lib/env-drift.ts";
+import {
+  compareEnvs,
+  type DriftColumn,
+  type DriftFile,
+} from "../lib/env-drift.ts";
 import { detectFormat } from "../lib/config-format.ts";
 import { useEnvMeta } from "../lib/env-meta.ts";
 import { useVault } from "../vault-context.ts";
@@ -22,11 +26,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog.tsx";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs.tsx";
 
-// Compares the dotenv files in a project by key presence, all decrypted in the
-// browser. Values are never fetched into the view, only which keys each
-// environment has. Non-dotenv files are skipped (their keys don't parse the
+// Compares the dotenv files in a project, all decrypted in the browser. The
+// Keys tab shows which keys each environment has; the Values tab shows only
+// the keys that differ, with each environment's value. Nothing decrypted ever
+// leaves the browser. Non-dotenv files are skipped (their keys don't parse the
 // same way); the drift engine and the CLI share the same comparison.
+//
+// Table note: the scroll container needs `border-separate` on the table, an
+// opaque background on the header cells, and sticky on the `th`s themselves.
+// Chrome ignores `position: sticky` on collapsed-border table headers, and a
+// translucent header lets rows show through while scrolling.
 export function CompareEnvironmentsDialog({
   project,
   onClose,
@@ -83,8 +94,8 @@ export function CompareEnvironmentsDialog({
         <DialogHeader>
           <DialogTitle>Compare environments</DialogTitle>
           <DialogDescription>
-            Which keys each environment in {project?.name} has. Values stay
-            hidden.
+            Which keys each environment in {project?.name} has, and where
+            values differ. Everything decrypts only in your browser.
           </DialogDescription>
         </DialogHeader>
 
@@ -119,61 +130,43 @@ export function CompareEnvironmentsDialog({
             </EmptyHeader>
           </Empty>
         ) : (
-          <div className="flex flex-col gap-3">
-            <p className="text-sm text-pretty">
-              {report.drifted.length === 0 ? (
-                <span className="text-success">
-                  No drift. Every environment has the same keys.
-                </span>
-              ) : (
-                <span className="text-warning">
-                  <span className="tabular-nums">{report.drifted.length}</span>{" "}
-                  {report.drifted.length === 1 ? "key" : "keys"} missing from
-                  some environments.
-                </span>
-              )}
-            </p>
+          <Tabs defaultValue="keys" className="gap-3">
+            <TabsList>
+              <TabsTrigger value="keys">Keys</TabsTrigger>
+              <TabsTrigger value="values">Values</TabsTrigger>
+            </TabsList>
 
-            <div className="max-h-[60vh] overflow-auto rounded-lg border">
-              <table className="w-full border-collapse text-sm">
-                <thead className="bg-muted/40 sticky top-0">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium">Key</th>
-                    {report.columns.map((col) => {
-                      const meta = envMeta(col.label);
-                      return (
-                        <th
-                          key={col.id}
-                          className="px-3 py-2 text-center font-medium whitespace-nowrap"
-                        >
-                          <span className="inline-flex items-center gap-1.5">
-                            <span
-                              className={cn(
-                                "size-1.5 rounded-full",
-                                meta.dot,
-                              )}
-                            />
-                            {meta.label}
-                          </span>
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {report.rows.map((row) => (
-                      <tr
-                        key={row.key}
-                        className="border-t hover:bg-muted/30"
-                      >
-                        <td className="px-3 py-1.5 font-mono text-xs">
+            <TabsContent value="keys" className="flex flex-col gap-3">
+              <p className="text-sm text-pretty">
+                {report.drifted.length === 0 ? (
+                  <span className="text-success">
+                    No drift. Every environment has the same keys.
+                  </span>
+                ) : (
+                  <span className="text-warning">
+                    <span className="tabular-nums">
+                      {report.drifted.length}
+                    </span>{" "}
+                    {report.drifted.length === 1 ? "key" : "keys"} missing from
+                    some environments.
+                  </span>
+                )}
+              </p>
+
+              <div className="max-h-[60vh] overflow-auto rounded-lg border">
+                <table className="w-full border-separate border-spacing-0 text-sm">
+                  <DriftHead columns={report.columns} envMeta={envMeta} />
+                  <tbody className="[&>tr:last-child>td]:border-b-0">
+                    {report.rows.map((row) => (
+                      <tr key={row.key} className="hover:bg-muted/30">
+                        <td className="border-b px-3 py-1.5 font-mono text-xs">
                           {row.key}
                         </td>
                         {row.present.map((present, i) => (
                           <td
                             key={report.columns[i]!.id}
                             className={cn(
-                              "px-3 py-1.5 text-center",
+                              "border-b px-3 py-1.5 text-center",
                               !present && "bg-warning/10",
                             )}
                           >
@@ -185,19 +178,114 @@ export function CompareEnvironmentsDialog({
                           </td>
                         ))}
                       </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {report.drifted.length > 0 && (
-              <p className="text-muted-foreground text-xs">
-                Some differences are intentional (a debug flag only in
-                development, say). This just surfaces them.
-              </p>
-            )}
-          </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {report.drifted.length > 0 && (
+                <p className="text-muted-foreground text-xs">
+                  Some differences are intentional (a debug flag only in
+                  development, say). This just surfaces them.
+                </p>
+              )}
+            </TabsContent>
+
+            <TabsContent value="values" className="flex flex-col gap-3">
+              {report.diff.length === 0 ? (
+                <p className="text-success text-sm text-pretty">
+                  No differences. Every environment has the same keys and
+                  values.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-pretty">
+                    <span className="text-warning">
+                      <span className="tabular-nums">{report.diff.length}</span>{" "}
+                      {report.diff.length === 1 ? "key differs" : "keys differ"}{" "}
+                      across environments.
+                    </span>
+                  </p>
+
+                  <div className="max-h-[60vh] overflow-auto rounded-lg border">
+                    <table className="w-full border-separate border-spacing-0 text-sm">
+                      <DriftHead columns={report.columns} envMeta={envMeta} />
+                      <tbody className="[&>tr:last-child>td]:border-b-0">
+                        {report.diff.map((row) => (
+                          <tr key={row.key} className="hover:bg-muted/30">
+                            <td className="border-b px-3 py-1.5 font-mono text-xs">
+                              {row.key}
+                            </td>
+                            {row.values.map((value, i) => (
+                              <td
+                                key={report.columns[i]!.id}
+                                className={cn(
+                                  "border-b px-3 py-1.5 text-center",
+                                  value === null && "bg-warning/10",
+                                )}
+                              >
+                                {value === null ? (
+                                  <Minus className="text-warning/70 mx-auto size-3.5" />
+                                ) : value === "" ? (
+                                  <span className="text-muted-foreground text-xs italic">
+                                    empty
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="inline-block max-w-56 truncate align-bottom font-mono text-xs"
+                                    title={value}
+                                  >
+                                    {value}
+                                  </span>
+                                )}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-muted-foreground text-xs">
+                    Only keys that differ appear here. Values decrypt in this
+                    browser and never reach the server.
+                  </p>
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function DriftHead({
+  columns,
+  envMeta,
+}: {
+  columns: DriftColumn[];
+  envMeta: (environment: string) => { label: string; dot: string };
+}) {
+  return (
+    <thead>
+      <tr>
+        <th className="bg-background sticky top-0 z-10 border-b px-3 py-2 text-left font-medium">
+          Key
+        </th>
+        {columns.map((col) => {
+          const meta = envMeta(col.label);
+          return (
+            <th
+              key={col.id}
+              className="bg-background sticky top-0 z-10 border-b px-3 py-2 text-center font-medium whitespace-nowrap"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <span className={cn("size-1.5 rounded-full", meta.dot)} />
+                {meta.label}
+              </span>
+            </th>
+          );
+        })}
+      </tr>
+    </thead>
   );
 }
