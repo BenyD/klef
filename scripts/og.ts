@@ -1,6 +1,7 @@
-/* Renders public/og.png (1200x630) with satori + resvg. The layout mirrors
-   the marketing hero: ciphertext backdrop, the ember mark from favicon.svg,
-   wordmark, tagline, and URL. Deterministic; rerun with `pnpm og`. */
+/* Renders public/og.png (1200x630) with satori + resvg: centered lockup
+   (mark, wordmark, tagline) over an edge-faded ciphertext backdrop, with a
+   masked env line as the signature element. Deterministic; rerun with
+   `pnpm og`. */
 
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -13,8 +14,10 @@ const HEIGHT = 630;
 
 // Brand tokens from src/web/styles/global.css (dark) and favicon.svg.
 const BG = "#1c1917"; // stone-900
+const CARD = "#292524"; // stone-800
 const FOREGROUND = "#fafaf9"; // stone-50
-const MUTED = "#a8a29e"; // stone-400
+const KEY = "#d6d3d1"; // stone-300
+const FAINT = "#57534e"; // stone-600
 const EMBER = "#fb923c";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -39,8 +42,8 @@ function cipherLayer(): Node {
           {
             color:
               token.kind === "env"
-                ? `rgba(251, 146, 60, ${0.1 + token.shade * 0.1})`
-                : `rgba(250, 250, 249, ${0.035 + token.shade * 0.045})`,
+                ? `rgba(251, 146, 60, ${0.08 + token.shade * 0.08})`
+                : `rgba(250, 250, 249, ${0.03 + token.shade * 0.04})`,
           },
           token.text,
         ),
@@ -72,8 +75,8 @@ async function markLayer(): Promise<Node> {
     type: "img",
     props: {
       src: `data:image/svg+xml,${encodeURIComponent(svg)}`,
-      width: 92,
-      height: 92,
+      width: 84,
+      height: 84,
     },
   };
 }
@@ -91,14 +94,14 @@ async function build(): Promise<Node> {
     },
     [
       cipherLayer(),
-      // Fade the backdrop out behind the text column so it stays readable.
+      // Clear the middle so the lockup floats on calm ground.
       h("div", {
         position: "absolute",
         top: 0,
         left: 0,
         width: WIDTH,
         height: HEIGHT,
-        backgroundImage: `linear-gradient(90deg, ${BG} 34%, rgba(28, 25, 23, 0.86) 55%, rgba(28, 25, 23, 0.2) 100%)`,
+        backgroundImage: `radial-gradient(circle at 50% 46%, ${BG} 30%, rgba(28, 25, 23, 0.55) 62%, rgba(28, 25, 23, 0) 100%)`,
       }),
       h(
         "div",
@@ -106,12 +109,12 @@ async function build(): Promise<Node> {
           position: "absolute",
           top: 0,
           left: 0,
+          width: WIDTH,
           height: HEIGHT,
-          padding: "78px 88px",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
+          alignItems: "center",
+          justifyContent: "center",
         },
         [
           await markLayer(),
@@ -123,44 +126,43 @@ async function build(): Promise<Node> {
               fontWeight: 700,
               letterSpacing: "-0.03em",
               lineHeight: 1,
+              marginTop: 36,
             },
             "Klef",
           ),
           h(
             "div",
             {
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-start",
-              gap: 18,
+              color: FOREGROUND,
+              fontSize: 40,
+              fontWeight: 600,
+              lineHeight: 1.2,
+              marginTop: 30,
             },
-            [
-              h(
-                "div",
-                {
-                  color: FOREGROUND,
-                  fontSize: 42,
-                  fontWeight: 600,
-                  lineHeight: 1.2,
-                },
-                "Sync your .env files without trusting the server",
-              ),
-              h(
-                "div",
-                { color: MUTED, fontSize: 28, lineHeight: 1.3 },
-                "Zero-knowledge. Encrypted in your browser. Open source.",
-              ),
-            ],
+            "Sync your .env files without trusting the server",
           ),
           h(
             "div",
             {
-              color: EMBER,
+              display: "flex",
+              alignItems: "center",
+              marginTop: 44,
+              backgroundColor: CARD,
+              border: "1px solid rgba(250, 250, 249, 0.09)",
+              borderRadius: 12,
+              padding: "16px 26px",
               fontFamily: "JetBrains Mono",
               fontSize: 26,
-              fontWeight: 500,
             },
-            "klef.sh",
+            [
+              h("span", { color: KEY }, "OPENAI_API_KEY"),
+              h("span", { color: FAINT }, "="),
+              h(
+                "span",
+                { color: EMBER, letterSpacing: "0.08em" },
+                "************",
+              ),
+            ],
           ),
         ],
       ),
@@ -174,11 +176,6 @@ const svg = await satori(tree, {
   width: WIDTH,
   height: HEIGHT,
   fonts: [
-    {
-      name: "Inter",
-      weight: 400,
-      data: await font("@fontsource/inter", "inter-latin-400-normal.woff"),
-    },
     {
       name: "Inter",
       weight: 600,
@@ -195,14 +192,6 @@ const svg = await satori(tree, {
       data: await font(
         "@fontsource/jetbrains-mono",
         "jetbrains-mono-latin-400-normal.woff",
-      ),
-    },
-    {
-      name: "JetBrains Mono",
-      weight: 500,
-      data: await font(
-        "@fontsource/jetbrains-mono",
-        "jetbrains-mono-latin-500-normal.woff",
       ),
     },
   ],
