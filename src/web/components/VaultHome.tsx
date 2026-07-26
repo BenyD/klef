@@ -14,6 +14,7 @@ import {
   Check,
   ChevronLeft,
   ChevronsUpDown,
+  FileText,
   FolderPlus,
   Image as ImageIcon,
   LayoutGrid,
@@ -758,6 +759,70 @@ export function VaultHome({
                 <DropdownMenuItem onClick={openNewProject}>
                   <Plus />
                   New project
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        )}
+
+        {selected && currentProject && (
+          <>
+            {/* File crumb: switches within the current project, mirroring the
+                workspace and project crumbs. On mobile it stays visible next
+                to the back arrow, using the room the hidden crumbs free up. */}
+            <Slash className="max-sm:hidden" />
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="max-w-40 gap-1.5 px-1.5"
+                  />
+                }
+              >
+                {selected.environment && (
+                  <span
+                    className={cn(
+                      "size-1.5 shrink-0 rounded-full",
+                      envMeta(selected.environment).dot,
+                    )}
+                    aria-hidden="true"
+                  />
+                )}
+                <span className="truncate font-mono text-xs">
+                  {selected.name}
+                </span>
+                <ChevronsUpDown className="text-muted-foreground size-3 shrink-0" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-56">
+                {currentProject.files.map((f) => (
+                  <DropdownMenuItem
+                    key={f.id}
+                    className="font-mono"
+                    onClick={() => selectFile(currentProject, f)}
+                  >
+                    <FileText />
+                    <span className="truncate">{f.name}</span>
+                    <span className="ml-auto flex items-center gap-1.5">
+                      {f.environment && (
+                        <span
+                          className={cn(
+                            "size-1.5 rounded-full",
+                            envMeta(f.environment).dot,
+                          )}
+                          title={f.environment}
+                          aria-hidden="true"
+                        />
+                      )}
+                      {f.id === selected.id && <Check className="size-4" />}
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => openNewFile(currentProject)}>
+                  <Plus />
+                  New file
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
