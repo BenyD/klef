@@ -12,7 +12,9 @@ export function Landing() {
           rel="noreferrer"
           className="marketing-announce"
         >
-          <span className="marketing-announce-tag">Beta</span>
+          {/* Keep the space after the pill: without it text extractors
+              (e.g. Google snippets) read "BetaKlef"; flex gap hides it. */}
+          <span className="marketing-announce-tag">Beta</span>{" "}
           Klef is in early access
           <ArrowRight className="marketing-announce-arrow size-3.5" />
         </a>

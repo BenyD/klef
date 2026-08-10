@@ -1,3 +1,5 @@
+import { flushSync } from "react-dom";
+
 type ViewTransitionDocument = Document & {
   startViewTransition?: (cb: () => void) => { ready: Promise<void> };
 };
@@ -27,7 +29,11 @@ export function switchTheme(
     Math.max(y, window.innerHeight - y),
   );
 
-  const transition = doc.startViewTransition(() => setTheme(next));
+  // flushSync so the .dark class flips before the browser captures the new
+  // snapshot; a batched update races the capture and skips the reveal.
+  const transition = doc.startViewTransition(() =>
+    flushSync(() => setTheme(next)),
+  );
   void transition.ready.then(() => {
     document.documentElement.animate(
       {
