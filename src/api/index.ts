@@ -5,6 +5,7 @@ import { vault } from "./vault.ts";
 import { structure } from "./structure.ts";
 import { icon } from "./icon.ts";
 import { tokens } from "./tokens.ts";
+import { device } from "./device.ts";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -69,6 +70,14 @@ app.route("/api", structure);
 app.use("/api/tokens", requireAuth, requireSession);
 app.use("/api/tokens/*", requireAuth, requireSession);
 app.route("/api/tokens", tokens);
+
+// CLI browser sign-in. Starting a login and polling for its result are open
+// by necessity: the CLI has no credentials yet. Reading whose request a code
+// belongs to, and approving or denying it, need a real browser session - never
+// an access token, or a leaked one could authorise its own successors.
+app.use("/api/cli/device/pending/*", requireAuth, requireSession);
+app.use("/api/cli/device/approve", requireAuth, requireSession);
+app.route("/api/cli/device", device);
 
 // Favicon discovery for project icons (server-side because of CORS).
 app.use("/api/icon", requireAuth);

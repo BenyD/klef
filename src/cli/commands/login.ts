@@ -1,33 +1,62 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { command } from "../invocation.ts";
 import { KlefApi } from "../api.ts";
 import { saveToken, validateToken } from "../credentials.ts";
 import { apiBaseUrl } from "../paths.ts";
 import { promptSecret } from "../prompt.ts";
+import { command } from "../invocation.ts";
+import { beginDeviceLogin, openBrowser } from "../device-login.ts";
+import { hasFlag, type ParsedArgs } from "../args.ts";
 
 /**
- * Store an access token minted in the web app.
+ * Sign in.
  *
- * The token is read from the terminal, never from argv — a token on the
- * command line ends up in `ps`, in shell history, and in the transcript of
- * whatever agent ran it.
+ * The default is a browser approval: the CLI shows a short code, opens
+ * klef.sh, and waits while you approve it there. Nothing is typed or pasted,
+ * which matters because a pasted token is a live credential passing through a
+ * clipboard and a terminal's scrollback.
+ *
+ * `--paste` keeps the old flow for machines with no browser.
  */
-export async function login(env: NodeJS.ProcessEnv): Promise<number> {
+export async function login(
+  args: ParsedArgs,
+  env: NodeJS.ProcessEnv,
+): Promise<number> {
   const base = apiBaseUrl(env);
+  return hasFlag(args, "paste") ? pasteLogin(base, env) : browserLogin(base, env);
+}
 
-  console.log(`Create an access token at ${base} → Settings → Security → Developer.`);
-  console.log("Then paste it here. It won't be shown as you type.\n");
+async function browserLogin(base: string, env: NodeJS.ProcessEnv): Promise<number> {
+  const login = await beginDeviceLogin(base);
 
-  const raw = await promptSecret("Access token: ");
-  const token = validateToken(raw);
+  console.log(`\n  Your code:  ${login.userCode}\n`);
+  console.log(`Opening ${login.verificationUri} to approve it.`);
+  console.log("Check the code on the page matches the one above before you approve.\n");
+  openBrowser(`${login.verificationUri}?code=${encodeURIComponent(login.userCode)}`);
+  console.log("Waiting for approval...");
 
-  // Verify before storing, so a typo fails now rather than on the next command.
-  const api = new KlefApi(base, token);
-  const { user } = await api.whoami();
+  const token = await login.collect();
 
+  // Confirm before storing, so a token that cannot be used never gets saved.
+  const { user } = await new KlefApi(base, token).whoami();
   const source = await saveToken(token, env);
   const where = source === "keychain" ? "your OS keychain" : "a private file (0600)";
+
+  console.log(`\nSigned in as ${user.email}. Token stored in ${where}.`);
+  console.log(`Next: run \`${command("link")}\` inside a repo to connect it to a file.`);
+  return 0;
+}
+
+async function pasteLogin(base: string, env: NodeJS.ProcessEnv): Promise<number> {
+  console.log(`Create an access token at ${base} -> Settings -> Security -> Developer.`);
+  console.log("Then paste it here. It won't be shown as you type.\n");
+
+  const token = validateToken(await promptSecret("Access token: "));
+
+  const { user } = await new KlefApi(base, token).whoami();
+  const source = await saveToken(token, env);
+  const where = source === "keychain" ? "your OS keychain" : "a private file (0600)";
+
   console.log(`\nSigned in as ${user.email}. Token stored in ${where}.`);
   console.log(`Next: run \`${command("link")}\` inside a repo to connect it to a file.`);
   return 0;
