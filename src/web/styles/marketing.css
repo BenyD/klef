@@ -110,9 +110,9 @@
   border: 1px solid transparent;
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    opacity 0.15s ease;
+    background var(--duration-fast) var(--ease-quick),
+    border-color var(--duration-fast) var(--ease-quick),
+    opacity var(--duration-fast) var(--ease-quick);
 }
 
 .marketing .m-btn-primary {
@@ -224,8 +224,8 @@
   font-size: 13px;
   color: var(--m-muted);
   transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
+    border-color var(--duration-fast) var(--ease-quick),
+    background var(--duration-fast) var(--ease-quick);
 }
 .marketing-announce:hover {
   border-color: var(--m-outline-hover);
@@ -245,8 +245,8 @@
   flex: none;
   color: var(--m-dim);
   transition:
-    transform 0.15s ease,
-    color 0.15s ease;
+    transform var(--duration-fast) var(--ease-quick),
+    color var(--duration-fast) var(--ease-quick);
 }
 .marketing-announce:hover .marketing-announce-arrow {
   transform: translateX(2px);
@@ -348,7 +348,7 @@
   margin-top: 4px;
   font-size: 13px;
   color: var(--m-dim);
-  transition: color 0.15s ease;
+  transition: color var(--duration-fast) var(--ease-quick);
 }
 .marketing .marketing-oss:hover {
   color: var(--m-muted);
@@ -378,7 +378,7 @@
 
 .marketing-footer-inner a {
   color: var(--m-muted);
-  transition: color 0.15s ease;
+  transition: color var(--duration-fast) var(--ease-quick);
 }
 .marketing-footer-inner a:hover {
   color: var(--m-fg);
@@ -521,7 +521,7 @@
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-color: var(--m-dim);
-  transition: text-decoration-color 0.15s ease;
+  transition: text-decoration-color var(--duration-fast) var(--ease-quick);
 }
 
 .marketing-page section a:hover,
@@ -598,7 +598,7 @@
 
 .marketing-doc-toc-chevron {
   color: var(--m-dim);
-  transition: transform 0.2s ease;
+  transition: transform var(--duration-base) var(--ease-out);
 }
 
 .marketing-doc-toc-toggle[aria-expanded="true"] .marketing-doc-toc-chevron {
@@ -619,8 +619,8 @@
   line-height: 1.45;
   color: var(--m-muted);
   transition:
-    color 0.15s ease,
-    border-color 0.15s ease;
+    color var(--duration-fast) var(--ease-quick),
+    border-color var(--duration-fast) var(--ease-quick);
 }
 
 .marketing .marketing-doc-toc nav a:hover {
@@ -649,7 +649,7 @@
   content: " #";
   color: var(--m-dim);
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--duration-fast) var(--ease-quick);
 }
 
 .marketing-page section h2 a:hover::after {
@@ -819,8 +819,8 @@
   border-radius: var(--m-radius-sm);
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background var(--duration-fast) var(--ease-quick),
+    color var(--duration-fast) var(--ease-quick);
 }
 
 .marketing-agent-tab:hover {
@@ -851,8 +851,8 @@
   border-radius: var(--m-radius-sm);
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
+    background var(--duration-fast) var(--ease-quick),
+    border-color var(--duration-fast) var(--ease-quick);
 }
 
 .marketing-agent-copy:hover {
