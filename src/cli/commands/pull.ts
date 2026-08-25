@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { command } from "../invocation.ts";
 import { writeFile, chmod } from "node:fs/promises";
 import path from "node:path";
 import { decryptBlob } from "../../shared/crypto.ts";
@@ -43,7 +44,7 @@ export async function pull(
 ): Promise<number> {
   const config = await readProjectConfig(cwd);
   if (!config) {
-    console.error(`No ${CONFIG_FILENAME} here. Run \`klef link\` first.`);
+    console.error(`No ${CONFIG_FILENAME} here. Run \`${command("link")}\` first.`);
     return 1;
   }
 

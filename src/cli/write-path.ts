@@ -12,6 +12,9 @@ import path from "node:path";
 
 export class UnsafePathError extends Error {}
 
+/** Shared by pull (writing) and push (reading), so the wording stays neutral. */
+const OUTSIDE = "Refusing to leave this directory";
+
 /**
  * Resolve a destination against `cwd`, refusing anything that escapes it.
  * Returns the absolute path to write.
@@ -23,7 +26,7 @@ export function resolveWritePath(cwd: string, requested: string): string {
 
   if (path.isAbsolute(requested)) {
     throw new UnsafePathError(
-      `Refusing to write outside this directory: "${requested}" is an absolute path.`,
+      `${OUTSIDE}: "${requested}" is an absolute path.`,
     );
   }
 
@@ -35,7 +38,7 @@ export function resolveWritePath(cwd: string, requested: string): string {
   const rel = path.relative(base, target);
   if (rel === "" || rel === ".." || rel.startsWith(`..${path.sep}`)) {
     throw new UnsafePathError(
-      `Refusing to write outside this directory: "${requested}" resolves above ${base}.`,
+      `${OUTSIDE}: "${requested}" resolves above ${base}.`,
     );
   }
 
