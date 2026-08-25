@@ -130,16 +130,22 @@ export function promptText(prompt: AgentPrompt): string {
 }
 
 /**
- * Prompts withheld from the site because they name something that doesn't
- * exist yet. "pull" tells the reader to run `npx @klefsh/cli`, which 404s until
- * the package is published — and a command that fails on line one is worse
- * than no command at all. Empty this list to ship it.
+ * Packages the prompts may tell a reader to run. Add one only once it is
+ * actually on npm: klef.sh once shipped a prompt naming @klefsh/cli before it
+ * was published, so every visitor who copied it got a 404 on line one.
  */
-const UNPUBLISHED: readonly string[] = ["pull"];
+export const PUBLISHED_PACKAGES: readonly string[] = ["@klefsh/cli"];
 
-export const AGENT_PROMPTS: readonly AgentPrompt[] = PROMPTS.filter(
-  (prompt) => !UNPUBLISHED.includes(prompt.id),
-);
+/** Every `npx <package>` a prompt tells the reader to run. */
+export function npxPackagesIn(text: string): string[] {
+  return [
+    ...new Set(
+      [...text.matchAll(/\bnpx\s+(?:--yes\s+)?(@?[\w./-]+)/g)].map((m) => m[1]!),
+    ),
+  ].sort();
+}
+
+export const AGENT_PROMPTS: readonly AgentPrompt[] = PROMPTS;
 
 /**
  * The prompt behind the hero's copy button, where there is no room to choose.

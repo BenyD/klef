@@ -43,14 +43,13 @@ a passphrase read straight from the terminal. It cannot be run unattended by
 design.
 
 ```bash
-klef login   # paste a token from Settings -> Security -> Developer
-klef link    # connect this directory to a file in your vault
-klef pull    # write it to disk (mode 0600), reporting only a count
+npx @klefsh/cli login   # paste a token from Settings -> Security -> Developer
+npx @klefsh/cli link    # connect this directory to a file in your vault
+npx @klefsh/cli pull    # write it to disk (mode 0600), reporting only a count
 ```
 
-**Not published yet.** `pnpm build:cli` produces `@klefsh/cli` in `dist/cli`
-(one file, no required dependencies); until it is on npm, run the CLI from a
-clone with `pnpm cli <command>`. To publish:
+`pnpm build:cli` produces `@klefsh/cli` in `dist/cli` (one file, no required
+dependencies). To cut a release:
 
 ```bash
 pnpm build:cli
