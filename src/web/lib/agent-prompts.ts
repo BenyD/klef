@@ -37,15 +37,15 @@ const PROMPTS = [
 
 You can't do this entirely for me, and that's deliberate. Klef accounts are
 Google or passkey sign-in, and the encryption key comes from a passphrase that
-never leaves my browser — so signing in and pasting the files are mine to do.
+never leaves my browser, so signing in and pasting the files are mine to do.
 Your job is to prepare everything, then walk me through it step by step.
 
-1. List every environment file in this repo by path — .env, .env.local,
+1. List every environment file in this repo by path: .env, .env.local,
    .env.production, and any framework-specific variants. List the paths only.
    Do not open or read the contents of any of them. If you need to know which
    keys a file defines, ask me and I'll tell you.
-2. For each one, check whether git actually tracks it —
-   \`git ls-files --error-unmatch <path>\` — rather than only whether .gitignore
+2. For each one, check whether git actually tracks it, with
+   \`git ls-files --error-unmatch <path>\`, rather than only whether .gitignore
    mentions it. A file committed before the ignore rule was added is still
    tracked and still leaking. If any is tracked, tell me which and stop there.
 3. Propose the structure: which Klef project each file belongs to, and whether
@@ -54,12 +54,12 @@ Your job is to prepare everything, then walk me through it step by step.
    confirm each step before moving on:
    - open https://klef.sh and sign in
    - set a master passphrase, and save the recovery key somewhere safe
-     (if I lose both, the data is gone — Klef cannot reset it)
+     (if I lose both, the data is gone, and Klef cannot reset it)
    - create the project(s) you proposed
    - for each file, tell me which one to paste next and what to name it
 
 I'll paste the file contents in myself. Klef encrypts them in my browser, so the
-server only ever stores ciphertext — which is also why you never need to see
+server only ever stores ciphertext, which is also why you never need to see
 them.`,
   },
   {
@@ -71,22 +71,22 @@ them.`,
 this machine, using the Klef CLI.
 
 Two things stay mine throughout: the access token and the master passphrase.
-Don't ask me for either — the CLI reads the passphrase straight from the
+Don't ask me for either. The CLI reads the passphrase straight from the
 terminal, which is exactly why it can't pass through you.
 
-1. Check where things stand: \`npx @klef/cli status\`.
-   If it says I'm not signed in, give me \`npx @klef/cli login\` to run myself and
-   wait — I'll paste a token from klef.sh → Settings → Security → Developer.
-2. If this directory isn't linked yet, run \`npx @klef/cli link\` to list what's in
+1. Check where things stand: \`npx @klefsh/cli status\`.
+   If it says I'm not signed in, give me \`npx @klefsh/cli login\` to run myself and
+   wait. I'll paste a token from klef.sh → Settings → Security → Developer.
+2. If this directory isn't linked yet, run \`npx @klefsh/cli link\` to list what's in
    my vault, show me the options, and link the one I pick with
-   \`npx @klef/cli link <workspace> <project> <file>\`. That writes .klef.json,
-   which is safe to commit — it holds names, never values.
-3. Give me \`npx @klef/cli pull\` to run myself. It stops for my passphrase, so it
-   won't work if you run it — hand it over and wait for me to confirm.
+   \`npx @klefsh/cli link <workspace> <project> <file>\`. That writes .klef.json,
+   which is safe to commit, since it holds names, never values.
+3. Give me \`npx @klefsh/cli pull\` to run myself. It stops for my passphrase, so it
+   won't work if you run it. Hand it over and wait for me to confirm.
 4. For other files in the same project, the same applies with
-   \`npx @klef/cli pull --file <name>\` (for example .env.local, then
+   \`npx @klefsh/cli pull --file <name>\` (for example .env.local, then
    .env.production).
-5. Finally, check every file it wrote is ignored by git —
+5. Finally, check every file it wrote is ignored by git:
    \`git ls-files --error-unmatch <path>\` should fail for each. If one is tracked,
    tell me immediately.
 
@@ -113,7 +113,7 @@ me.`,
 6. Stop here and give me these commands to run myself, then wait for me to
    confirm. Do not run them for me, and do not ask me for the values:
    \`wrangler secret put\` reads from the terminal, so the only way you could set
-   them is by holding the plaintext — and these must not pass through you.
+   them is by holding the plaintext, and these must not pass through you.
      pnpm exec wrangler secret put BETTER_AUTH_SECRET   # openssl rand -base64 32
      pnpm exec wrangler secret put BETTER_AUTH_URL      # my deployed URL
      pnpm exec wrangler secret put GOOGLE_CLIENT_ID
@@ -131,7 +131,7 @@ export function promptText(prompt: AgentPrompt): string {
 
 /**
  * Prompts withheld from the site because they name something that doesn't
- * exist yet. "pull" tells the reader to run `npx @klef/cli`, which 404s until
+ * exist yet. "pull" tells the reader to run `npx @klefsh/cli`, which 404s until
  * the package is published — and a command that fails on line one is worse
  * than no command at all. Empty this list to ship it.
  */

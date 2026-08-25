@@ -8,6 +8,7 @@ import {
   describeLastUsed,
   displayToken,
   EXPIRY_OPTIONS,
+  expiryLabel,
   tokenState,
 } from "../lib/access-tokens.ts";
 import { createToken, listTokens, revokeToken } from "../tokens-api.ts";
@@ -77,7 +78,7 @@ export function AccessTokensPanel() {
         <h3 className="text-sm font-medium">Access tokens</h3>
         <p className="text-muted-foreground text-sm">
           Let the Klef CLI and MCP server reach your vault. A token proves who
-          you are — it can't decrypt anything, because that still needs your
+          you are. It can't decrypt anything, because that still needs your
           master passphrase on your own machine.
         </p>
       </div>
@@ -192,8 +193,8 @@ function TokenRow({
             <AlertDialogTitle>Revoke this token?</AlertDialogTitle>
             <AlertDialogDescription>
               Anything signed in with <strong>{token.name}</strong> stops
-              working immediately. Your data is untouched — you can create a new
-              token any time.
+              working immediately. Your data is untouched, and you can create a
+              new token any time.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -273,7 +274,7 @@ function CreateTokenDialog({
         {minted ? (
           <div className="flex flex-col gap-3">
             <p className="text-muted-foreground text-sm">
-              Copy this now — it won't be shown again. Klef stores only a hash
+              Copy this now; it won't be shown again. Klef stores only a hash
               of it, so nobody, including us, can recover it later.
             </p>
             <code className="bg-muted block overflow-x-auto rounded-md px-3 py-2 font-mono text-xs">
@@ -311,7 +312,9 @@ function CreateTokenDialog({
                 onValueChange={(v) => setExpiry(v ?? DEFAULT_EXPIRY)}
               >
                 <SelectTrigger id="token-expiry">
-                  <SelectValue />
+                  {/* Base UI renders the raw value unless given children, which
+                      showed "90" and "never" in place of the option labels. */}
+                  <SelectValue>{expiryLabel(expiry)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {EXPIRY_OPTIONS.map((option) => (

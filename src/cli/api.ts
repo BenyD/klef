@@ -65,7 +65,7 @@ export class KlefApi {
     if (res.status === 401) throw new UnauthorizedError();
     if (res.status === 403) {
       throw new ApiError(
-        "That action needs a browser session — access tokens can't perform it.",
+        "That action needs a browser session; access tokens can't perform it.",
         403,
       );
     }

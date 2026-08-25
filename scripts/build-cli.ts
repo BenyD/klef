@@ -62,7 +62,7 @@ await writeFile(
   path.join(OUT, "package.json"),
   `${JSON.stringify(
     {
-      name: "@klef/cli",
+      name: "@klefsh/cli",
       version: CLI_VERSION,
       description:
         "Zero-knowledge .env sync. Pull your environment files without the server ever seeing them.",
@@ -95,9 +95,9 @@ await writeFile(
 Zero-knowledge \`.env\` sync — [klef.sh](https://klef.sh)
 
 \`\`\`bash
-npx @klef/cli login    # paste a token from Settings -> Security -> Developer
-npx @klef/cli link     # connect this directory to a file in your vault
-npx @klef/cli pull     # write it to disk
+npx @klefsh/cli login    # paste a token from Settings -> Security -> Developer
+npx @klefsh/cli link     # connect this directory to a file in your vault
+npx @klefsh/cli pull     # write it to disk
 \`\`\`
 
 The server only ever stores ciphertext. \`pull\` derives your key locally from a
@@ -113,5 +113,5 @@ Source: [github.com/BenyD/klef](https://github.com/BenyD/klef) (AGPL-3.0-or-late
 
 const bytes = Buffer.byteLength(code);
 console.log(
-  `built @klef/cli ${CLI_VERSION} -> dist/cli (${(bytes / 1024).toFixed(1)} KB, 0 required dependencies)`,
+  `built @klefsh/cli ${CLI_VERSION} -> dist/cli (${(bytes / 1024).toFixed(1)} KB, 0 required dependencies)`,
 );

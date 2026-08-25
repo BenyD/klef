@@ -48,12 +48,13 @@ klef link    # connect this directory to a file in your vault
 klef pull    # write it to disk (mode 0600), reporting only a count
 ```
 
-**Not published yet.** `pnpm build:cli` produces the package in `dist/cli`
+**Not published yet.** `pnpm build:cli` produces `@klefsh/cli` in `dist/cli`
 (one file, no required dependencies); until it is on npm, run the CLI from a
 clone with `pnpm cli <command>`.
 
-`pull` never prints a value — no `--print`, no `klef get` — which is what makes
-it safe to hand to a coding agent. See [`docs/AGENT_ACCESS.md`](./docs/AGENT_ACCESS.md).
+`pull` never prints a value. There is no `--print` and no `klef get`, which is
+what makes it safe to hand to a coding agent. See
+[`docs/AGENT_ACCESS.md`](./docs/AGENT_ACCESS.md).
 
 ## How it works (threat model in brief)
 

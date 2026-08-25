@@ -69,5 +69,7 @@ pnpm deploy               # build + wrangler deploy (production)
   (`marketing.css`), prerendered to static HTML at build time by
   `scripts/prerender.tsx` - keep them SSR-safe (no browser APIs at module
   scope or render time).
-- Page titles use a hyphen: `Klef - ...`, never an em dash.
+- No em dashes in anything a user reads: page titles (`Klef - ...`),
+  UI copy, CLI output, and the landing-page agent prompts. Prose in code
+  comments is exempt.
 - Env-file style: terse `# Heading` comments only; variants mirrored.

@@ -17,6 +17,15 @@ export const EXPIRY_OPTIONS = [
 
 export const DEFAULT_EXPIRY = "90";
 
+/**
+ * The label for a stored expiry value. Base UI's Select renders the raw value
+ * in a closed trigger unless it is given children, so the trigger showed "90"
+ * and "never" where it should have read "90 days" and "No expiry".
+ */
+export function expiryLabel(value: string): string {
+  return EXPIRY_OPTIONS.find((option) => option.value === value)?.label ?? value;
+}
+
 /** Close enough to expiry that a working CLI is about to start failing. */
 export const EXPIRING_SOON_MS = 7 * DAY;
 

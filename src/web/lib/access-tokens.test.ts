@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  expiryLabel,
   describeExpiry,
   describeLastUsed,
   displayToken,
@@ -65,6 +66,27 @@ describe("describeLastUsed", () => {
 describe("displayToken", () => {
   it("renders the namespace plus the stored prefix, and nothing secret", () => {
     expect(displayToken("aB3xK9_p")).toBe("klef_pat_aB3xK9_p…");
+  });
+});
+
+describe("expiryLabel", () => {
+  // The trigger showed the raw stored value, so "90" and "never" reached the
+  // user where "90 days" and "No expiry" belonged.
+  it("resolves every offered value to its label", () => {
+    for (const option of EXPIRY_OPTIONS) {
+      expect(expiryLabel(option.value)).toBe(option.label);
+    }
+  });
+
+  it("never shows a bare number or the word never", () => {
+    for (const option of EXPIRY_OPTIONS) {
+      expect(expiryLabel(option.value)).not.toMatch(/^\d+$/);
+      expect(expiryLabel(option.value)).not.toBe("never");
+    }
+  });
+
+  it("falls back to the value it was given when it knows no better", () => {
+    expect(expiryLabel("nonsense")).toBe("nonsense");
   });
 });
 

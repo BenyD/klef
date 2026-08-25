@@ -81,13 +81,24 @@ describe("agent prompts", () => {
     expect(onboarding && promptText(onboarding)).toMatch(/git ls-files/);
   });
 
-  // klef.sh shipped a prompt telling people to `npx @klef/cli` before the
+  // klef.sh shipped a prompt telling people to `npx @klefsh/cli` before the
   // package existed, so every visitor copying it got a 404 on line one. No
   // offered prompt may name an install that isn't real.
   it("never tells the reader to run an unpublished package", () => {
     for (const prompt of AGENT_PROMPTS) {
-      expect(promptText(prompt), `${prompt.id} names @klef/cli`).not.toContain(
-        "@klef/cli",
+      expect(promptText(prompt), `${prompt.id} names @klefsh/cli`).not.toContain(
+        "@klefsh/cli",
+      );
+    }
+  });
+
+  // House style, same rule CLAUDE.md sets for page titles. These prompts get
+  // pasted into terminals and agents, where an em dash is a stray non-ASCII
+  // character rather than typography.
+  it("uses no em dashes", () => {
+    for (const prompt of AGENT_PROMPTS) {
+      expect(promptText(prompt), `${prompt.id} contains an em dash`).not.toContain(
+        "\u2014",
       );
     }
   });
