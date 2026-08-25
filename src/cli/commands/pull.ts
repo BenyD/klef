@@ -5,7 +5,7 @@ import path from "node:path";
 import { decryptBlob } from "../../shared/crypto.ts";
 import { requireApi } from "../session.ts";
 import { readProjectConfig } from "../project-file.ts";
-import { CONFIG_FILENAME } from "../project-config.ts";
+import { CONFIG_FILENAME, type ProjectConfig } from "../project-config.ts";
 import { resolveTarget } from "../resolve.ts";
 import { unlockVault } from "../unlock.ts";
 import { countVariables, describeWrite } from "../output.ts";
@@ -14,6 +14,18 @@ import { resolveWritePath } from "../write-path.ts";
 
 /** Env files are owner-only; they hold the plaintext this whole tool protects. */
 const OWNER_ONLY = 0o600;
+
+/**
+ * Which file in the vault to pull. `--file` names a sibling in the same
+ * project without re-linking the directory, which is how a repo holding both
+ * .env.local and .env.production is handled; the linked file is the default.
+ */
+export function pullTarget(
+  config: ProjectConfig,
+  fileFlag: string | null,
+): ProjectConfig {
+  return fileFlag ? { ...config, file: fileFlag } : config;
+}
 
 /**
  * Write the vault's copy of this repo's env file to disk.
@@ -35,8 +47,10 @@ export async function pull(
     return 1;
   }
 
+  const wanted = pullTarget(config, flagValue(args, "file"));
+
   const api = await requireApi(env);
-  const resolved = resolveTarget(await api.tree(), config);
+  const resolved = resolveTarget(await api.tree(), wanted);
 
   if (!resolved.currentVersionId) {
     console.error(`"${resolved.fileName}" has no saved version yet — nothing to pull.`);
