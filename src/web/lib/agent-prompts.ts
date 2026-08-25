@@ -42,9 +42,12 @@ Your job is to prepare everything, then walk me through it step by step.
 
 1. List every environment file in this repo by path — .env, .env.local,
    .env.production, and any framework-specific variants. List the paths only.
-   Do not open or read the contents of any of them.
-2. Check each one against .gitignore. If any env file is tracked by git, tell me
-   which and stop there — that has to be fixed before anything else.
+   Do not open or read the contents of any of them. If you need to know which
+   keys a file defines, ask me and I'll tell you.
+2. For each one, check whether git actually tracks it —
+   \`git ls-files --error-unmatch <path>\` — rather than only whether .gitignore
+   mentions it. A file committed before the ignore rule was added is still
+   tracked and still leaking. If any is tracked, tell me which and stop there.
 3. Propose the structure: which Klef project each file belongs to, and whether
    its environment label is development, preview, or production.
 4. Then give me a numbered checklist to do in the browser, and wait for me to
@@ -66,7 +69,8 @@ them.`,
       "Deploys your own Klef on your Cloudflare account, so the server storing your ciphertext is one you control.",
     body: `Set up a self-hosted Klef instance on my Cloudflare account, end to end.
 
-1. Fork https://github.com/BenyD/klef, clone the fork, and run \`pnpm install\`.
+1. Fork https://github.com/BenyD/klef (use the gh CLI, or ask me to do it in the
+   browser), clone the fork, and run \`pnpm install\`.
 2. Authenticate Wrangler with \`pnpm exec wrangler login\`.
 3. Create the database with \`pnpm exec wrangler d1 create klef-db\`, then put the
    returned database_id into wrangler.jsonc.
@@ -74,9 +78,14 @@ them.`,
 5. Create a Google OAuth client at https://console.cloud.google.com/apis/credentials
    with an authorized redirect URI of https://<my-domain>/api/auth/callback/google.
    Ask me for the domain if you don't know it.
-6. Set the production secrets, prompting me for each value:
-   \`pnpm exec wrangler secret put BETTER_AUTH_SECRET\` (generate with \`openssl rand -base64 32\`),
-   then BETTER_AUTH_URL, GOOGLE_CLIENT_ID, and GOOGLE_CLIENT_SECRET the same way.
+6. Stop here and give me these commands to run myself, then wait for me to
+   confirm. Do not run them for me, and do not ask me for the values:
+   \`wrangler secret put\` reads from the terminal, so the only way you could set
+   them is by holding the plaintext — and these must not pass through you.
+     pnpm exec wrangler secret put BETTER_AUTH_SECRET   # openssl rand -base64 32
+     pnpm exec wrangler secret put BETTER_AUTH_URL      # my deployed URL
+     pnpm exec wrangler secret put GOOGLE_CLIENT_ID
+     pnpm exec wrangler secret put GOOGLE_CLIENT_SECRET
 7. Deploy with \`pnpm deploy\`, then check that /api/health returns ok.
 
 Stop and ask me before anything that costs money or touches DNS.`,
