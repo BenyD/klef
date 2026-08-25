@@ -1,54 +1,37 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// Personal access token primitives. Pure and headless so they can be tested in
-// isolation, in the same spirit as src/shared/crypto.ts — though note this is
-// *not* vault crypto: these tokens gate access to ciphertext, they never
-// participate in encrypting or unwrapping anything.
+// Server-side personal access token handling: hashing, bearer parsing, and the
+// freshness rules the auth middleware applies. The token *format* is shared
+// with the client and lives in src/shared/access-token-format.ts.
 //
-// Format: "klef_pat_" + base64url(32 random bytes). Shown once at creation;
-// only the SHA-256 is persisted. See db/migrations/0012_access_tokens.sql.
+// Pure and headless so it can be tested in isolation, in the same spirit as
+// src/shared/crypto.ts — though note this is not vault crypto: these tokens
+// gate access to ciphertext, never to secret values.
 
-import { bytesToBase64, bytesToBase64Url, utf8ToBytes } from "../shared/encoding.ts";
+import { bytesToBase64, utf8ToBytes } from "../shared/encoding.ts";
 
-/** Namespaces the token so leak scanners and humans can recognise it on sight. */
-export const TOKEN_PREFIX = "klef_pat_";
-
-/** 256 bits of randomness — the reason plain SHA-256 storage is sufficient. */
-export const TOKEN_BYTES = 32;
-
-/** base64url of 32 bytes is 43 chars, unpadded. */
-const TOKEN_BODY_LENGTH = 43;
-
-/** How much of the random body is stored in the clear, to identify a token in the UI. */
-export const PREFIX_DISPLAY_LENGTH = 8;
-
-const BODY_PATTERN = /^[A-Za-z0-9_-]+$/;
-
-/** Mint a new token. The caller must show this to the user exactly once. */
-export function generateToken(): string {
-  return TOKEN_PREFIX + bytesToBase64Url(crypto.getRandomValues(new Uint8Array(TOKEN_BYTES)));
-}
-
-/** Cheap structural check, so malformed input never reaches the database. */
-export function isTokenShape(token: string): boolean {
-  if (!token.startsWith(TOKEN_PREFIX)) return false;
-  const body = token.slice(TOKEN_PREFIX.length);
-  return body.length === TOKEN_BODY_LENGTH && BODY_PATTERN.test(body);
-}
+export {
+  generateToken,
+  isTokenShape,
+  PREFIX_DISPLAY_LENGTH,
+  TOKEN_BYTES,
+  TOKEN_PREFIX,
+  tokenDisplayPrefix,
+} from "../shared/access-token-format.ts";
 
 /**
  * Lookup key for a token. Hashing means a database leak doesn't yield usable
  * tokens; it also makes authentication a single indexed equality lookup rather
  * than a comparison against the secret itself.
+ *
+ * Plain SHA-256, not Argon2id: the token is 256 bits of uniform randomness, so
+ * there is no dictionary to attack and a slow KDF would only add latency to
+ * every authenticated request. Argon2id remains correct for the passphrase,
+ * which is low-entropy and human-chosen.
  */
 export async function hashToken(token: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", utf8ToBytes(token));
   return bytesToBase64(new Uint8Array(digest));
-}
-
-/** The identifying fragment shown in the UI, e.g. "aB3xK9_p". */
-export function tokenDisplayPrefix(token: string): string {
-  return token.slice(TOKEN_PREFIX.length, TOKEN_PREFIX.length + PREFIX_DISPLAY_LENGTH);
 }
 
 /**

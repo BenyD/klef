@@ -60,6 +60,7 @@ import {
 } from "../../shared/api-types.ts";
 import { useIsMobile } from "../hooks/use-mobile.ts";
 import { LockShortcutKeys } from "./LockShortcutKeys.tsx";
+import { AccessTokensPanel } from "./AccessTokensPanel.tsx";
 import { RecoveryKeyPanel } from "./RecoveryKeyPanel.tsx";
 import { StrengthMeter } from "./StrengthMeter.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar.tsx";
@@ -178,6 +179,8 @@ export function SettingsDialog({
             <RecoverySection email={email} />
             <Separator />
             <SecuritySection />
+            <GroupLabel>Developer</GroupLabel>
+            <AccessTokensPanel />
           </TabsContent>
 
           <TabsContent value="workspace" className={panelClass}>
