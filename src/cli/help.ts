@@ -6,7 +6,7 @@ Usage:
   klef <command> [options]
 
 Commands:
-  login              Store an access token minted in the web app
+  login              Sign in through the browser (--paste for a token instead)
   logout             Forget the stored token on this machine
   status             Show sign-in state and what this directory is linked to
   link [ws] [proj]   Link this directory to a file in the vault (.klef.json)
@@ -18,6 +18,7 @@ Options:
   --file <name>      Which env file in the vault (pull defaults to the linked one)
   --path <path>      Which local file to read or write (default: the file's name)
   -y, --yes          Skip the confirmation on push
+  --paste            Sign in by pasting a token, for machines with no browser
   -h, --help         Show this
   -v, --version      Print the version
 

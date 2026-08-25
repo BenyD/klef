@@ -32,7 +32,7 @@ async function main(): Promise<number> {
 
   switch (args.command) {
     case "login":
-      return login(env);
+      return login(args, env);
     case "logout":
       return logout(env);
     case "status":
