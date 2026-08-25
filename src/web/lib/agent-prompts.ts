@@ -129,14 +129,24 @@ export function promptText(prompt: AgentPrompt): string {
   return `${prompt.body}\n\n${SECRET_SAFETY_RULE}`;
 }
 
-export const AGENT_PROMPTS: readonly AgentPrompt[] = PROMPTS;
+/**
+ * Prompts withheld from the site because they name something that doesn't
+ * exist yet. "pull" tells the reader to run `npx @klef/cli`, which 404s until
+ * the package is published — and a command that fails on line one is worse
+ * than no command at all. Empty this list to ship it.
+ */
+const UNPUBLISHED: readonly string[] = ["pull"];
+
+export const AGENT_PROMPTS: readonly AgentPrompt[] = PROMPTS.filter(
+  (prompt) => !UNPUBLISHED.includes(prompt.id),
+);
 
 /**
  * The prompt behind the hero's copy button, where there is no room to choose.
  * Onboarding, not self-hosting: someone reading the hero for the first time has
  * a repo full of env files, not a Cloudflare account they want to deploy to.
  */
-export const DEFAULT_PROMPT: AgentPrompt = PROMPTS[0];
+export const DEFAULT_PROMPT: AgentPrompt = AGENT_PROMPTS[0] as AgentPrompt;
 
 /** pnpm subcommands that aren't package scripts, so they can't be validated. */
 const PNPM_BUILTINS = new Set([
