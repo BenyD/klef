@@ -121,3 +121,8 @@ const bytes = Buffer.byteLength(code);
 console.log(
   `built @klefsh/cli ${CLI_VERSION} -> dist/cli (${(bytes / 1024).toFixed(1)} KB, 0 required dependencies)`,
 );
+// Print the exact command, because both halves of it are easy to get wrong:
+// without "./" npm reads dist/cli as the GitHub shorthand owner/repo and tries
+// to clone github.com/dist/cli, and without --access public a scoped package
+// publishes restricted, which npx cannot reach.
+console.log("publish it with:  npm publish ./dist/cli --access public");
