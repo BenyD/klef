@@ -10,6 +10,7 @@ import { resolveTarget } from "../resolve.ts";
 import { unlockVault } from "../unlock.ts";
 import { countVariables, describeWrite } from "../output.ts";
 import { flagValue, type ParsedArgs } from "../args.ts";
+import { resolveWritePath } from "../write-path.ts";
 
 /** Env files are owner-only; they hold the plaintext this whole tool protects. */
 const OWNER_ONLY = 0o600;
@@ -59,7 +60,9 @@ export async function pull(
   const dek = await unlockVault(vault.keyMaterial, prompt);
   const plaintext = await decryptBlob(dek, version.blob);
 
-  const target = path.resolve(cwd, flagValue(args, "path") ?? resolved.fileName);
+  // Constrained to this directory on purpose: an agent that can be talked into
+  // running `klef pull` must not be able to choose where the plaintext lands.
+  const target = resolveWritePath(cwd, flagValue(args, "path") ?? resolved.fileName);
   await writeFile(target, plaintext, { mode: OWNER_ONLY });
   await chmod(target, OWNER_ONLY);
 
