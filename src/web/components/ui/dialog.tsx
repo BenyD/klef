@@ -54,6 +54,18 @@ function DialogContent({
         data-slot="dialog-content"
         className={cn(
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground shadow-modal ring-1 ring-foreground/10 outline-none ease-out data-open:duration-(--duration-base) data-closed:duration-(--duration-fast) sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // Base UI does not render a backdrop for a nested dialog, by design:
+          // the parent is expected to recede on its own. Without this the two
+          // light surfaces stack with nothing between them and the parent's
+          // text reads straight through around the child's edges.
+          //
+          // The veil is the popover colour rather than a dark tint because a
+          // parent is often much wider than its child - Settings is 2xl behind
+          // an sm dialog - so it stays visible well beyond the child on every
+          // side. Painting it in its own background leaves the card shape
+          // legible while its contents stop competing for attention.
+          "transition-[scale] duration-(--duration-base) data-[nested-dialog-open]:scale-[0.97]",
+          "after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:bg-popover/75 after:opacity-0 after:transition-opacity after:duration-(--duration-base) data-[nested-dialog-open]:after:opacity-100",
           className
         )}
         {...props}
