@@ -63,6 +63,38 @@ server only ever stores ciphertext — which is also why you never need to see
 them.`,
   },
   {
+    id: "pull",
+    label: "Pull my envs",
+    description:
+      "Gets this project's env files out of Klef and onto this machine. The agent runs the CLI; you type the passphrase and it never prints a value.",
+    body: `Get this project's environment files out of Klef (https://klef.sh) and onto
+this machine, using the Klef CLI.
+
+Two things stay mine throughout: the access token and the master passphrase.
+Don't ask me for either — the CLI reads the passphrase straight from the
+terminal, which is exactly why it can't pass through you.
+
+1. Check where things stand: \`npx @klef/cli status\`.
+   If it says I'm not signed in, give me \`npx @klef/cli login\` to run myself and
+   wait — I'll paste a token from klef.sh → Settings → Security → Developer.
+2. If this directory isn't linked yet, run \`npx @klef/cli link\` to list what's in
+   my vault, show me the options, and link the one I pick with
+   \`npx @klef/cli link <workspace> <project> <file>\`. That writes .klef.json,
+   which is safe to commit — it holds names, never values.
+3. Give me \`npx @klef/cli pull\` to run myself. It stops for my passphrase, so it
+   won't work if you run it — hand it over and wait for me to confirm.
+4. For other files in the same project, the same applies with
+   \`npx @klef/cli pull --file <name>\` (for example .env.local, then
+   .env.production).
+5. Finally, check every file it wrote is ignored by git —
+   \`git ls-files --error-unmatch <path>\` should fail for each. If one is tracked,
+   tell me immediately.
+
+\`pull\` writes files at mode 0600 and reports only a count, never a value. Don't
+open or print what it wrote; if you need to know which keys a file defines, ask
+me.`,
+  },
+  {
     id: "self-host",
     label: "Self-host Klef",
     description:

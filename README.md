@@ -29,12 +29,27 @@ only ever stores ciphertext; your keys never leave the browser.
 
 ## Who it's for
 
-Klef is deliberately **not** an Infisical/Doppler/Vault competitor. No CLI, no
-daemon, no file watcher, no team RBAC — just a dead-simple, truly
-zero-knowledge vault for the `.env` files you'd otherwise sync through
-AirDrop, Slack DMs, or a gist. If you need machine-to-machine secrets
-injection, use one of those tools; if you're one developer with several
-machines and a pile of env files, Klef is the honest, minimal answer.
+Klef is deliberately **not** an Infisical/Doppler/Vault competitor. No daemon,
+no file watcher, no team RBAC, and no server-side secret access for machines —
+just a dead-simple, truly zero-knowledge vault for the `.env` files you'd
+otherwise sync through AirDrop, Slack DMs, or a gist. If you need
+machine-to-machine secrets injection, use one of those tools; if you're one
+developer with several machines and a pile of env files, Klef is the honest,
+minimal answer.
+
+There is a CLI, but it changes none of that: it holds an access token that
+reaches ciphertext and plaintext names only, and derives your key locally from
+a passphrase read straight from the terminal. It cannot be run unattended by
+design.
+
+```bash
+npx @klef/cli login   # paste a token from Settings -> Security -> Developer
+npx @klef/cli link    # connect this directory to a file in your vault
+npx @klef/cli pull    # write it to disk (mode 0600), reporting only a count
+```
+
+`pull` never prints a value — no `--print`, no `klef get` — which is what makes
+it safe to hand to a coding agent. See [`docs/AGENT_ACCESS.md`](./docs/AGENT_ACCESS.md).
 
 ## How it works (threat model in brief)
 
