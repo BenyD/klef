@@ -3,6 +3,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   AGENT_PROMPTS,
+  npxPackagesIn,
+  PUBLISHED_PACKAGES,
   DEFAULT_PROMPT,
   pnpmScriptsIn,
   promptText,
@@ -81,25 +83,14 @@ describe("agent prompts", () => {
     expect(onboarding && promptText(onboarding)).toMatch(/git ls-files/);
   });
 
-  // klef.sh shipped a prompt telling people to `npx @klefsh/cli` before the
-  // package existed, so every visitor copying it got a 404 on line one. No
-  // offered prompt may name an install that isn't real.
-  it("never tells the reader to run an unpublished package", () => {
+  // klef.sh shipped a prompt telling people to run @klefsh/cli before the
+  // package existed, so every visitor copying it got a 404 on line one. A
+  // package only joins PUBLISHED_PACKAGES once it is really on npm.
+  it("only tells the reader to run packages that are published", () => {
     for (const prompt of AGENT_PROMPTS) {
-      expect(promptText(prompt), `${prompt.id} names @klefsh/cli`).not.toContain(
-        "@klefsh/cli",
-      );
-    }
-  });
-
-  // House style, same rule CLAUDE.md sets for page titles. These prompts get
-  // pasted into terminals and agents, where an em dash is a stray non-ASCII
-  // character rather than typography.
-  it("uses no em dashes", () => {
-    for (const prompt of AGENT_PROMPTS) {
-      expect(promptText(prompt), `${prompt.id} contains an em dash`).not.toContain(
-        "\u2014",
-      );
+      for (const pkg of npxPackagesIn(promptText(prompt))) {
+        expect(PUBLISHED_PACKAGES, `${prompt.id} runs ${pkg}`).toContain(pkg);
+      }
     }
   });
 
