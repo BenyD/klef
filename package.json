@@ -14,6 +14,7 @@
   "scripts": {
     "dev": "vite",
     "cli": "node src/cli/index.ts",
+    "build:cli": "vite build --config vite.cli.config.ts --logLevel warn && node scripts/build-cli.ts",
     "build": "tsc --noEmit && vite build && pnpm run prerender",
     "prerender": "vite build --config vite.prerender.config.ts --logLevel warn && node dist/prerender/prerender.js",
     "preview": "vite preview",
