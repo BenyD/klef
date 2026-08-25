@@ -1,0 +1,24 @@
+#!/usr/bin/env expect -f
+#
+# Verifies that `klef login` does not echo what is typed.
+#
+# Not part of `pnpm test`: it needs a real pty, which vitest does not provide.
+# The unit test in src/cli/prompt.test.ts covers the fail-closed half (no
+# terminal means no prompt); this covers the half that can only be observed
+# from a terminal, and is the reproduction for the bug where a pasted access
+# token was printed in the clear.
+#
+#   expect -f scripts/check-tty-echo.exp .
+#
+set timeout 25
+set repo [lindex $argv 0]
+set probe "klef_pat_ZZZECHOPROBEZZZ0123456789abcdefghijklmno"
+spawn node $repo/src/cli/index.ts login
+expect "Access token: "
+send "$probe\r"
+expect eof
+if {[string first $probe $expect_out(buffer)] >= 0} {
+  puts "FAIL: the token was echoed to the terminal"
+  exit 1
+}
+puts "ok: nothing typed was echoed"
