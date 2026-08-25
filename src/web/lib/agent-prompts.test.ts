@@ -3,6 +3,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   AGENT_PROMPTS,
+  filePullPrompt,
+  shellQuote,
   npxPackagesIn,
   PUBLISHED_PACKAGES,
   DEFAULT_PROMPT,
@@ -123,5 +125,55 @@ describe("pnpmScriptsIn", () => {
 
   it("finds nothing in text without commands", () => {
     expect(pnpmScriptsIn("no commands here")).toEqual([]);
+  });
+});
+
+describe("shellQuote", () => {
+  // Workspace and project names are free text. One containing a quote or a
+  // space would otherwise produce a command that silently targets the wrong
+  // thing, and one containing $() would produce a command that runs something.
+  it("survives a shell for names people actually have", () => {
+    expect(shellQuote("Beny's Team")).toBe("'Beny'\\''s Team'");
+    expect(shellQuote("Lensdrop")).toBe("'Lensdrop'");
+    expect(shellQuote(".env.local")).toBe("'.env.local'");
+  });
+
+  it("neutralises anything that would execute", () => {
+    for (const hostile of ["$(whoami)", "`id`", "; rm -rf /", "a && b"]) {
+      const quoted = shellQuote(hostile);
+      expect(quoted.startsWith("'")).toBe(true);
+      expect(quoted.endsWith("'")).toBe(true);
+      // Inside single quotes a shell expands nothing, and the only way out is
+      // a bare quote, which is what the escape handles.
+      expect(quoted.slice(1, -1)).not.toMatch(/(^|[^\\])'/);
+    }
+  });
+});
+
+describe("filePullPrompt", () => {
+  const target = { workspace: "Beny's Team", project: "Lensdrop", file: ".env.local" };
+
+  it("names the file and links it in one command", () => {
+    const out = filePullPrompt(target);
+    expect(out).toContain(".env.local");
+    expect(out).toContain("npx @klefsh/cli link 'Beny'\\''s Team' 'Lensdrop' '.env.local'");
+  });
+
+  it("hands pull back rather than having the agent run it", () => {
+    expect(filePullPrompt(target)).toMatch(/give me .*pull.* to run myself/);
+  });
+
+  it("carries the secret-safety rule, like every other prompt", () => {
+    expect(filePullPrompt(target).endsWith(SECRET_SAFETY_RULE)).toBe(true);
+  });
+
+  it("only names packages that are published", () => {
+    for (const pkg of npxPackagesIn(filePullPrompt(target))) {
+      expect(PUBLISHED_PACKAGES).toContain(pkg);
+    }
+  });
+
+  it("uses no em dashes", () => {
+    expect(filePullPrompt(target)).not.toContain("\u2014");
   });
 });

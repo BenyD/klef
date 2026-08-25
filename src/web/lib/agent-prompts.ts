@@ -179,3 +179,54 @@ export function pnpmScriptsIn(text: string): string[] {
   }
   return [...found].sort();
 }
+
+/**
+ * Quote a workspace, project or file name for a shell command.
+ *
+ * Names are free text, so one containing a quote or a space would otherwise
+ * produce a command that silently targets the wrong thing - or nothing. Single
+ * quotes with the standard '\'' escape, because inside them a shell expands
+ * nothing at all.
+ */
+export function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", `'\\''`)}'`;
+}
+
+/**
+ * The prompt offered from a file in the vault.
+ *
+ * Unlike the landing-page version this one already knows what the reader is
+ * looking at, so the agent runs one command instead of listing the vault and
+ * waiting for a choice. `pull` is still handed back, since it stops for the
+ * passphrase and an agent running it only reaches the no-terminal error.
+ */
+export function filePullPrompt(target: {
+  workspace: string;
+  project: string;
+  file: string;
+}): string {
+  const link = [
+    "npx @klefsh/cli link",
+    shellQuote(target.workspace),
+    shellQuote(target.project),
+    shellQuote(target.file),
+  ].join(" ");
+
+  return `Get ${target.file} out of Klef (https://klef.sh) and into this repo.
+
+1. Link this directory to it:
+   ${link}
+2. Then give me \`npx @klefsh/cli pull\` to run myself, and wait. It stops for my
+   master passphrase, which is read from the terminal, so it won't work if you
+   run it and I won't paste it to you.
+3. Once it reports a count, check the file is ignored by git:
+   \`git ls-files --error-unmatch ${target.file}\` should fail. If it doesn't,
+   tell me immediately.
+
+If I'm not signed in, step 1 will say so; give me \`npx @klefsh/cli login\` to run
+and wait for me. \`pull\` writes at mode 0600 and reports only how many
+variables it wrote. Don't open or print what it wrote; if you need to know
+which keys it defines, ask me.
+
+${SECRET_SAFETY_RULE}`;
+}
