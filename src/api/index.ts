@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { createAuth } from "./auth.ts";
-import { requireAuth, type AuthVariables } from "./middleware.ts";
+import { requireAuth, requireSession, type AuthVariables } from "./middleware.ts";
 import { vault } from "./vault.ts";
 import { structure } from "./structure.ts";
 import { icon } from "./icon.ts";
+import { tokens } from "./tokens.ts";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -35,6 +36,17 @@ app.get("/api/me", requireAuth, (c) =>
 // subpaths require auth.
 app.use("/api/vault", requireAuth);
 app.use("/api/vault/*", requireAuth);
+// Tokens may *read* key material — the CLI needs the wrapped DEK to unlock
+// locally — but may not write it. Scoping to the mutating methods (rather than
+// a path list) keeps this deny-by-default: a vault route added later is
+// browser-only from the moment it exists, without anyone remembering to gate it.
+// Note `/api/vault/*` also matches the bare `/api/vault`, so GET must not be
+// listed here.
+app.on(
+  ["POST", "PUT", "PATCH", "DELETE"],
+  ["/api/vault", "/api/vault/*"],
+  requireSession,
+);
 app.route("/api/vault", vault);
 
 // Navigation structure (workspaces / projects / env files). Gate each resource
@@ -44,7 +56,19 @@ for (const prefix of ["/api/tree", "/api/workspaces", "/api/projects", "/api/fil
   app.use(prefix, requireAuth);
   app.use(`${prefix}/*`, requireAuth);
 }
+// Deleting workspaces, projects, or files stays browser-only. Nothing in the
+// CLI or MCP surface needs it, and a leaked token should not be able to
+// destroy data — only to read and add versions.
+for (const prefix of ["/api/workspaces", "/api/projects", "/api/files"]) {
+  app.on("DELETE", `${prefix}/:id`, requireSession);
+}
 app.route("/api", structure);
+
+// Personal access tokens for the CLI and MCP server. Session-only by design: a
+// token that could mint or revoke tokens would survive its own revocation.
+app.use("/api/tokens", requireAuth, requireSession);
+app.use("/api/tokens/*", requireAuth, requireSession);
+app.route("/api/tokens", tokens);
 
 // Favicon discovery for project icons (server-side because of CORS).
 app.use("/api/icon", requireAuth);

@@ -118,3 +118,17 @@ export interface WorkspaceNode {
 export interface VaultTree {
   workspaces: WorkspaceNode[];
 }
+
+/**
+ * A personal access token as shown in the UI. Never includes the token itself —
+ * that is returned exactly once, at creation, and only stored hashed.
+ */
+export interface AccessTokenSummary {
+  id: string;
+  name: string;
+  /** First chars of the token's random body, to tell tokens apart in a list. */
+  prefix: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}

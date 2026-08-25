@@ -24,6 +24,7 @@ export default defineConfig(async () => {
             environment: "node",
             include: [
               "src/shared/**/*.test.ts",
+              "src/cli/**/*.test.ts",
               "src/web/**/*.test.{ts,tsx}",
               "scripts/**/*.test.ts",
             ],
