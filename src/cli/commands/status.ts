@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { command } from "../invocation.ts";
 import { KlefApi, UnauthorizedError } from "../api.ts";
 import { loadToken } from "../credentials.ts";
 import { apiBaseUrl } from "../paths.ts";
@@ -18,7 +19,7 @@ export async function status(env: NodeJS.ProcessEnv, cwd: string): Promise<numbe
 
   const stored = await loadToken(env);
   if (!stored) {
-    console.log("Signed in: no (run `klef login`)");
+    console.log(`Signed in: no (run \`${command("login")}\`)`);
   } else {
     try {
       const { user } = await new KlefApi(base, stored.token).whoami();
@@ -31,7 +32,7 @@ export async function status(env: NodeJS.ProcessEnv, cwd: string): Promise<numbe
 
   const config = await readProjectConfig(cwd);
   if (!config) {
-    console.log(`Linked:    no ${CONFIG_FILENAME} here (run \`klef link\`)`);
+    console.log(`Linked:    no ${CONFIG_FILENAME} here (run \`${command("link")}\`)`);
   } else {
     const label = config.environment ? ` (${config.environment})` : "";
     console.log(

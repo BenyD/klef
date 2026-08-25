@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { command } from "../invocation.ts";
 import { KlefApi } from "../api.ts";
 import { requireApi } from "../session.ts";
 import { CONFIG_FILENAME, type ProjectConfig } from "../project-config.ts";
@@ -69,7 +70,7 @@ async function listAvailable(
 
   console.log("Available files:");
   for (const target of targets) console.log(`  ${target}`);
-  console.log(`\nLink one with:\n  klef link <workspace> <project> [file]`);
+  console.log(`\nLink one with:\n  ${command("link")} <workspace> <project> [file]`);
   console.log(`That writes ${CONFIG_FILENAME} here.`);
   return 1;
 }

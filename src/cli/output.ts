@@ -37,6 +37,27 @@ export function countVariables(envText: string): number {
   return keysOf(envText).length;
 }
 
+/** What a push would change, in shape only. */
+export interface PushSummary {
+  variableCount: number;
+  added: number;
+  removed: number;
+}
+
+/**
+ * Describe a pending push without quoting a line of it. Line-level adds and
+ * removals are what the diff produces; an edited line shows as one of each,
+ * which is why this says "lines" rather than claiming to count edits.
+ */
+export function describePush({ variableCount, added, removed }: PushSummary): string {
+  const vars = `${variableCount} ${variableCount === 1 ? "variable" : "variables"}`;
+  if (added === 0 && removed === 0) return `${vars}, no line changes`;
+  const parts: string[] = [];
+  if (added) parts.push(`+${added}`);
+  if (removed) parts.push(`-${removed}`);
+  return `${vars} (${parts.join(" ")} lines)`;
+}
+
 /**
  * Redact anything that looks like an env assignment. A backstop for error
  * paths: if a message ever carries a line out of a file, the value is stripped

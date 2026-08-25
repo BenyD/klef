@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { countVariables, describeWrite, redactAssignments } from "./output.ts";
+import {
+  countVariables,
+  describePush,
+  describeWrite,
+  redactAssignments,
+} from "./output.ts";
 import { keysOf } from "../web/lib/env-drift.ts";
 
 describe("countVariables", () => {
@@ -50,6 +55,34 @@ describe("describeWrite", () => {
   it("uses the singular for one variable", () => {
     expect(describeWrite({ path: ".env", variableCount: 1 })).toBe(
       "Wrote 1 variable to .env",
+    );
+  });
+});
+
+describe("describePush", () => {
+  it("reports shape, never content", () => {
+    const out = describePush({ variableCount: 12, added: 3, removed: 1 });
+    expect(out).toBe("12 variables (+3 -1 lines)");
+  });
+
+  it("omits a side that did not change", () => {
+    expect(describePush({ variableCount: 4, added: 2, removed: 0 })).toBe(
+      "4 variables (+2 lines)",
+    );
+    expect(describePush({ variableCount: 4, added: 0, removed: 2 })).toBe(
+      "4 variables (-2 lines)",
+    );
+  });
+
+  it("says so plainly when only formatting moved", () => {
+    expect(describePush({ variableCount: 9, added: 0, removed: 0 })).toBe(
+      "9 variables, no line changes",
+    );
+  });
+
+  it("uses the singular for one variable", () => {
+    expect(describePush({ variableCount: 1, added: 1, removed: 0 })).toBe(
+      "1 variable (+1 lines)",
     );
   });
 });

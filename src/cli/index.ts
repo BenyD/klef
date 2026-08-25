@@ -10,6 +10,7 @@ import { logout } from "./commands/logout.ts";
 import { status } from "./commands/status.ts";
 import { link } from "./commands/link.ts";
 import { pull } from "./commands/pull.ts";
+import { push } from "./commands/push.ts";
 import { CLI_VERSION } from "./version.ts";
 
 
@@ -40,6 +41,8 @@ async function main(): Promise<number> {
       return link(args, env, cwd);
     case "pull":
       return pull(args, env, cwd);
+    case "push":
+      return push(args, env, cwd);
     default:
       console.error(`Unknown command "${args.command}". Try \`klef help\`.`);
       return 1;
