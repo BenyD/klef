@@ -53,7 +53,7 @@ export async function pull(
   const resolved = resolveTarget(await api.tree(), wanted);
 
   if (!resolved.currentVersionId) {
-    console.error(`"${resolved.fileName}" has no saved version yet — nothing to pull.`);
+    console.error(`"${resolved.fileName}" has no saved version yet, so there is nothing to pull.`);
     return 1;
   }
 

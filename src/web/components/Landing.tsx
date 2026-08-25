@@ -128,7 +128,7 @@ function HowItWorks() {
           <h3>Pull it down anywhere</h3>
           <p>
             New laptop, new OS, same files. Sign in, unlock with your
-            passphrase, and copy them back — no hunting through old messages.
+            passphrase, and copy them back. No hunting through old messages.
           </p>
         </li>
       </ol>
