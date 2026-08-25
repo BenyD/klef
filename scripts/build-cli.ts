@@ -7,7 +7,7 @@
 // its own package.json declaring exactly what the bundle still needs at
 // runtime, which is one optional native module and nothing else.
 
-import { copyFile, readFile, writeFile } from "node:fs/promises";
+import { chmod, copyFile, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { CLI_VERSION } from "../src/cli/version.ts";
 
@@ -82,6 +82,12 @@ await writeFile(
     2,
   )}\n`,
 );
+
+// npm sets the executable bit when it extracts a tarball, but an install from
+// a local path symlinks straight to this file, so `klef` would be
+// permission-denied. Make the artifact correct rather than relying on the
+// install route.
+await chmod(bundle, 0o755);
 
 await copyFile(
   path.resolve(import.meta.dirname, "../LICENSE"),
