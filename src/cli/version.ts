@@ -10,4 +10,4 @@
 // in the registry document at https://registry.npmjs.org/@klefsh%2fcli under
 // time{}, which is the thing to read before choosing a number rather than
 // probing one release at a time.
-export const CLI_VERSION = "0.3.0";
+export const CLI_VERSION = "0.4.0";
