@@ -7,6 +7,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EASE_OUT } from "../lib/motion.ts";
 import { KlefMark } from "./KlefMark.tsx";
 
 type BannerVariant = "brand" | "info" | "success" | "warning" | "error";
@@ -103,7 +104,7 @@ export function Banner({
       /* fill holds the collapsed end state through the gap between the
          animation finishing and React unmounting; without it the strip
          snaps back to full height for a frame. */
-      { duration: 250, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "forwards" },
+      { duration: 250, easing: EASE_OUT, fill: "forwards" },
     );
     anim.onfinish = () => setDismissed(true);
   }

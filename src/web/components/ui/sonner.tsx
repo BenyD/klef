@@ -48,7 +48,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
              cancel + action land together on the last row. The background
              mixes a hint of the type accent into the card. */
           toast:
-            "group/toast relative flex w-full flex-wrap items-center gap-x-2 gap-y-1.5 rounded-lg border bg-[color-mix(in_oklab,var(--popover),var(--toast-accent,var(--popover))_6%)] p-3 pr-8 font-sans text-popover-foreground shadow-lg [&[data-expanded=false][data-front=false]>*]:opacity-0",
+            "group/toast relative flex w-full flex-wrap items-center gap-x-2 gap-y-1.5 rounded-lg border bg-[color-mix(in_oklab,var(--popover),var(--toast-accent,var(--popover))_6%)] p-3 pr-8 font-sans text-popover-foreground shadow-overlay [&[data-expanded=false][data-front=false]>*]:opacity-0",
           content: "flex w-full flex-col gap-0.5",
           title: "text-sm/snug font-medium",
           /* !important where sonner ships un-gated dark-theme rules that
@@ -59,9 +59,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
              put the loading chip back in flow like the other type chips. */
           loader: "relative! top-auto! left-auto! w-full transform-none!",
           actionButton:
-            "mt-0.5 inline-flex h-7 shrink-0 items-center justify-center rounded-md bg-primary px-2.5 text-[0.8rem] font-medium whitespace-nowrap text-primary-foreground transition-all outline-none select-none hover:bg-primary/80 focus-visible:ring-2 focus-visible:ring-ring/30 active:translate-y-px",
+            "mt-0.5 inline-flex h-7 shrink-0 items-center justify-center rounded-md bg-primary px-2.5 text-[0.8rem] font-medium whitespace-nowrap text-primary-foreground transition-interactive outline-none select-none hover:bg-primary/80 focus-visible:ring-2 focus-visible:ring-ring/30 active:translate-y-px",
           cancelButton:
-            "mt-0.5 inline-flex h-7 shrink-0 items-center justify-center rounded-md border border-border bg-background px-2.5 text-[0.8rem] font-medium whitespace-nowrap transition-all outline-none select-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 active:translate-y-px dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+            "mt-0.5 inline-flex h-7 shrink-0 items-center justify-center rounded-md border border-border bg-background px-2.5 text-[0.8rem] font-medium whitespace-nowrap transition-interactive outline-none select-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 active:translate-y-px dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
           closeButton:
             "absolute top-2 right-2 rounded-sm border-0! bg-transparent! p-1 text-muted-foreground! opacity-0 transition-opacity outline-none group-hover/toast:opacity-100 hover:text-foreground! focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/30",
           success: "[--toast-accent:var(--success)]",

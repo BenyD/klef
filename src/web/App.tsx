@@ -16,6 +16,7 @@ import { UnlockScreen } from "./components/UnlockScreen.tsx";
 import { VaultHome } from "./components/VaultHome.tsx";
 import { Splash } from "./components/Splash.tsx";
 import { ToastLab } from "./components/ToastLab.tsx";
+import { DesignLab } from "./components/DesignLab.tsx";
 import { AppShellSkeleton } from "./components/AppShellSkeleton.tsx";
 import { NotFound } from "./components/NotFound.tsx";
 import { TooltipProvider } from "./components/ui/tooltip.tsx";
@@ -160,6 +161,9 @@ export function App() {
         <Route path="/app" element={<AppArea />} />
         {import.meta.env.DEV && (
           <Route path="/dev/toasts" element={<ToastLab />} />
+        )}
+        {import.meta.env.DEV && (
+          <Route path="/dev/design" element={<DesignLab />} />
         )}
         {/* Workspace home: klef.sh/<workspace-slug>. Marketing routes above
             win first; reserved slugs are rejected at workspace creation. */}
