@@ -14,7 +14,7 @@ Commands:
   help               Show this
 
 Options:
-  --file <name>      Which env file in the vault (default: .env)
+  --file <name>      Which env file in the vault (pull defaults to the linked one)
   --path <path>      Where to write on pull (default: the file's name)
   -h, --help         Show this
   -v, --version      Print the version
