@@ -887,3 +887,14 @@
   word-break: break-word;
   text-align: left;
 }
+
+/* Keyboard focus for the agent-prompt controls.
+   These sit on the card surface, where the browser's default ring is easy to
+   lose, and the tab strip is a roving-tabindex group — so the ring is the only
+   thing telling a keyboard user which tab they are on. :focus-visible keeps it
+   off mouse clicks. */
+.marketing-agent-tab:focus-visible,
+.marketing-agent-copy:focus-visible {
+  outline: 2px solid var(--m-primary-bg);
+  outline-offset: 2px;
+}
