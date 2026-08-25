@@ -183,7 +183,7 @@
 }
 .marketing-nav,
 .marketing-hero > * {
-  animation: m-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: m-rise 0.6s var(--ease-out) both;
 }
 .marketing-nav {
   animation-duration: 0.5s;
@@ -441,7 +441,7 @@
   max-width: 680px;
   margin: 0 auto;
   padding: 56px 24px 72px;
-  animation: m-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: m-rise 0.6s var(--ease-out) both;
   animation-delay: 0.08s;
 }
 
@@ -549,7 +549,7 @@
   max-width: 1000px;
   margin: 0 auto;
   padding: 56px 24px 72px;
-  animation: m-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: m-rise 0.6s var(--ease-out) both;
   animation-delay: 0.08s;
 }
 

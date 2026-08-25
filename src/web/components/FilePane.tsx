@@ -14,16 +14,19 @@ import {
   Save,
   Table2,
   TriangleAlert,
+  UnfoldVertical,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils.ts";
 import { decryptBlob, encryptBlob } from "../../shared/crypto.ts";
 import {
+  collapseUnchanged,
   diffLines,
   diffStats,
   finalNewlineNote,
   isUnchanged,
+  type DiffOp,
 } from "../../shared/diff.ts";
 import {
   getCurrentVersion,
@@ -417,16 +420,21 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
             >
               <div className="flex min-w-0 flex-col">
                 <span className="flex items-center gap-2 text-sm font-medium">
-                  {relativeTime(created)}
+                  <time dateTime={created.toISOString()}>
+                    {relativeTime(created)}
+                  </time>
                   {v.isCurrent && (
                     <Badge variant="secondary" className="font-normal">
                       current
                     </Badge>
                   )}
                 </span>
-                <span className="text-muted-foreground text-xs">
+                <time
+                  dateTime={created.toISOString()}
+                  className="text-muted-foreground text-xs"
+                >
                   {absoluteTime(created)}
-                </span>
+                </time>
               </div>
               {!v.isCurrent && (
                 <div className="ml-auto flex shrink-0 gap-1">
@@ -988,6 +996,9 @@ function WhitespaceWarning({
   );
 }
 
+/** Shared empty set so a re-render with no folds open keeps state identity. */
+const NO_FOLDS_OPEN: ReadonlySet<number> = new Set<number>();
+
 function DiffList({
   ops,
   note,
@@ -996,27 +1007,37 @@ function DiffList({
   /** Final-newline note (git's "\ No newline at end of file"), if any. */
   note?: string | null;
 }) {
+  const chunks = useMemo(() => collapseUnchanged(ops), [ops]);
+  // Folds reopen when the diff itself changes — an index into the old chunk
+  // list means nothing once the user types again.
+  const [expanded, setExpanded] = useState<ReadonlySet<number>>(NO_FOLDS_OPEN);
+  const [chunksSeen, setChunksSeen] = useState(chunks);
+  if (chunksSeen !== chunks) {
+    setChunksSeen(chunks);
+    setExpanded(NO_FOLDS_OPEN);
+  }
+
   return (
     <div className="font-mono text-sm leading-relaxed">
-      {ops.map((op, i) => (
-        <div
-          key={i}
-          data-diff={op.type}
-          className={cn(
-            "flex gap-2 px-3",
-            op.type === "add"
-              ? "bg-diff-add/10 text-diff-add"
-              : op.type === "remove"
-                ? "bg-diff-remove/10 text-diff-remove"
-                : "text-muted-foreground",
-          )}
-        >
-          <span className="w-3 shrink-0 text-center opacity-60 select-none">
-            {op.type === "add" ? "+" : op.type === "remove" ? "-" : ""}
-          </span>
-          <span className="break-all whitespace-pre-wrap">{op.text || " "}</span>
-        </div>
-      ))}
+      {chunks.map((chunk, ci) =>
+        chunk.type === "gap" && !expanded.has(ci) ? (
+          <button
+            key={ci}
+            type="button"
+            data-diff="gap"
+            className="text-muted-foreground hover:bg-accent hover:text-foreground flex w-full items-center gap-2 px-3 py-0.5 text-left"
+            onClick={() => setExpanded((prev) => new Set(prev).add(ci))}
+          >
+            <UnfoldVertical className="size-3 shrink-0 opacity-60" />
+            <span className="text-xs">
+              Show {chunk.ops.length} unchanged{" "}
+              {chunk.ops.length === 1 ? "line" : "lines"}
+            </span>
+          </button>
+        ) : (
+          chunk.ops.map((op, i) => <DiffRow key={`${ci}-${i}`} op={op} />)
+        ),
+      )}
       {note && (
         <div className="text-muted-foreground flex gap-2 px-3">
           <span className="w-3 shrink-0 text-center opacity-60 select-none">
@@ -1025,6 +1046,27 @@ function DiffList({
           <span className="italic">{note}</span>
         </div>
       )}
+    </div>
+  );
+}
+
+function DiffRow({ op }: { op: DiffOp }) {
+  return (
+    <div
+      data-diff={op.type}
+      className={cn(
+        "flex gap-2 px-3",
+        op.type === "add"
+          ? "bg-diff-add/10 text-diff-add"
+          : op.type === "remove"
+            ? "bg-diff-remove/10 text-diff-remove"
+            : "text-muted-foreground",
+      )}
+    >
+      <span className="w-3 shrink-0 text-center opacity-60 select-none">
+        {op.type === "add" ? "+" : op.type === "remove" ? "-" : ""}
+      </span>
+      <span className="break-all whitespace-pre-wrap">{op.text || " "}</span>
     </div>
   );
 }

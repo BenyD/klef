@@ -167,7 +167,7 @@ export function Onboarding({ email }: { email: string }) {
               </div>
               <span className="text-sm font-semibold tracking-tight">Klef</span>
             </div>
-            <span className="text-muted-foreground text-xs">
+            <span className="text-muted-foreground text-xs tabular-nums">
               Step {stepIndex + 1} of {STEPS.length}
             </span>
           </div>

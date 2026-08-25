@@ -65,7 +65,8 @@ export function ProjectsOverview({
             {workspaceName}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {projects.length} {projects.length === 1 ? "project" : "projects"}
+            <span className="tabular-nums">{projects.length}</span>{" "}
+            {projects.length === 1 ? "project" : "projects"}
           </p>
         </div>
         <Button onClick={onNewProject}>
@@ -158,7 +159,7 @@ function ProjectCard({
                     : "No stack"}
                 </span>
               </span>
-              <span className="flex shrink-0 items-center gap-1">
+              <span className="flex shrink-0 items-center gap-1 tabular-nums">
                 <FileText className="size-3" aria-hidden="true" />
                 {project.files.length}
                 <span className="sr-only">
