@@ -50,7 +50,17 @@ klef pull    # write it to disk (mode 0600), reporting only a count
 
 **Not published yet.** `pnpm build:cli` produces `@klefsh/cli` in `dist/cli`
 (one file, no required dependencies); until it is on npm, run the CLI from a
-clone with `pnpm cli <command>`.
+clone with `pnpm cli <command>`. To publish:
+
+```bash
+pnpm build:cli
+npm publish ./dist/cli --access public
+```
+
+Both parts matter: without `./`, npm reads `dist/cli` as the GitHub shorthand
+`owner/repo` and tries to clone `github.com/dist/cli`; without
+`--access public`, a scoped package publishes restricted and `npx` cannot
+reach it.
 
 `pull` never prints a value. There is no `--print` and no `klef get`, which is
 what makes it safe to hand to a coding agent. See
