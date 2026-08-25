@@ -286,6 +286,26 @@ export function DesignLab() {
                   undone.
                 </DialogDescription>
               </DialogHeader>
+              {/* Nested, because Base UI renders no backdrop for a child
+                  dialog: the parent has to recede on its own, and the only
+                  way to see whether it does is to open one inside another. */}
+              <Dialog>
+                <DialogTrigger render={<Button variant="outline" size="sm" />}>
+                  Open a nested dialog
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Nested dialog</DialogTitle>
+                    <DialogDescription>
+                      The dialog behind this one should step back and dim. If
+                      its text reads through around these edges, the
+                      data-nested-dialog-open treatment on DialogContent has
+                      stopped working.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter showCloseButton />
+                </DialogContent>
+              </Dialog>
               <DialogFooter showCloseButton />
             </DialogContent>
           </Dialog>
