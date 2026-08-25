@@ -11,6 +11,7 @@ import {
   Loader2,
   PanelRight,
   RotateCcw,
+  Bot,
   Save,
   Table2,
   TriangleAlert,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils.ts";
+import { filePullPrompt } from "../lib/agent-prompts.ts";
 import { decryptBlob, encryptBlob } from "../../shared/crypto.ts";
 import {
   collapseUnchanged,
@@ -164,6 +166,25 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
       cancelled = true;
     };
   }, [file.id, dek]);
+
+  /**
+   * A prompt for pulling this file with the CLI, already carrying the names
+   * the agent would otherwise have to list the vault and ask about. The names
+   * are plaintext in Klef by design and already sit in .klef.json, so this
+   * puts nothing new in the reader's clipboard.
+   */
+  function copyAgentPrompt() {
+    void navigator.clipboard?.writeText(
+      filePullPrompt({
+        workspace: file.workspace,
+        project: file.project,
+        file: file.name,
+      }),
+    );
+    toast.success("Agent prompt copied", {
+      description: "Paste it into Claude Code, Cursor, or whatever you use.",
+    });
+  }
 
   const ops = useMemo(() => diffLines(stored, draft), [stored, draft]);
   const stats = useMemo(() => diffStats(ops), [ops]);
@@ -626,6 +647,9 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
                 <RotateCcw />
               </IconAction>
             )}
+            <IconAction label="Copy agent prompt" onClick={copyAgentPrompt}>
+              <Bot />
+            </IconAction>
             <IconAction label="Version history" onClick={openHistory}>
               <History />
             </IconAction>
