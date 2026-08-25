@@ -81,6 +81,17 @@ describe("agent prompts", () => {
     expect(onboarding && promptText(onboarding)).toMatch(/git ls-files/);
   });
 
+  // klef.sh shipped a prompt telling people to `npx @klef/cli` before the
+  // package existed, so every visitor copying it got a 404 on line one. No
+  // offered prompt may name an install that isn't real.
+  it("never tells the reader to run an unpublished package", () => {
+    for (const prompt of AGENT_PROMPTS) {
+      expect(promptText(prompt), `${prompt.id} names @klef/cli`).not.toContain(
+        "@klef/cli",
+      );
+    }
+  });
+
   it("has a default prompt that is one of the offered prompts", () => {
     expect(AGENT_PROMPTS).toContain(DEFAULT_PROMPT);
   });

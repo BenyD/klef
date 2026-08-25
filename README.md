@@ -43,10 +43,14 @@ a passphrase read straight from the terminal. It cannot be run unattended by
 design.
 
 ```bash
-npx @klef/cli login   # paste a token from Settings -> Security -> Developer
-npx @klef/cli link    # connect this directory to a file in your vault
-npx @klef/cli pull    # write it to disk (mode 0600), reporting only a count
+klef login   # paste a token from Settings -> Security -> Developer
+klef link    # connect this directory to a file in your vault
+klef pull    # write it to disk (mode 0600), reporting only a count
 ```
+
+**Not published yet.** `pnpm build:cli` produces the package in `dist/cli`
+(one file, no required dependencies); until it is on npm, run the CLI from a
+clone with `pnpm cli <command>`.
 
 `pull` never prints a value — no `--print`, no `klef get` — which is what makes
 it safe to hand to a coding agent. See [`docs/AGENT_ACCESS.md`](./docs/AGENT_ACCESS.md).
