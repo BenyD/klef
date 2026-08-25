@@ -56,6 +56,31 @@ describe("agent prompts", () => {
     }
   });
 
+  // The bug this guards against: the self-host prompt used to say "set the
+  // production secrets, prompting me for each value", which contradicts the
+  // safety rule appended to the same prompt. An agent could only satisfy
+  // `wrangler secret put` by holding the plaintext or by asking for it in
+  // chat — both of which put a secret in a model's context.
+  it("never asks the agent to run an interactive secret command", () => {
+    for (const prompt of AGENT_PROMPTS) {
+      const text = promptText(prompt);
+      if (!text.includes("secret put")) continue;
+      expect(text, `${prompt.id} mentions secret put`).toMatch(
+        /run myself|run them yourself|do not run them for me/i,
+      );
+      expect(text, `${prompt.id} must not solicit values`).toMatch(
+        /do not ask me for the values/i,
+      );
+    }
+  });
+
+  it("checks git tracking rather than trusting .gitignore alone", () => {
+    // Being listed in .gitignore and being tracked by git are different
+    // things; a file committed before the rule was added still leaks.
+    const onboarding = AGENT_PROMPTS.find((p) => p.id === "project");
+    expect(onboarding && promptText(onboarding)).toMatch(/git ls-files/);
+  });
+
   it("has a default prompt that is one of the offered prompts", () => {
     expect(AGENT_PROMPTS).toContain(DEFAULT_PROMPT);
   });
