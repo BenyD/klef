@@ -29,7 +29,38 @@ pnpm test                 # vitest: unit (node/happy-dom) + worker (Miniflare/D1
 pnpm build                # typecheck + vite build + prerender marketing pages
 pnpm db:migrate:local     # apply D1 migrations locally
 pnpm deploy               # build + wrangler deploy (production)
+pnpm cli <command>        # run the CLI from source (login, link, pull, push)
+pnpm build:cli            # bundle the CLI into dist/cli as @klefsh/cli
 ```
+
+Publishing the CLI (both parts matter: without `./` npm reads `dist/cli` as a
+GitHub shorthand, and without `--access public` a scoped package publishes
+restricted):
+
+```bash
+pnpm build:cli
+npm publish ./dist/cli --access public
+```
+
+## The CLI
+
+- **It never prints a secret value.** No `klef get`, no `--print`. `pull`
+  writes a file and reports a count; `push` reports how many lines changed.
+  This is what makes it safe to hand to an agent, so do not add a command that
+  breaks it.
+- **The passphrase comes from `/dev/tty`**, never stdin, argv, or an env var,
+  and the prompt refuses to run on a stream whose echo it cannot disable. It
+  once printed a token in the clear because that check was missing.
+- **`src/cli` stays compatible with Node's type stripping** — no parameter
+  properties, no enums, nothing that emits runtime code. That is why `node
+  src/cli/index.ts` runs the source with no build step.
+- **`src/cli` is excluded from `tsconfig.json`** and typechecked under
+  `tsconfig.node.json`, which is where Node types live.
+- Suggested commands go through `invocation.ts`, so a reader who arrived via
+  `npx @klefsh/cli` is not told to run a `klef` binary they do not have.
+- Version lives in `src/cli/version.ts`. Before choosing one, read
+  `https://registry.npmjs.org/@klefsh%2fcli` — unpublished versions are
+  reserved forever and `npm view` 404s once a package is unpublished.
 
 ## Hard rules
 

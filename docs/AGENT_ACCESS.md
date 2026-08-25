@@ -1,9 +1,60 @@
-# Klef agent access — design proposal
+# Klef agent access
 
-**Status:** proposal. Nothing here is implemented.
-**Crypto impact:** touches how the DEK is unwrapped outside the browser, so per
-[`CONTRIBUTING.md`](../CONTRIBUTING.md#the-crypto-contract-is-load-bearing) this
-needs an issue and a decision before any code lands.
+How a CLI and, later, an MCP server reach the vault without weakening the
+zero-knowledge contract.
+
+**Status:** phases 1 to 3 shipped, plus browser sign-in, which was not in the
+original plan. `klef diff`, the unlock agent, and the MCP server are not built.
+See [What shipped](#what-shipped) for the current state and
+[What is left](#what-is-left) for the rest.
+
+The design below is kept as written, including the parts that turned out to be
+wrong, because the reasoning is what makes the shape defensible. Where reality
+diverged it is marked inline.
+
+---
+
+## What shipped
+
+| | |
+|---|---|
+| Access tokens | `db/migrations/0012_access_tokens.sql`, `src/api/access-token.ts`, `src/api/tokens.ts` |
+| Token management UI | Settings → Security → Developer |
+| CLI | `src/cli/` — `login`, `logout`, `status`, `link`, `pull`, `push` |
+| Published package | `@klefsh/cli`, one bundled file, zero required dependencies |
+| Browser sign-in | `db/migrations/0013_device_authorizations.sql`, `src/api/device.ts`, `/cli` |
+| Agent prompts | Landing page, and per-file from the app's toolbar |
+
+Each has been run against production, not only tested: a token authenticating,
+a file pulled and decrypted locally, a version pushed byte-for-byte, and a
+login approved in a browser.
+
+## What is left
+
+- **`klef diff`** — compare local against stored without writing either.
+- **The unlock agent** — §6 below. Without it `pull` asks for the passphrase
+  every time, so pulling two files means two Argon2id unlocks.
+- **The MCP server** — §9 below, the piece this document was written for.
+- **`pull --all`** — one passphrase for every file in a project, which is the
+  cheap version of what the agent solves properly.
+
+## What the build taught that the design did not
+
+- **Browser sign-in was worth doing first.** This document proposed
+  paste-a-token as the shippable option and device flow as a follow-up. Paste
+  shipped, and a live token was printed in the clear by a prompt that failed
+  to disable terminal echo. `fs.createReadStream("/dev/tty")` has no `isTTY`
+  and no `setRawMode`, so readline could never turn the kernel echo off. The
+  prompt now refuses to run at all on a stream it cannot control.
+- **Sealing the token in a device flow is not optional here.** A device flow
+  parks the minted token between approval and collection. Every implementation
+  stores it in the clear; for Klef that would be the one place the claim about
+  what the server holds quietly stopped being true. The CLI now sends an ECDH
+  public key and the server seals to it. Two weaker designs were tried and
+  are recorded in `src/shared/device-seal.ts`.
+- **Three of four bugs were found by running it, not by testing it.** `--file`
+  silently ignored on `pull`, `pull` able to write outside the working
+  directory, and the echo above. All had passing tests around them.
 
 ---
 
@@ -253,14 +304,13 @@ browser flow does not have:
 
 ## 11. Phasing
 
-1. **PAT auth** — migration, middleware, management UI, tests. Self-contained,
-   no crypto changes, useful on its own. Ships independently.
-2. **CLI: `login` / `link` / `pull`** — read-only. Proves the headless unwrap
-   path and the agent process against the real API.
-3. **CLI: `push` / `diff`** — write path, reusing the existing client-side
-   [`diff.ts`](../src/shared/diff.ts).
-4. **MCP server** — thin wrapper over 3, which is where it belongs: by then the
-   dangerous decisions are all behind it.
+1. ~~**PAT auth**~~ — shipped.
+2. ~~**CLI: `login` / `link` / `pull`**~~ — shipped, though without the unlock
+   agent, which was folded into this phase in the plan and turned out to be
+   separable.
+3. **CLI: `push` / `diff`** — `push` shipped; `diff` is not built.
+4. **MCP server** — not built. Still the right place for it: the dangerous
+   decisions are all behind it now.
 
 ## 12. Open questions
 
