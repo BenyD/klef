@@ -33,6 +33,7 @@ describe("resolveWritePath", () => {
 
   it("refuses absolute paths outright", () => {
     expect(() => resolveWritePath(CWD, "/etc/cron.d/x")).toThrow(/absolute path/);
+    expect(() => resolveWritePath(CWD, "/etc/cron.d/x")).toThrow(/leave this directory/);
   });
 
   it("refuses a path that resolves to the directory itself", () => {

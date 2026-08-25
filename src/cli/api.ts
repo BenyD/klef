@@ -12,6 +12,7 @@
 // src/cli/index.ts` runs the source as-is, with no build step between the code
 // you read and the code that handles your keys.
 
+import { command } from "./invocation.ts";
 import type { VaultTree } from "../shared/api-types.ts";
 import type { EncryptedBlob, VaultKeyMaterial } from "../shared/types.ts";
 
@@ -27,7 +28,7 @@ export class ApiError extends Error {
 /** A 401 means the token is gone, expired, or revoked — always actionable. */
 export class UnauthorizedError extends ApiError {
   constructor() {
-    super("Your access token was rejected. Run `klef login` with a new one.", 401);
+    super(`Your access token was rejected. Run \`${command("login")}\` with a new one.`, 401);
   }
 }
 
@@ -51,11 +52,15 @@ export class KlefApi {
     this.#token = token;
   }
 
-  private async request<T>(path: string): Promise<T> {
+  private async request<T>(path: string, init?: RequestInit): Promise<T> {
     let res: Response;
     try {
       res = await fetch(`${this.#baseUrl}${path}`, {
-        headers: { Authorization: `Bearer ${this.#token}` },
+        ...init,
+        headers: {
+          ...init?.headers,
+          Authorization: `Bearer ${this.#token}`,
+        },
       });
     } catch {
       // Status 0 marks "never got a response", distinct from any HTTP failure.
@@ -94,5 +99,18 @@ export class KlefApi {
 
   currentVersion(fileId: string): Promise<{ version: CurrentVersion | null }> {
     return this.request(`/api/files/${encodeURIComponent(fileId)}/current`);
+  }
+
+  /**
+   * Add a version. Saves are append-only server-side: a new row becomes the
+   * current one and every earlier version stays, so a bad push is recoverable
+   * from the web app rather than destructive.
+   */
+  saveVersion(fileId: string, blob: EncryptedBlob): Promise<{ id: string; createdAt: string }> {
+    return this.request(`/api/files/${encodeURIComponent(fileId)}/versions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ blob }),
+    });
   }
 }

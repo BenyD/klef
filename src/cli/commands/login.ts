@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { command } from "../invocation.ts";
 import { KlefApi } from "../api.ts";
 import { saveToken, validateToken } from "../credentials.ts";
 import { apiBaseUrl } from "../paths.ts";
@@ -28,6 +29,6 @@ export async function login(env: NodeJS.ProcessEnv): Promise<number> {
   const source = await saveToken(token, env);
   const where = source === "keychain" ? "your OS keychain" : "a private file (0600)";
   console.log(`\nSigned in as ${user.email}. Token stored in ${where}.`);
-  console.log("Next: run `klef link` inside a repo to connect it to a file.");
+  console.log(`Next: run \`${command("link")}\` inside a repo to connect it to a file.`);
   return 0;
 }
