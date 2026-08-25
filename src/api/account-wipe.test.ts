@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 // Account deletion relies on every table cascading from user(id): Better
 // Auth's delete-user endpoint issues one DELETE on the user row, and the
 // database is responsible for taking sessions, accounts, passkeys, the vault,
-// and the whole workspace tree down with it. This proves the cascades hold.
+// access tokens, and the whole workspace tree down with it. This proves the
+// cascades hold.
 describe("account deletion cascades", () => {
   it("deleting the user row wipes every dependent table", async () => {
     const uid = "wipe-me";
@@ -37,6 +38,9 @@ describe("account deletion cascades", () => {
       env.DB.prepare(
         "INSERT INTO env_versions (id, env_file_id, blob) VALUES ('wipe-v', 'wipe-file', '{}')",
       ),
+      env.DB.prepare(
+        "INSERT INTO access_tokens (id, user_id, name, token_hash, prefix, created_at) VALUES ('wipe-t', ?, 'cli', 'wipe-hash', 'wipeabcd', ?)",
+      ).bind(uid, now),
     ];
     for (const stmt of batch) await stmt.run();
 
@@ -51,7 +55,8 @@ describe("account deletion cascades", () => {
         (SELECT COUNT(*) FROM workspaces WHERE user_id = ?1) +
         (SELECT COUNT(*) FROM projects WHERE id = 'wipe-proj') +
         (SELECT COUNT(*) FROM env_files WHERE id = 'wipe-file') +
-        (SELECT COUNT(*) FROM env_versions WHERE id = 'wipe-v') AS leftovers`,
+        (SELECT COUNT(*) FROM env_versions WHERE id = 'wipe-v') +
+        (SELECT COUNT(*) FROM access_tokens WHERE user_id = ?1) AS leftovers`,
     )
       .bind(uid)
       .first<{ leftovers: number }>();
