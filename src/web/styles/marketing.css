@@ -152,8 +152,13 @@
   padding: 0;
 }
 
-.marketing-hero {
+.marketing-main {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.marketing-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -703,4 +708,182 @@
   .marketing .marketing-doc-toc nav a[aria-current="true"] {
     border-left: none;
   }
+}
+
+/* --- sections below the hero -------------------------------------------- */
+
+.marketing-section {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 56px 24px;
+  border-top: 1px solid var(--m-border);
+}
+
+.marketing-section h2 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.marketing-section-lead {
+  margin: 10px 0 0;
+  max-width: 62ch;
+  color: var(--m-muted);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+/* Numbered because the three steps are a sequence, not a feature grid. */
+.marketing-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin: 32px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+
+.marketing-steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid var(--m-border);
+  border-radius: var(--m-radius-lg);
+  background: var(--m-card);
+}
+
+.marketing-step-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--m-primary-bg);
+  color: var(--m-primary-fg);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.marketing-steps h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.marketing-steps p {
+  margin: 0;
+  color: var(--m-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+@media (max-width: 760px) {
+  .marketing-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- agent prompts ------------------------------------------------------ */
+
+.marketing-agent-card {
+  margin-top: 28px;
+  border: 1px solid var(--m-border);
+  border-radius: var(--m-radius-lg);
+  background: var(--m-card);
+  overflow: hidden;
+}
+
+.marketing-agent-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid var(--m-border);
+}
+
+.marketing-agent-tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--m-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--m-radius-sm);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.marketing-agent-tab:hover {
+  background: var(--m-hover);
+  color: var(--m-fg);
+}
+
+.marketing-agent-tab[aria-selected="true"] {
+  background: var(--m-hover);
+  color: var(--m-fg);
+}
+
+/* Pushed to the trailing edge so it reads as an action on the panel, not a
+   third tab. */
+.marketing-agent-copy {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  appearance: none;
+  border: 1px solid var(--m-border);
+  background: var(--m-bg);
+  color: var(--m-fg);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: var(--m-radius-sm);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.marketing-agent-copy:hover {
+  border-color: var(--m-outline-hover);
+  background: var(--m-hover);
+}
+
+.marketing-agent-panel {
+  padding: 16px;
+}
+
+.marketing-agent-desc {
+  margin: 0 0 12px;
+  color: var(--m-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.marketing-agent-prompt {
+  margin: 0;
+  max-height: 340px;
+  overflow: auto;
+  padding: 14px;
+  border-radius: var(--m-radius);
+  background: var(--m-bg);
+  border: 1px solid var(--m-border);
+  color: var(--m-fg);
+  font-family: "JetBrains Mono Variable", ui-monospace, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
 }
