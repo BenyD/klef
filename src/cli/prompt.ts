@@ -11,8 +11,8 @@
 // argv is visible to `ps` and to the process that spawned it.
 
 import { createInterface } from "node:readline";
-import { createReadStream, createWriteStream } from "node:fs";
-import type { ReadStream, WriteStream } from "node:fs";
+import { closeSync, openSync } from "node:fs";
+import { ReadStream, WriteStream } from "node:tty";
 
 export class NoTerminalError extends Error {
   constructor() {
@@ -28,6 +28,45 @@ interface Tty {
   close: () => void;
 }
 
+/**
+ * Suppressing the echo of a secret needs raw mode, and raw mode needs a stream
+ * the terminal driver recognises. `fs.createReadStream("/dev/tty")` is not
+ * one: it has no isTTY and no setRawMode, so readline cannot turn the kernel's
+ * echo off and every character typed is printed to the screen and into
+ * scrollback. Opening the same device through node:tty gives a stream that
+ * can. Anything that fails this check refuses to prompt rather than leaking.
+ */
+function ttyStreams(): Tty {
+  let inFd: number;
+  let outFd: number;
+  try {
+    inFd = openSync("/dev/tty", "r");
+    outFd = openSync("/dev/tty", "w");
+  } catch {
+    throw new NoTerminalError();
+  }
+
+  const input = new ReadStream(inFd);
+  const output = new WriteStream(outFd);
+
+  if (!input.isTTY || typeof input.setRawMode !== "function") {
+    input.destroy();
+    output.destroy();
+    closeSync(inFd);
+    closeSync(outFd);
+    throw new NoTerminalError();
+  }
+
+  return {
+    input,
+    output,
+    close: () => {
+      input.destroy();
+      output.destroy();
+    },
+  };
+}
+
 function openTty(): Tty {
   if (process.platform === "win32") {
     // No /dev/tty. Fall back to the process's own terminal streams, which is
@@ -36,20 +75,7 @@ function openTty(): Tty {
     return { input: process.stdin, output: process.stdout, close: () => {} };
   }
 
-  try {
-    const input = createReadStream("/dev/tty");
-    const output = createWriteStream("/dev/tty");
-    return {
-      input,
-      output,
-      close: () => {
-        input.close();
-        output.close();
-      },
-    };
-  } catch {
-    throw new NoTerminalError();
-  }
+  return ttyStreams();
 }
 
 /**
@@ -59,6 +85,14 @@ function openTty(): Tty {
  */
 export async function promptSecret(question: string): Promise<string> {
   const tty = openTty();
+
+  // Belt and braces: readline turns echo off through raw mode, and a stream
+  // that cannot do that would print the secret. Never prompt on one.
+  const input = tty.input as Partial<ReadStream>;
+  if (!input.isTTY || typeof input.setRawMode !== "function") {
+    tty.close();
+    throw new NoTerminalError();
+  }
 
   const rl = createInterface({
     input: tty.input,
