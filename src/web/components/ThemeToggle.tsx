@@ -6,12 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip.tsx";
 
 export function ThemeGlyph({ className }: { className?: string }) {
   return (
-    <Contrast
-      className={cn(
-        "ease-spring transition-transform duration-500 dark:rotate-180",
-        className,
-      )}
-    />
+    <Contrast className={cn("klef-theme-glyph dark:rotate-180", className)} />
   );
 }
 
