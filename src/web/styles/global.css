@@ -199,18 +199,58 @@
   }
 }
 
-/* Theme switch: circular reveal (see lib/theme.ts). Disable the default
-   crossfade so only the clip-path reveal of the new snapshot plays. */
+/* Theme switch: circular reveal expanding from the click point. lib/theme.ts
+   sets --klef-reveal-* and starts the transition; the animation itself lives
+   here so it is in place the instant the pseudo-elements exist. The default
+   crossfade is off - the old snapshot just sits underneath as the backdrop
+   while the new one is clipped open over it.
+
+   The curve is deliberately close to symmetric. An expo-style ease-out covers
+   ~96% of the radius in the first half of its duration and then creeps through
+   the last few percent, which reads as the switch hanging rather than
+   finishing - and the effect compounds, since the area revealed grows with the
+   square of the radius. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation: none;
   mix-blend-mode: normal;
 }
+::view-transition-old(root) {
+  animation: none;
+  z-index: 0;
+}
 ::view-transition-new(root) {
+  animation: klef-theme-reveal 420ms cubic-bezier(0.4, 0, 0.2, 1) both;
   z-index: 1;
 }
-::view-transition-old(root) {
-  z-index: 0;
+@keyframes klef-theme-reveal {
+  from {
+    clip-path: circle(
+      0px at var(--klef-reveal-x, 50%) var(--klef-reveal-y, 0px)
+    );
+  }
+  to {
+    clip-path: circle(
+      var(--klef-reveal-r, 150vmax) at var(--klef-reveal-x, 50%)
+        var(--klef-reveal-y, 0px)
+    );
+  }
+}
+
+/* next-themes' disableTransitionOnChange lays a blanket
+   `*{transition:none!important}` over the document while the class flips, which
+   also swallowed the toggle glyph's rotation. Win it back on specificity, and
+   land it with the reveal. */
+.klef-theme-glyph {
+  /* `rotate`, not just `transform`: Tailwind's rotate-* sets the individual
+     rotate property. */
+  transition:
+    rotate 420ms var(--ease-spring),
+    transform 420ms var(--ease-spring) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .klef-theme-glyph {
+    transition: none !important;
+  }
 }
 
 /* Screen hand-off inside the vault gate (Onboarding/Unlock → VaultHome).
