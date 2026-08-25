@@ -157,7 +157,7 @@ export function KeySearchDialog({
                   <span className="font-mono text-sm font-medium">
                     {match.key}
                   </span>
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-muted-foreground text-xs tabular-nums">
                     {match.locations.length}{" "}
                     {match.locations.length === 1 ? "file" : "files"}
                   </span>

@@ -110,6 +110,55 @@ describe("FilePane (the save loop)", () => {
   });
 });
 
+describe("FilePane review folding", () => {
+  it("folds unchanged lines far from the edit and expands them on demand", async () => {
+    const { encryptBlob } = await import("../../shared/crypto.ts");
+    const lines = Array.from({ length: 40 }, (_, i) => `KEY_${i}=v`);
+    holder.current = {
+      id: "v0",
+      blob: await encryptBlob(holder.dek!, lines.join("\n")),
+      createdAt: "now",
+    };
+
+    render(
+      <FilePane
+        file={{ id: "f3", name: ".env", project: "p", workspace: "w", environment: null }}
+        onSaved={() => {}}
+      />,
+    );
+
+    const textarea = await screen.findByPlaceholderText(/Paste your config/i);
+    await waitFor(() =>
+      expect((textarea as HTMLTextAreaElement).value).toContain("KEY_39=v"),
+    );
+    fireEvent.change(textarea, {
+      target: { value: [...lines, "LAST=1"].join("\n") },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+
+    const sameLines = () =>
+      [...document.querySelectorAll('[data-diff="same"]')].map(
+        (el) => el.textContent ?? "",
+      );
+
+    // The edit is at the bottom; the top of the file is behind a fold, so the
+    // change is on screen without scrolling past 37 untouched lines.
+    const fold = await waitFor(() => {
+      const el = document.querySelector('[data-diff="gap"]');
+      if (!el) throw new Error("no fold");
+      return el as HTMLButtonElement;
+    });
+    expect(fold.textContent).toContain("Show 37 unchanged lines");
+    expect(sameLines().some((t) => t.includes("KEY_0=v"))).toBe(false);
+    // Three lines of context still anchor the addition.
+    expect(sameLines().some((t) => t.includes("KEY_39=v"))).toBe(true);
+
+    fireEvent.click(fold);
+    expect(sameLines().some((t) => t.includes("KEY_0=v"))).toBe(true);
+    expect(document.querySelector('[data-diff="gap"]')).toBeNull();
+  });
+});
+
 describe("FilePane format gating", () => {
   it("offers the table view for a dotenv file", async () => {
     render(

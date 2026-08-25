@@ -60,6 +60,11 @@ pnpm deploy               # build + wrangler deploy (production)
 - UI: shadcn-style components over **Base UI** (not Radix) in
   `src/web/components/ui/`. Base UI gotcha: `DropdownMenuLabel` must sit
   inside a `DropdownMenuGroup`.
+- **The design language is written down** in `src/web/styles/DESIGN.md`:
+  motion curves and durations, the three elevation layers, type rules. Reach
+  for a token, not a literal - and see them side by side at `/dev/design`
+  (dev-only, like `/dev/toasts`). No `transition-all`; use
+  `transition-interactive` or name the properties.
 - Marketing pages (`/`, `/security`, `/terms`, `/privacy`) are plain-CSS
   (`marketing.css`), prerendered to static HTML at build time by
   `scripts/prerender.tsx` - keep them SSR-safe (no browser APIs at module

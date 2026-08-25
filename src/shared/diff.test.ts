@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  collapseUnchanged,
   diffLines,
   diffStats,
   finalNewlineNote,
@@ -108,5 +109,61 @@ describe("finalNewlineNote", () => {
     expect(finalNewlineNote("A=1", "")).toBeNull();
     expect(finalNewlineNote("", "A=1\n")).toBeNull();
     expect(finalNewlineNote("", "")).toBeNull();
+  });
+});
+
+describe("collapseUnchanged", () => {
+  const env = (n: number) =>
+    Array.from({ length: n }, (_, i) => `KEY_${i}=v`).join("\n");
+
+  it("keeps three unchanged lines either side of a change", () => {
+    const ops = diffLines(env(40), `${env(40)}\nLAST=1`);
+    const chunks = collapseUnchanged(ops);
+    expect(chunks.map((c) => c.type)).toEqual(["gap", "lines"]);
+    expect(chunks[0]!.ops).toHaveLength(37);
+    expect(chunks[0]!.ops.every((o) => o.type === "same")).toBe(true);
+    // Three lines of context plus the addition itself.
+    expect(chunks[1]!.ops.map((o) => o.type)).toEqual([
+      "same",
+      "same",
+      "same",
+      "add",
+    ]);
+  });
+
+  it("folds between two distant changes but not between close ones", () => {
+    const before = ["A=1", ...Array.from({ length: 20 }, (_, i) => `M_${i}=v`), "Z=1"];
+    const after = [...before];
+    after[0] = "A=2";
+    after[21] = "Z=2";
+    const far = collapseUnchanged(diffLines(before.join("\n"), after.join("\n")));
+    expect(far.map((c) => c.type)).toEqual(["lines", "gap", "lines"]);
+    expect(far[1]!.ops).toHaveLength(14);
+
+    const near = collapseUnchanged(
+      diffLines("A=1\nB=2\nC=3\nD=4", "A=9\nB=2\nC=3\nD=9"),
+    );
+    expect(near.map((c) => c.type)).toEqual(["lines"]);
+  });
+
+  it("never folds a single line — the control costs the row it saves", () => {
+    const lines = Array.from({ length: 9 }, (_, i) => `K_${i}=v`);
+    const after = [...lines];
+    after[0] = "K_0=x";
+    after[8] = "K_8=x";
+    const chunks = collapseUnchanged(diffLines(lines.join("\n"), after.join("\n")));
+    expect(chunks.map((c) => c.type)).toEqual(["lines"]);
+  });
+
+  it("folds a fully unchanged diff into one gap", () => {
+    const chunks = collapseUnchanged(diffLines(env(10), env(10)));
+    expect(chunks.map((c) => c.type)).toEqual(["gap"]);
+    expect(chunks[0]!.ops).toHaveLength(10);
+  });
+
+  it("preserves every op across the chunks", () => {
+    const ops = diffLines(env(30), env(30).replace("KEY_15=v", "KEY_15=w"));
+    const chunks = collapseUnchanged(ops);
+    expect(chunks.flatMap((c) => c.ops)).toEqual(ops);
   });
 });

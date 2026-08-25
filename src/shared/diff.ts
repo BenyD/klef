@@ -107,3 +107,55 @@ export function isUnchanged(oldText: string, newText: string): boolean {
     oldText.replace(/\r\n/g, "\n") === newText.replace(/\r\n/g, "\n")
   );
 }
+
+/** Lines of unchanged context kept around each change, git's default. */
+export const DIFF_CONTEXT_LINES = 3;
+
+/**
+ * A run of lines to render, or a run of unchanged lines folded away behind a
+ * "show N unchanged lines" control.
+ */
+export interface DiffChunk {
+  type: "lines" | "gap";
+  ops: DiffOp[];
+}
+
+/**
+ * Fold long runs of unchanged lines so a one-line edit in a 200-line file
+ * reviews as a one-line diff instead of a scroll. Keeps `context` unchanged
+ * lines on either side of every change; a fold that would hide a single line
+ * is left alone, since the control costs the same row it saves.
+ */
+export function collapseUnchanged(
+  ops: DiffOp[],
+  context = DIFF_CONTEXT_LINES,
+): DiffChunk[] {
+  const shown = ops.map((op) => op.type !== "same");
+  for (let i = 0; i < ops.length; i++) {
+    if (ops[i]!.type === "same") continue;
+    const from = Math.max(0, i - context);
+    const to = Math.min(ops.length - 1, i + context);
+    for (let j = from; j <= to; j++) shown[j] = true;
+  }
+  // Un-fold hidden runs too short to be worth a control.
+  for (let i = 0; i < shown.length; ) {
+    if (shown[i]) {
+      i++;
+      continue;
+    }
+    let end = i;
+    while (end < shown.length && !shown[end]) end++;
+    if (end - i < 2) for (let j = i; j < end; j++) shown[j] = true;
+    i = end;
+  }
+
+  const chunks: DiffChunk[] = [];
+  for (let i = 0; i < ops.length; ) {
+    const visible = shown[i]!;
+    let end = i;
+    while (end < ops.length && shown[end] === visible) end++;
+    chunks.push({ type: visible ? "lines" : "gap", ops: ops.slice(i, end) });
+    i = end;
+  }
+  return chunks;
+}
