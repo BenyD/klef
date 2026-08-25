@@ -19,6 +19,7 @@ import { ToastLab } from "./components/ToastLab.tsx";
 import { DesignLab } from "./components/DesignLab.tsx";
 import { AppShellSkeleton } from "./components/AppShellSkeleton.tsx";
 import { NotFound } from "./components/NotFound.tsx";
+import { CliAuthorize } from "./components/CliAuthorize.tsx";
 import { TooltipProvider } from "./components/ui/tooltip.tsx";
 import { Toaster } from "./components/ui/sonner.tsx";
 
@@ -28,6 +29,7 @@ const TITLES: Record<string, string> = {
   "/terms": "Terms - Klef",
   "/privacy": "Privacy - Klef",
   "/about": "Why Klef",
+  "/cli": "Connect the CLI - Klef",
   "/auth": "Sign in - Klef",
   "/app": "Vault - Klef",
 };
@@ -137,6 +139,17 @@ function AppArea() {
   );
 }
 
+/** The CLI approval page, behind the same gate as the app itself. */
+function CliRoute() {
+  const { data: session, isPending } = useSession();
+  const { pathname, search } = useLocation();
+  if (isPending) return <Splash />;
+  if (!session) {
+    return <Navigate to="/auth" replace state={{ from: `${pathname}${search}` }} />;
+  }
+  return <CliAuthorize />;
+}
+
 function AuthRoute() {
   const { data: session, isPending } = useSession();
   const from = useReturnPath();
@@ -159,6 +172,9 @@ export function App() {
         <Route path="/about" element={<Why />} />
         <Route path="/auth" element={<AuthRoute />} />
         <Route path="/app" element={<AppArea />} />
+        {/* Approving a `klef login`. Signed-in only, and deliberately not a
+            marketing route: it grants a credential. */}
+        <Route path="/cli" element={<CliRoute />} />
         {import.meta.env.DEV && (
           <Route path="/dev/toasts" element={<ToastLab />} />
         )}
