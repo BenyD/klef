@@ -12,6 +12,7 @@ import { link } from "./commands/link.ts";
 import { pull } from "./commands/pull.ts";
 import { push } from "./commands/push.ts";
 import { CLI_VERSION } from "./version.ts";
+import { redactAssignments } from "./output.ts";
 
 
 
@@ -54,6 +55,11 @@ try {
 } catch (err) {
   // Errors reach the user as one line. Stack traces are noise here, and a
   // stack could carry values a message wouldn't.
-  console.error(err instanceof Error ? err.message : String(err));
+  //
+  // Redacted on the way out as a backstop: nothing is supposed to put an env
+  // line in an error, but this is the last place a message crosses into a
+  // terminal, and "no value is ever printed" should not rest on every future
+  // error string being careful.
+  console.error(redactAssignments(err instanceof Error ? err.message : String(err)));
   process.exitCode = 1;
 }

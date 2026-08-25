@@ -102,3 +102,13 @@ describe("redactAssignments", () => {
     expect(redactAssignments("# a comment\nplain text")).toBe("# a comment\nplain text");
   });
 });
+
+describe("the redaction backstop is actually wired", () => {
+  // It was defined and tested but never called for most of a day, which made
+  // "no value is ever printed" a claim about intent rather than about code.
+  it("is used by the CLI's top-level error handler", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const entry = await readFile(new URL("./index.ts", import.meta.url), "utf8");
+    expect(entry).toContain("redactAssignments(");
+  });
+});
