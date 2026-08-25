@@ -13,8 +13,10 @@
   "include": [
     "vite.config.ts",
     "vite.prerender.config.ts",
+    "vite.cli.config.ts",
     "vitest.config.ts",
     "scripts/og.ts",
+    "scripts/build-cli.ts",
     "scripts/og-cipher.ts",
     "scripts/og-cipher.test.ts",
     "src/cli"

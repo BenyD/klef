@@ -10,8 +10,9 @@ import { logout } from "./commands/logout.ts";
 import { status } from "./commands/status.ts";
 import { link } from "./commands/link.ts";
 import { pull } from "./commands/pull.ts";
+import { CLI_VERSION } from "./version.ts";
 
-const VERSION = "0.1.0";
+
 
 async function main(): Promise<number> {
   const args = parseArgs(process.argv.slice(2));
@@ -19,7 +20,7 @@ async function main(): Promise<number> {
   const cwd = process.cwd();
 
   if (hasFlag(args, "v", "version")) {
-    console.log(VERSION);
+    console.log(CLI_VERSION);
     return 0;
   }
 
