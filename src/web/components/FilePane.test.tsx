@@ -156,6 +156,16 @@ describe("FilePane review folding", () => {
     fireEvent.click(fold);
     expect(sameLines().some((t) => t.includes("KEY_0=v"))).toBe(true);
     expect(document.querySelector('[data-diff="gap"]')).toBeNull();
+
+    // Folds are keyed by content, not position, so editing elsewhere doesn't
+    // snap shut the run the user just opened to read.
+    fireEvent.change(textarea, {
+      target: { value: [...lines, "LAST=2"].join("\n") },
+    });
+    await waitFor(() =>
+      expect(sameLines().some((t) => t.includes("KEY_0=v"))).toBe(true),
+    );
+    expect(document.querySelector('[data-diff="gap"]')).toBeNull();
   });
 });
 

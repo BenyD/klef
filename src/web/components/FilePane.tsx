@@ -26,6 +26,7 @@ import {
   diffStats,
   finalNewlineNote,
   isUnchanged,
+  type DiffChunk,
   type DiffOp,
 } from "../../shared/diff.ts";
 import {
@@ -997,7 +998,17 @@ function WhitespaceWarning({
 }
 
 /** Shared empty set so a re-render with no folds open keeps state identity. */
-const NO_FOLDS_OPEN: ReadonlySet<number> = new Set<number>();
+const NO_FOLDS_OPEN: ReadonlySet<string> = new Set<string>();
+
+/**
+ * Identify a fold by what it holds rather than where it sits. The diff is
+ * recomputed on every keystroke, so a chunk index would point at a different
+ * run of lines each time and an expanded fold would snap shut as soon as the
+ * user typed again; a content key survives edits that don't touch that run.
+ */
+function foldKey(chunk: DiffChunk): string {
+  return `${chunk.ops.length}:${chunk.ops[0]?.text ?? ""}`;
+}
 
 function DiffList({
   ops,
@@ -1008,25 +1019,22 @@ function DiffList({
   note?: string | null;
 }) {
   const chunks = useMemo(() => collapseUnchanged(ops), [ops]);
-  // Folds reopen when the diff itself changes — an index into the old chunk
-  // list means nothing once the user types again.
-  const [expanded, setExpanded] = useState<ReadonlySet<number>>(NO_FOLDS_OPEN);
-  const [chunksSeen, setChunksSeen] = useState(chunks);
-  if (chunksSeen !== chunks) {
-    setChunksSeen(chunks);
-    setExpanded(NO_FOLDS_OPEN);
-  }
+  // Keyed by content (see foldKey), so what the user opened stays open as they
+  // keep typing. Keys for folds that no longer exist are simply never matched.
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(NO_FOLDS_OPEN);
 
   return (
     <div className="font-mono text-sm leading-relaxed">
       {chunks.map((chunk, ci) =>
-        chunk.type === "gap" && !expanded.has(ci) ? (
+        chunk.type === "gap" && !expanded.has(foldKey(chunk)) ? (
           <button
             key={ci}
             type="button"
             data-diff="gap"
             className="text-muted-foreground hover:bg-accent hover:text-foreground flex w-full items-center gap-2 px-3 py-0.5 text-left"
-            onClick={() => setExpanded((prev) => new Set(prev).add(ci))}
+            onClick={() =>
+              setExpanded((prev) => new Set(prev).add(foldKey(chunk)))
+            }
           >
             <UnfoldVertical className="size-3 shrink-0 opacity-60" />
             <span className="text-xs">
