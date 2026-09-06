@@ -26,7 +26,15 @@ updates:
         update-types:
           - minor
           - patch
+        # Better Auth minors can require DB columns (1.6→1.7 briefly needed
+        # account.issuer). Keep them out of the auto-merged group so each bump
+        # is a reviewable PR; auto-merge also skips them in the workflow.
+        exclude-patterns:
+          - "better-auth"
+          - "@better-auth/*"
+          - "auth"
     commit-message:
+
       prefix: chore(deps)
     open-pull-requests-limit: 10
 
