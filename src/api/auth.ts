@@ -46,7 +46,7 @@ export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
         rpName: "Klef",
         origin: url.origin,
         // Registration is session-only: passkeys are added from settings by a
-        // signed-in user. Sign-up happens with Google or email/password first.
+        // signed-in user. Sign-up happens with Google or GitHub OAuth first.
         registration: {
           // Ask authenticators to enable PRF on new credentials so they can
           // later be enrolled for vault unlock (see lib/passkey-prf.ts). The
