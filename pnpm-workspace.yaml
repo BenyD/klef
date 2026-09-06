@@ -7,13 +7,25 @@ allowBuilds:
   sharp: true
   workerd: true
 
-# Security overrides (GHSA alerts) for old lines pinned by @better-auth/cli,
-# which is dev-only and has no newer release. Its exact-pinned better-auth
-# 1.4.21 CANNOT be overridden - the CLI breaks against 1.6's API - so those
-# two alerts are dismissed as not-used instead. Verify with `pnpm db:generate`.
+minimumReleaseAgeExclude:
+  - '@better-auth/core@1.7.3'
+  - '@better-auth/drizzle-adapter@1.7.3'
+  - '@better-auth/kysely-adapter@1.7.3'
+  - '@better-auth/memory-adapter@1.7.3'
+  - '@better-auth/mongo-adapter@1.7.3'
+  - '@better-auth/passkey@1.7.3'
+  - '@better-auth/prisma-adapter@1.7.3'
+  - '@better-auth/telemetry@1.7.3'
+  - better-auth@1.7.3
+  - auth@1.7.3
+
+# Security / peer overrides. Schema generation uses `better-auth generate`
+# from the runtime package (see `db:generate`); do not reintroduce
+# `@better-auth/cli`, which pins better-call@1.1.x and breaks 1.7.
 overrides:
   drizzle-orm: ^0.45.2
   lodash: ^4.18.1
+  better-call: 1.4.0
   # miniflare exact-pins undici; lift the vulnerable 7.x line (GHSA x5, one
   # high) to the patched release. Dev-only (local workerd), patch-level bump.
   'undici@>=7.0.0 <7.29.0': 7.29.0

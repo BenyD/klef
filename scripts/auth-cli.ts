@@ -1,7 +1,7 @@
-// Config consumed ONLY by `@better-auth/cli generate` to emit the D1 schema.
-// It mirrors the runtime auth options exactly (via buildAuthOptions) but swaps
-// the D1 binding for an in-memory better-sqlite3 DB the CLI can introspect.
-// Never imported by the Worker or the client.
+// Config consumed ONLY by `better-auth generate` (`pnpm db:generate`) to emit
+// the D1 schema. It mirrors the runtime auth options exactly (via
+// buildAuthOptions) but swaps the D1 binding for an in-memory better-sqlite3
+// DB the generator can introspect. Never imported by the Worker or the client.
 import Database from "better-sqlite3";
 import { betterAuth } from "better-auth";
 import { buildAuthOptions } from "../src/api/auth.ts";
