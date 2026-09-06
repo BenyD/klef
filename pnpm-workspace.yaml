@@ -19,9 +19,9 @@ minimumReleaseAgeExclude:
   - better-auth@1.7.3
   - auth@1.7.3
 
-# Security / peer overrides. Schema generation uses `better-auth generate`
-# from the runtime package (see `db:generate`); do not reintroduce
-# `@better-auth/cli`, which pins better-call@1.1.x and breaks 1.7.
+# Security / peer overrides. Schema generation uses `auth generate` (see
+# `db:generate`); do not reintroduce `@better-auth/cli`, which pins
+# better-call@1.1.x and breaks 1.7.
 overrides:
   drizzle-orm: ^0.45.2
   lodash: ^4.18.1
