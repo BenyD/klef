@@ -23,8 +23,22 @@ jobs:
       # Patch/minor bumps merge themselves once required checks pass; majors
       # wait for human review. For grouped PRs, update-type is the largest
       # bump in the group, so one major in the batch blocks auto-merge.
+      #
+      # Better Auth is excluded: a "minor" can change the required D1 schema
+      # (see account.issuer in 1.7.0–1.7.2). Review + migrate before merge.
+      - name: Skip Better Auth schema packages
+        id: auth_schema
+        run: |
+          pkgs="${{ steps.metadata.outputs.dependency-names }}"
+          if printf '%s\n' "$pkgs" | tr ',' '\n' | grep -qiE '^(better-auth|@better-auth/.+|auth)$'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Enable auto-merge for patch/minor updates
-        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        if: >-
+          steps.auth_schema.outputs.skip != 'true' &&
+          (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+           steps.metadata.outputs.update-type == 'version-update:semver-minor')
         run: gh pr merge --auto --merge "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
