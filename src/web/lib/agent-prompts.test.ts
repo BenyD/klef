@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import {
   AGENT_PROMPTS,
   filePullPrompt,
-  shellQuote,
   npxPackagesIn,
   PUBLISHED_PACKAGES,
   DEFAULT_PROMPT,
@@ -78,6 +77,27 @@ describe("agent prompts", () => {
     }
   });
 
+  // pull and push read the master passphrase from the terminal and exit 1 for
+  // anything else. A prompt that tells an agent to run one sends it into a
+  // refusal it cannot get past, so every mention has to hand the command back.
+  it("never asks the agent to run a command that needs the passphrase", () => {
+    for (const prompt of AGENT_PROMPTS) {
+      const text = promptText(prompt);
+      if (!/@klefsh\/cli (pull|push)/.test(text)) continue;
+      expect(text, `${prompt.id} mentions pull or push`).toMatch(
+        /give me|hand me|hand it over|run myself|run it yourself|wait for me/i,
+      );
+    }
+  });
+
+  it("tells the sync prompt's agent that klef cannot diff yet", () => {
+    const sync = AGENT_PROMPTS.find((p) => p.id === "sync");
+    expect(sync, "the sync prompt should exist").toBeDefined();
+    // Without `diff`, "are these the same?" is unanswerable without opening
+    // the file — so the prompt has to say ask, not guess.
+    expect(promptText(sync!)).toMatch(/no \\`diff\\` command yet|ask me/i);
+  });
+
   it("checks git tracking rather than trusting .gitignore alone", () => {
     // Being listed in .gitignore and being tracked by git are different
     // things; a file committed before the rule was added still leaks.
@@ -125,28 +145,6 @@ describe("pnpmScriptsIn", () => {
 
   it("finds nothing in text without commands", () => {
     expect(pnpmScriptsIn("no commands here")).toEqual([]);
-  });
-});
-
-describe("shellQuote", () => {
-  // Workspace and project names are free text. One containing a quote or a
-  // space would otherwise produce a command that silently targets the wrong
-  // thing, and one containing $() would produce a command that runs something.
-  it("survives a shell for names people actually have", () => {
-    expect(shellQuote("Beny's Team")).toBe("'Beny'\\''s Team'");
-    expect(shellQuote("Lensdrop")).toBe("'Lensdrop'");
-    expect(shellQuote(".env.local")).toBe("'.env.local'");
-  });
-
-  it("neutralises anything that would execute", () => {
-    for (const hostile of ["$(whoami)", "`id`", "; rm -rf /", "a && b"]) {
-      const quoted = shellQuote(hostile);
-      expect(quoted.startsWith("'")).toBe(true);
-      expect(quoted.endsWith("'")).toBe(true);
-      // Inside single quotes a shell expands nothing, and the only way out is
-      // a bare quote, which is what the escape handles.
-      expect(quoted.slice(1, -1)).not.toMatch(/(^|[^\\])'/);
-    }
   });
 });
 

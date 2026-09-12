@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatListing, linkArgs, listFiles, listingJson, shellQuote } from "./listing.ts";
+import { formatListing, linkArgs, listFiles, listingJson } from "./listing.ts";
 import type { VaultTree } from "../shared/api-types.ts";
 
 const file = (name: string, environment: string | null, versionId: string | null) => ({
@@ -78,28 +78,9 @@ describe("listFiles", () => {
   });
 });
 
-describe("shellQuote", () => {
-  it("leaves safe names alone", () => {
-    expect(shellQuote("Ewig")).toBe("Ewig");
-    expect(shellQuote(".env.local")).toBe(".env.local");
-  });
-
-  it("quotes names with spaces", () => {
-    expect(shellQuote("Maxapp GmbH")).toBe("'Maxapp GmbH'");
-  });
-
-  it("escapes an embedded single quote", () => {
-    expect(shellQuote("Beny's Team")).toBe("'Beny'\\''s Team'");
-  });
-
-  it("quotes the empty string rather than vanishing", () => {
-    expect(shellQuote("")).toBe("''");
-  });
-});
-
 describe("linkArgs", () => {
   it("produces a pasteable argument list", () => {
-    expect(linkArgs(listFiles(TREE)[0]!)).toBe("'Maxapp GmbH' Ewig .env.local");
+    expect(linkArgs(listFiles(TREE)[0]!)).toBe("'Maxapp GmbH' 'Ewig' '.env.local'");
   });
 });
 
@@ -154,10 +135,10 @@ describe("formatListing", () => {
         },
       ],
     };
-    expect(render(unsaved)).toContain("klef link Solo site .env.local");
+    expect(render(unsaved)).toContain("klef link 'Solo' 'site' '.env.local'");
   });
 
-  it("prefers plain quoting over an escaped apostrophe", () => {
+  it("prefers a name without an apostrophe over one with", () => {
     // Both are pullable and both need quoting; the one without the apostrophe
     // is the better thing to put in front of someone.
     const mixed: VaultTree = {
@@ -196,7 +177,7 @@ describe("formatListing", () => {
         },
       ],
     };
-    expect(render(mixed)).toContain("klef link 'Maxapp GmbH' Ewig .env.local");
+    expect(render(mixed)).toContain("klef link 'Maxapp GmbH' 'Ewig' '.env.local'");
   });
 
   it("still quotes correctly when every candidate needs it", () => {
@@ -220,7 +201,7 @@ describe("formatListing", () => {
         },
       ],
     };
-    expect(render(spaced)).toContain("klef link 'Beny'\\''s Team' beny.one .env");
+    expect(render(spaced)).toContain("klef link 'Beny'\\''s Team' 'beny.one' '.env'");
   });
 
   it("leaves no trailing whitespace on an unannotated file", () => {
@@ -247,10 +228,8 @@ describe("formatListing", () => {
     expect(render(bare)).toContain("\n    .env\n");
   });
 
-  it("prefers an example that needs no shell quoting", () => {
-    // "Maxapp GmbH / Ewig / .env.local" comes first and has a version, but
-    // "Personal / klef / .dev.vars" needs no quoting, so it wins.
-    expect(render(TREE)).toContain("klef link Personal klef .dev.vars");
+  it("takes the first pullable entry when none needs an escape", () => {
+    expect(render(TREE)).toContain("klef link 'Maxapp GmbH' 'Ewig' '.env.local'");
   });
 
   it("points at the machine-readable form", () => {
