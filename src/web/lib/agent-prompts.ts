@@ -1,3 +1,5 @@
+import { shellQuote } from "../../shared/shell.ts";
+
 // Copy-paste prompts for coding agents, offered on the landing page.
 //
 // These are product surface, not decoration: someone pastes one into Claude
@@ -77,10 +79,11 @@ terminal, which is exactly why it can't pass through you.
 1. Check where things stand: \`npx @klefsh/cli status\`.
    If it says I'm not signed in, give me \`npx @klefsh/cli login\` to run myself and
    wait. I'll paste a token from klef.sh → Settings → Security → Developer.
-2. If this directory isn't linked yet, run \`npx @klefsh/cli link\` to list what's in
-   my vault, show me the options, and link the one I pick with
+2. If this directory isn't linked yet, run \`npx @klefsh/cli list\` to see what's
+   in my vault, show me the options, and link the one I pick with
    \`npx @klefsh/cli link <workspace> <project> <file>\`. That writes .klef.json,
    which is safe to commit, since it holds names, never values.
+   \`list\` is read-only and takes --json if you'd rather parse it.
 3. Give me \`npx @klefsh/cli pull\` to run myself. It stops for my passphrase, so it
    won't work if you run it. Hand it over and wait for me to confirm.
 4. For other files in the same project, the same applies with
@@ -93,6 +96,52 @@ terminal, which is exactly why it can't pass through you.
 \`pull\` writes files at mode 0600 and reports only a count, never a value. Don't
 open or print what it wrote; if you need to know which keys a file defines, ask
 me.`,
+  },
+  {
+    id: "sync",
+    label: "Keep in sync",
+    description:
+      "Works out whether this repo is ahead of your vault or behind it, then hands you the one command to run. It never opens a file.",
+    body: `Keep this repo's environment files and my Klef vault (https://klef.sh) in sync.
+
+Neither direction is yours to run. Both \`pull\` and \`push\` read my master
+passphrase straight from the terminal, and exit 1 with "This needs an
+interactive terminal" when anything else tries. That is deliberate: do not
+retry, do not pipe a passphrase, and do not go looking for a flag that skips it.
+
+What you can run:
+  npx @klefsh/cli status --json   # signed in? what is this directory linked to?
+  npx @klefsh/cli list --json     # the files in my vault, names only
+
+1. Run \`status --json\`. If signedIn is false, hand me \`npx @klefsh/cli login\`
+   and wait. If linked is null, run \`list --json\`, show me the options, and
+   link the one I pick with
+   \`npx @klefsh/cli link <workspace> <project> <file>\`.
+2. Work out which way sync should go, and tell me which before doing anything:
+   - in the vault (hasVersion true in list --json) but not on disk -> I pull
+   - on disk but hasVersion is false -> I push
+   - both exist -> ask me. Klef has no \`diff\` command yet, so neither of us
+     can tell whether they actually differ without opening the file, and you
+     are not going to open the file.
+3. Hand me the command and wait for me to confirm it finished:
+     npx @klefsh/cli pull   # vault -> disk, written at mode 0600
+     npx @klefsh/cli push   # disk -> vault, as a new version
+   For another file in the same project, add --file <name>.
+4. After a pull, check git does not track what it wrote:
+   \`git ls-files --error-unmatch <path>\` should fail. If it succeeds, that
+   file is committed and leaking. Tell me immediately and stop.
+5. Before a push, check .env.example lists every key the code reads. If the
+   code references a variable that is not in .env.example, add the key with a
+   comment saying where the value comes from. Never a value.
+
+The two directions are not equally safe. \`push\` is append-only: it adds a
+version and every earlier one stays, so a bad push is recoverable from the web
+app. \`pull\` overwrites the local file, and that is not recoverable. If a local
+file already exists and I have unsaved changes in it, say so before handing me
+the pull.
+
+Do not open or print what either command touched. If you need to know which
+keys a file defines, ask me.`,
   },
   {
     id: "self-host",
@@ -178,18 +227,6 @@ export function pnpmScriptsIn(text: string): string[] {
     if (name && !PNPM_BUILTINS.has(name)) found.add(name);
   }
   return [...found].sort();
-}
-
-/**
- * Quote a workspace, project or file name for a shell command.
- *
- * Names are free text, so one containing a quote or a space would otherwise
- * produce a command that silently targets the wrong thing - or nothing. Single
- * quotes with the standard '\'' escape, because inside them a shell expands
- * nothing at all.
- */
-export function shellQuote(value: string): string {
-  return `'${value.replaceAll("'", `'\\''`)}'`;
 }
 
 /**

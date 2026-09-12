@@ -9,6 +9,7 @@ Commands:
   login              Sign in through the browser (--paste for a token instead)
   logout             Forget the stored token on this machine
   status             Show sign-in state and what this directory is linked to
+  list               Show the env files in your vault (read-only)
   link [ws] [proj]   Link this directory to a file in the vault (.klef.json)
   pull               Write the vault's copy of the env file to disk
   push               Send this directory's env file up as a new version
@@ -18,6 +19,7 @@ Options:
   --file <name>      Which env file in the vault (pull defaults to the linked one)
   --path <path>      Which local file to read or write (default: the file's name)
   -y, --yes          Skip the confirmation on push
+  --json             Machine-readable output (list, status)
   --paste            Sign in by pasting a token, for machines with no browser
   -h, --help         Show this
   -v, --version      Print the version

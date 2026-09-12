@@ -44,6 +44,7 @@ design.
 
 ```bash
 npx @klefsh/cli login   # paste a token from Settings -> Security -> Developer
+npx @klefsh/cli list    # see what is in your vault (--json for scripts)
 npx @klefsh/cli link    # connect this directory to a file in your vault
 npx @klefsh/cli pull    # write it to disk (mode 0600), reporting only a count
 ```
