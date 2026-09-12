@@ -6,6 +6,7 @@ import { loadToken } from "../credentials.ts";
 import { apiBaseUrl } from "../paths.ts";
 import { readProjectConfig } from "../project-file.ts";
 import { CONFIG_FILENAME } from "../project-config.ts";
+import { hasFlag, type ParsedArgs } from "../args.ts";
 
 const SOURCE_LABEL = {
   keychain: "OS keychain",
@@ -13,24 +14,62 @@ const SOURCE_LABEL = {
   environment: "KLEF_TOKEN",
 } as const;
 
-export async function status(env: NodeJS.ProcessEnv, cwd: string): Promise<number> {
-  const base = apiBaseUrl(env);
-  console.log(`Server:  ${base}`);
+/** Why we are or aren't signed in, kept separate from how it is phrased. */
+type TokenStatus = "valid" | "rejected" | "unverified" | "absent";
 
+export async function status(
+  args: ParsedArgs,
+  env: NodeJS.ProcessEnv,
+  cwd: string,
+): Promise<number> {
+  const base = apiBaseUrl(env);
   const stored = await loadToken(env);
-  if (!stored) {
-    console.log(`Signed in: no (run \`${command("login")}\`)`);
-  } else {
+
+  let tokenStatus: TokenStatus = stored ? "unverified" : "absent";
+  let email: string | null = null;
+
+  if (stored) {
     try {
       const { user } = await new KlefApi(base, stored.token).whoami();
-      console.log(`Signed in: ${user.email} (token from ${SOURCE_LABEL[stored.source]})`);
+      email = user.email;
+      tokenStatus = "valid";
     } catch (err) {
-      const why = err instanceof UnauthorizedError ? "rejected" : "unverified";
-      console.log(`Signed in: token ${why} (from ${SOURCE_LABEL[stored.source]})`);
+      tokenStatus = err instanceof UnauthorizedError ? "rejected" : "unverified";
     }
   }
 
   const config = await readProjectConfig(cwd);
+
+  // Structured first: a caller that asked for JSON gets JSON and nothing else
+  // on stdout, so the output stays parseable without stripping prose.
+  if (hasFlag(args, "json")) {
+    console.log(
+      JSON.stringify(
+        {
+          server: base,
+          signedIn: tokenStatus === "valid",
+          tokenStatus,
+          tokenSource: stored?.source ?? null,
+          email,
+          linked: config ?? null,
+        },
+        null,
+        2,
+      ),
+    );
+    return 0;
+  }
+
+  console.log(`Server:  ${base}`);
+
+  if (!stored) {
+    console.log(`Signed in: no (run \`${command("login")}\`)`);
+  } else if (tokenStatus === "valid") {
+    console.log(`Signed in: ${email} (token from ${SOURCE_LABEL[stored.source]})`);
+  } else {
+    console.log(`Signed in: token ${tokenStatus} (from ${SOURCE_LABEL[stored.source]})`);
+  }
+
   if (!config) {
     console.log(`Linked:    no ${CONFIG_FILENAME} here (run \`${command("link")}\`)`);
   } else {

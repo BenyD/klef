@@ -5,7 +5,8 @@ import { KlefApi } from "../api.ts";
 import { requireApi } from "../session.ts";
 import { CONFIG_FILENAME, type ProjectConfig } from "../project-config.ts";
 import { readProjectConfig, writeProjectConfig } from "../project-file.ts";
-import { listTargets, resolveTarget } from "../resolve.ts";
+import { resolveTarget } from "../resolve.ts";
+import { formatListing, listFiles } from "../listing.ts";
 import { flagValue, type ParsedArgs } from "../args.ts";
 
 /**
@@ -62,15 +63,11 @@ async function listAvailable(
     console.log("Pass a workspace and project to change it.\n");
   }
 
-  const targets = listTargets(tree);
-  if (!targets.length) {
-    console.log("No env files in your vault yet. Create one in the web app first.");
-    return 1;
-  }
-
-  console.log("Available files:");
-  for (const target of targets) console.log(`  ${target}`);
-  console.log(`\nLink one with:\n  ${command("link")} <workspace> <project> [file]`);
-  console.log(`That writes ${CONFIG_FILENAME} here.`);
+  // Same listing `list` prints, so the two never drift apart. Reaching this
+  // path still means the link did not happen, hence the non-zero exit.
+  const entries = listFiles(tree);
+  const commands = { link: command("link"), list: command("list") };
+  for (const line of formatListing(entries, commands)) console.log(line);
+  if (entries.length) console.log(`\nThat writes ${CONFIG_FILENAME} here.`);
   return 1;
 }

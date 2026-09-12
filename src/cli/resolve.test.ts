@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { listTargets, ResolveError, resolveTarget } from "./resolve.ts";
+import { ResolveError, resolveTarget } from "./resolve.ts";
 import type { VaultTree } from "../shared/api-types.ts";
 
 const TREE: VaultTree = {
@@ -90,18 +90,5 @@ describe("resolveTarget", () => {
     expect(() => resolveTarget(TREE, { ...TARGET, file: ".env.local" })).toThrow(
       /"\.env", "\.env\.production"/,
     );
-  });
-});
-
-describe("listTargets", () => {
-  it("flattens every file into a readable path", () => {
-    expect(listTargets(TREE)).toEqual([
-      "Personal / klef / .env",
-      "Personal / klef / .env.production",
-    ]);
-  });
-
-  it("returns nothing for an empty vault", () => {
-    expect(listTargets({ workspaces: [] })).toEqual([]);
   });
 });

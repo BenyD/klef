@@ -70,16 +70,3 @@ export function resolveTarget(
     currentVersionId: file.currentVersionId,
   };
 }
-
-/** Every file in the vault as "workspace / project / file", for listings. */
-export function listTargets(tree: VaultTree): string[] {
-  const out: string[] = [];
-  for (const workspace of tree.workspaces) {
-    for (const project of workspace.projects) {
-      for (const file of project.files) {
-        out.push(`${workspace.name} / ${project.name} / ${file.name}`);
-      }
-    }
-  }
-  return out;
-}

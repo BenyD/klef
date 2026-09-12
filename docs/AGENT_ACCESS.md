@@ -224,23 +224,42 @@ are required** — the CLI is a new client of the existing ciphertext API.
 
 ## 8. Layer 2 — the CLI
 
+Shipped:
+
 ```
 klef login                       # device-code flow → PAT → OS keychain
-klef unlock                      # TTY passphrase prompt → starts klef-agent
+klef logout                      # forget the stored token on this machine
+klef status [--json]             # sign-in state, linked project
+klef list [--json]               # what is in the vault; read-only, names only
 klef link                        # bind cwd to a workspace/project (.klef.json, committed)
 klef pull [--file <name>]        # write .env from vault
 klef push [--file <name>]        # read .env, encrypt, upload as new version
+```
+
+Not built yet — designed here, tracked in §11:
+
+```
+klef unlock                      # TTY passphrase prompt → starts klef-agent
 klef diff                        # local vs stored, summary only
-klef status                      # lock state, linked project, agent TTL
 klef lock
 ```
+
+The split matters in a document aimed at agents: a command list read as the
+present tense is a command list someone plans against. §11 has the phasing,
+but nobody should have to reach §11 to find out what runs today.
+
+`list --json` is the read-only surface an agent should reach for. Until the MCP
+server in §9 exists, it is the only structured output Klef offers, and it
+returns exactly what the tree endpoint does — workspace, project and file
+names, an environment label, and whether a file has a version to pull. No ids,
+no ciphertext, nothing that needs the vault unlocked.
 
 **The output rule, which is the entire safety story:**
 
 > No Klef command ever writes a secret value to stdout or stderr.
 
-`klef pull` prints `wrote 14 variables to .env`. `klef diff` prints
-`3 added, 1 changed, 0 removed`. There is no `klef get VAR` and no `--print`
+`klef pull` prints `wrote 14 variables to .env`. `klef diff`, once built, will
+print `3 added, 1 changed, 0 removed`. There is no `klef get VAR` and no `--print`
 flag, because either one is a loaded gun pointed at a context window. If a human
 genuinely needs to eyeball a value, that is what the web app is for.
 
