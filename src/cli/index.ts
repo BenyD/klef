@@ -9,6 +9,7 @@ import { login } from "./commands/login.ts";
 import { logout } from "./commands/logout.ts";
 import { status } from "./commands/status.ts";
 import { link } from "./commands/link.ts";
+import { list } from "./commands/list.ts";
 import { pull } from "./commands/pull.ts";
 import { push } from "./commands/push.ts";
 import { CLI_VERSION } from "./version.ts";
@@ -37,7 +38,9 @@ async function main(): Promise<number> {
     case "logout":
       return logout(env);
     case "status":
-      return status(env, cwd);
+      return status(args, env, cwd);
+    case "list":
+      return list(args, env);
     case "link":
       return link(args, env, cwd);
     case "pull":
