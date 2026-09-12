@@ -53,14 +53,23 @@ npx @klefsh/cli pull    # write it to disk (mode 0600), reporting only a count
 dependencies). To cut a release:
 
 ```bash
+# 1. bump CLI_VERSION in src/cli/version.ts
 pnpm build:cli
 npm publish ./dist/cli --access public
+# 2. only then: pnpm deploy
 ```
 
-Both parts matter: without `./`, npm reads `dist/cli` as the GitHub shorthand
-`owner/repo` and tries to clone `github.com/dist/cli`; without
+Both parts of the publish matter: without `./`, npm reads `dist/cli` as the
+GitHub shorthand `owner/repo` and tries to clone `github.com/dist/cli`; without
 `--access public`, a scoped package publishes restricted and `npx` cannot
 reach it.
+
+**Publish before you deploy.** The agent prompts on the landing page name CLI
+subcommands, and a visitor runs them through `npx` against whatever is on the
+registry — not against this repo. Ship the site first and every copied prompt
+fails on `Unknown command` until the package catches up. The prompt tests check
+that each `npx` package is published, but they cannot see which subcommands the
+published version has, so this ordering is the only thing enforcing it.
 
 `pull` never prints a value. There is no `--print` and no `klef get`, which is
 what makes it safe to hand to a coding agent. See
