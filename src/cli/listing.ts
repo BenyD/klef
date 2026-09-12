@@ -7,6 +7,7 @@
 // names only, which is exactly why it can be a read-only command at all.
 
 import type { VaultTree } from "../shared/api-types.ts";
+import { hasAwkwardQuoting, shellQuote } from "../shared/shell.ts";
 
 export interface ListedFile {
   workspace: string;
@@ -36,18 +37,6 @@ export function listFiles(tree: VaultTree): ListedFile[] {
   return out;
 }
 
-/**
- * Quote a name for a shell, but only when it needs it.
- *
- * Workspace names like "Maxapp GmbH" are ordinary, and a listing you cannot
- * paste is a listing that makes every reader re-derive the quoting by hand —
- * or get it wrong and link the wrong project.
- */
-export function shellQuote(value: string): string {
-  if (value === "") return "''";
-  return /^[A-Za-z0-9._@%+:,/-]+$/.test(value) ? value : `'${value.replaceAll("'", `'\\''`)}'`;
-}
-
 /** The argument list for `link`, ready to paste. */
 export function linkArgs(entry: ListedFile): string {
   return [entry.workspace, entry.project, entry.file].map(shellQuote).join(" ");
@@ -59,22 +48,17 @@ export function listingJson(tree: VaultTree): { files: ListedFile[] } {
 }
 
 /**
- * How awkward this entry is to paste. 0 = bare words, 1 = quoted, 2 = quoted
- * with an escaped apostrophe. An example reading `'Beny'\\''s Team'` teaches
- * shell escaping rather than the command, so prefer a cheaper one when the
- * vault offers it.
+ * The entry to show as the example: one that has something to pull, and among
+ * those one whose names avoid the '\'' escape. An example reading
+ * `'Beny'\''s Team'` teaches shell escaping rather than the command.
  */
-function quotingCost(entry: ListedFile): number {
-  const args = linkArgs(entry);
-  if (args === [entry.workspace, entry.project, entry.file].join(" ")) return 0;
-  return args.includes("\\'") ? 2 : 1;
-}
-
-/** The entry to show as the example: pullable first, then cheapest to paste. */
 function pickExample(entries: ListedFile[]): ListedFile {
   const pullable = entries.filter((e) => e.hasVersion);
   const candidates = pullable.length ? pullable : entries;
-  return candidates.reduce((best, e) => (quotingCost(e) < quotingCost(best) ? e : best));
+  return (
+    candidates.find((e) => ![e.workspace, e.project, e.file].some(hasAwkwardQuoting)) ??
+    candidates[0]!
+  );
 }
 
 function annotate(entry: ListedFile): string {
