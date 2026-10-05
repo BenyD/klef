@@ -20,18 +20,28 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+      # Better Auth minors can require DB columns (1.6→1.7 briefly needed
+      # account.issuer), so these stay out of the auto-merged group and the
+      # workflow skips them. They do have to move together: better-auth and
+      # @better-auth/passkey must share a @better-fetch/fetch version or the
+      # client plugin stops typechecking (#112). Groups match first-wins, so
+      # this sits above minor-and-patch.
+      better-auth:
+        applies-to: version-updates
+        patterns:
+          - "better-auth"
+          - "@better-auth/*"
+          - "auth"
       minor-and-patch:
         applies-to: version-updates
         update-types:
           - minor
           - patch
-        # Better Auth minors can require DB columns (1.6→1.7 briefly needed
-        # account.issuer). Keep them out of the auto-merged group so each bump
-        # is a reviewable PR; auto-merge also skips them in the workflow.
+        # happy-dom 20.14.5 broke the test environment (URL is not a
+        # constructor, #113) and took 20 unrelated bumps down with it. On its
+        # own PR, a bad release only blocks itself.
         exclude-patterns:
-          - "better-auth"
-          - "@better-auth/*"
-          - "auth"
+          - "happy-dom"
     commit-message:
 
       prefix: chore(deps)
