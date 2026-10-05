@@ -30,7 +30,9 @@ jobs:
         id: auth_schema
         run: |
           pkgs="${{ steps.metadata.outputs.dependency-names }}"
-          if printf '%s\n' "$pkgs" | tr ',' '\n' | grep -qiE '^(better-auth|@better-auth/.+|auth)$'; then
+          # dependency-names is ", "-separated; strip the spaces so the
+          # anchored match sees every name, not just the first one (#118).
+          if printf '%s\n' "$pkgs" | tr ',' '\n' | tr -d ' ' | grep -qiE '^(better-auth|@better-auth/.+|auth)$'; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
