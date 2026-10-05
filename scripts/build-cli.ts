@@ -14,6 +14,19 @@ import { CLI_VERSION } from "../src/cli/version.ts";
 const OUT = path.resolve(import.meta.dirname, "../dist/cli");
 
 /**
+ * The keychain binding's range comes from the repo's own package.json, so the
+ * published CLI declares the same major the tests ran against. Hardcoding it
+ * here let the two drift: Dependabot bumps package.json, not this script.
+ */
+const rootPkg = JSON.parse(
+  await readFile(path.resolve(import.meta.dirname, "../package.json"), "utf8"),
+) as { optionalDependencies?: Record<string, string> };
+const KEYRING_RANGE = rootPkg.optionalDependencies?.["@napi-rs/keyring"];
+if (!KEYRING_RANGE) {
+  throw new Error("package.json must list @napi-rs/keyring in optionalDependencies");
+}
+
+/**
  * The only bare import the bundle is allowed to keep. Native modules can't be
  * bundled, and this one is loaded through a try/catch so a missing or
  * unbuildable binding falls back to a 0600 file.
@@ -73,7 +86,7 @@ await writeFile(
       // published bundle is plain JS, but keep the floor consistent.
       engines: { node: ">=22.18" },
       // Optional on purpose: without it the token falls back to a 0600 file.
-      optionalDependencies: { "@napi-rs/keyring": "^1.3.0" },
+      optionalDependencies: { "@napi-rs/keyring": KEYRING_RANGE },
       repository: { type: "git", url: "git+https://github.com/BenyD/klef.git" },
       homepage: "https://klef.sh",
       files: ["index.js", "README.md", "LICENSE"],
