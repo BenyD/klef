@@ -2,13 +2,13 @@
 
 import { command } from "../invocation.ts";
 import { readFile } from "node:fs/promises";
-import { encryptBlob, decryptBlob } from "../../shared/crypto.ts";
 import { diffLines, diffStats, finalNewlineNote, isUnchanged } from "../../shared/diff.ts";
 import { requireApi } from "../session.ts";
 import { readProjectConfig } from "../project-file.ts";
 import { CONFIG_FILENAME } from "../project-config.ts";
-import { resolveTarget } from "../resolve.ts";
-import { unlockVault } from "../unlock.ts";
+import { resolveTarget, type ResolvedTarget } from "../resolve.ts";
+import { openVault } from "../vault-key.ts";
+import { syncTargets, type SyncTarget } from "../targets.ts";
 import { countVariables, describePush } from "../output.ts";
 import { confirm } from "../prompt.ts";
 import { pullTarget } from "./pull.ts";
@@ -16,12 +16,13 @@ import { resolveWritePath } from "../write-path.ts";
 import { flagValue, hasFlag, type ParsedArgs } from "../args.ts";
 
 /**
- * Send this directory's env file to the vault as a new version.
+ * Send this directory's env files to the vault as new versions: the linked
+ * one, the one `--file` names, or with `--all` every file `.klef.json` lists.
  *
  * Two properties make this safer than it sounds. Saves are append-only, so the
  * previous version stays and a mistake is recoverable from the web app. And
- * the passphrase is read from the terminal, so an agent cannot push
- * unattended; a human is present for every write by construction.
+ * the key comes from a passphrase typed at the terminal, either now or into
+ * `klef unlock` earlier, so an agent cannot push unless a human unlocked.
  *
  * The plaintext is uploaded exactly as it sits on disk. BLOB_FORMAT.md makes
  * the blob the source of truth byte-for-byte, so nothing here reformats,
@@ -32,6 +33,7 @@ export async function push(
   env: NodeJS.ProcessEnv,
   cwd: string,
   prompt?: (question: string) => Promise<string>,
+  ask: (question: string) => Promise<boolean> = confirm,
 ): Promise<number> {
   const config = await readProjectConfig(cwd);
   if (!config) {
@@ -39,26 +41,41 @@ export async function push(
     return 1;
   }
 
-  const wanted = pullTarget(config, flagValue(args, "file"));
-  const source = resolveWritePath(cwd, flagValue(args, "path") ?? wanted.file);
+  const targets = syncTargets(config, {
+    all: hasFlag(args, "all"),
+    file: flagValue(args, "file"),
+    path: flagValue(args, "path"),
+  });
 
-  let plaintext: string;
-  try {
-    plaintext = await readFile(source, "utf8");
-  } catch {
-    console.error(`Can't read ${wanted.file} here. Nothing to push.`);
-    return 1;
-  }
+  // Read every file before touching the network, so a missing or empty one
+  // stops the whole push rather than half of it.
+  const local: { target: SyncTarget; plaintext: string }[] = [];
+  for (const target of targets) {
+    const shown = target.path ?? target.file;
+    const source = resolveWritePath(cwd, shown);
 
-  // An empty file is almost always a mistake rather than an intention, and it
-  // would become the current version of everything that file holds.
-  if (plaintext.trim() === "") {
-    console.error(`${wanted.file} is empty. Refusing to push it over a saved version.`);
-    return 1;
+    let plaintext: string;
+    try {
+      plaintext = await readFile(source, "utf8");
+    } catch {
+      console.error(`Can't read ${shown} here. Nothing to push.`);
+      return 1;
+    }
+
+    // An empty file is almost always a mistake rather than an intention, and
+    // it would become the current version of everything that file holds.
+    if (plaintext.trim() === "") {
+      console.error(`${shown} is empty. Refusing to push it over a saved version.`);
+      return 1;
+    }
+    local.push({ target, plaintext });
   }
 
   const api = await requireApi(env);
-  const resolved = resolveTarget(await api.tree(), wanted);
+  const tree = await api.tree();
+  const resolvedAll = local.map(({ target }) =>
+    resolveTarget(tree, pullTarget(config, target.file)),
+  );
 
   const vault = await api.vault();
   if (!vault.exists || !vault.keyMaterial) {
@@ -66,38 +83,50 @@ export async function push(
     return 1;
   }
 
-  const dek = await unlockVault(vault.keyMaterial, prompt);
+  const cipher = await openVault(vault.keyMaterial, env, prompt);
 
-  const { version } = await api.currentVersion(resolved.fileId);
-  const stored = version ? await decryptBlob(dek, version.blob) : "";
+  const pending: { resolved: ResolvedTarget; plaintext: string; summary: string }[] = [];
+  for (const [i, { plaintext }] of local.entries()) {
+    const resolved = resolvedAll[i]!;
+    const { version } = await api.currentVersion(resolved.fileId);
+    const stored = version ? await cipher.decrypt(version.blob) : "";
 
-  if (version && isUnchanged(stored, plaintext)) {
-    console.log(`${resolved.fileName} is already up to date. Nothing to push.`);
-    return 0;
+    if (version && isUnchanged(stored, plaintext)) {
+      console.log(`${resolved.fileName} is already up to date. Nothing to push.`);
+      continue;
+    }
+
+    const stats = diffStats(diffLines(stored, plaintext));
+    const summary = describePush({
+      variableCount: countVariables(plaintext),
+      added: stats.added,
+      removed: stats.removed,
+    });
+
+    console.log(
+      version
+        ? `About to replace ${resolved.workspaceName} / ${resolved.projectName} / ${resolved.fileName}: ${summary}`
+        : `About to create the first version of ${resolved.fileName}: ${summary}`,
+    );
+    const note = finalNewlineNote(stored, plaintext);
+    if (note) console.log(`  ${note}`);
+    if (version) console.log("  The version it replaces is kept and can be restored.");
+    pending.push({ resolved, plaintext, summary });
   }
 
-  const stats = diffStats(diffLines(stored, plaintext));
-  const summary = describePush({
-    variableCount: countVariables(plaintext),
-    added: stats.added,
-    removed: stats.removed,
-  });
+  if (pending.length === 0) return 0;
 
-  console.log(
-    version
-      ? `About to replace ${resolved.workspaceName} / ${resolved.projectName} / ${resolved.fileName}: ${summary}`
-      : `About to create the first version of ${resolved.fileName}: ${summary}`,
-  );
-  const note = finalNewlineNote(stored, plaintext);
-  if (note) console.log(`  ${note}`);
-  if (version) console.log("  The version it replaces is kept and can be restored.");
-
-  if (!hasFlag(args, "yes", "y") && !(await confirm("Push?"))) {
+  // One question for the whole batch: the summaries above are the thing being
+  // confirmed, and asking per file would turn --all back into a chore.
+  const question = pending.length === 1 ? "Push?" : `Push ${pending.length} files?`;
+  if (!hasFlag(args, "yes", "y") && !(await ask(question))) {
     console.log("Nothing pushed.");
     return 1;
   }
 
-  const saved = await api.saveVersion(resolved.fileId, await encryptBlob(dek, plaintext));
-  console.log(`Pushed ${summary} to ${resolved.fileName} (version ${saved.id.slice(0, 8)}).`);
+  for (const { resolved, plaintext, summary } of pending) {
+    const saved = await api.saveVersion(resolved.fileId, await cipher.encrypt(plaintext));
+    console.log(`Pushed ${summary} to ${resolved.fileName} (version ${saved.id.slice(0, 8)}).`);
+  }
   return 0;
 }

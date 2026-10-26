@@ -39,6 +39,17 @@ export async function link(
     file: resolved.fileName,
     environment: resolved.environment,
   };
+  // Re-linking to another file in the same project keeps the `files` list
+  // someone wrote by hand; moving to a different project drops it, since its
+  // names belong to the old one.
+  const existing = await readProjectConfig(cwd).catch(() => null);
+  if (
+    existing?.files &&
+    existing.workspace.toLowerCase() === config.workspace.toLowerCase() &&
+    existing.project.toLowerCase() === config.project.toLowerCase()
+  ) {
+    config.files = existing.files;
+  }
   const written = await writeProjectConfig(cwd, config);
 
   console.log(

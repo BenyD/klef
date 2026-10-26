@@ -12,10 +12,12 @@ import { link } from "./commands/link.ts";
 import { list } from "./commands/list.ts";
 import { pull } from "./commands/pull.ts";
 import { push } from "./commands/push.ts";
+import { unlock } from "./commands/unlock.ts";
+import { lock } from "./commands/lock.ts";
+import { AGENT_COMMAND } from "./agent-spawn.ts";
+import { runAgentProcess } from "./agent.ts";
 import { CLI_VERSION } from "./version.ts";
 import { redactAssignments } from "./output.ts";
-
-
 
 async function main(): Promise<number> {
   const args = parseArgs(process.argv.slice(2));
@@ -47,6 +49,12 @@ async function main(): Promise<number> {
       return pull(args, env, cwd);
     case "push":
       return push(args, env, cwd);
+    case "unlock":
+      return unlock(env);
+    case "lock":
+      return lock(env);
+    case AGENT_COMMAND:
+      return runAgentProcess();
     default:
       console.error(`Unknown command "${args.command}". Try \`klef help\`.`);
       return 1;

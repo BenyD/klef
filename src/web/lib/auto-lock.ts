@@ -3,11 +3,13 @@
 // are mounted only while the vault is unlocked (VaultHome).
 
 import { useEffect, useSyncExternalStore } from "react";
+import { AUTO_LOCK_DEFAULT_MINUTES } from "../../shared/lock-policy.ts";
 
 const STORAGE_KEY = "klef:auto-lock-minutes";
 const CHANGE_EVENT = "klef:auto-lock-changed";
 
-export const AUTO_LOCK_DEFAULT_MINUTES = 15;
+// Shared with the CLI's unlock agent, so both lock on the same schedule.
+export { AUTO_LOCK_DEFAULT_MINUTES };
 
 export const AUTO_LOCK_OPTIONS = [
   { minutes: 5, label: "After 5 minutes" },
