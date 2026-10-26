@@ -30,3 +30,21 @@ export function passkeyProviderName(
   if (!aaguid) return null;
   return PROVIDERS[aaguid.toLowerCase()] ?? null;
 }
+
+// The server's default name ("1Password · Jul 2026", see
+// src/api/passkey-name.ts) carries the month it was added. The settings list
+// already shows the full date on its meta line, so the label drops it there.
+const DEFAULT_NAME_DATE = /^(.+?) · [A-Z][a-z]{2} \d{4}$/;
+
+/**
+ * What the passkey list calls a passkey: its name without a default-name
+ * month suffix, else the authenticator's product name, else "Passkey".
+ */
+export function passkeyLabel(
+  name: string | null | undefined,
+  aaguid: string | null | undefined,
+): string {
+  const trimmed = name?.trim() ?? "";
+  if (trimmed) return DEFAULT_NAME_DATE.exec(trimmed)?.[1] ?? trimmed;
+  return passkeyProviderName(aaguid) ?? "Passkey";
+}
