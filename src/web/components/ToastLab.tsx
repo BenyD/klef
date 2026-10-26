@@ -87,9 +87,9 @@ export function ToastLab() {
 
   return (
     <div className="klef-screen flex min-h-svh flex-col">
-      {/* Banner variants, topmost one mirroring the live early-access strip. */}
+      {/* Banner variants, topmost one a brand notice with a link. */}
       <Banner variant="brand">
-        <span className="font-medium">Klef is in early access.</span>
+        <span className="font-medium">Thanks for trying Klef.</span>
         <span className="text-muted-foreground">
           {" "}
           Found a bug?{" "}

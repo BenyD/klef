@@ -610,22 +610,6 @@ export function VaultHome({
       defaultOpen={false}
       className="klef-screen **:data-[slot=sidebar-gap]:w-12! h-svh flex-col overflow-hidden"
     >
-      <Banner id="early-access" variant="brand">
-        <span className="font-medium">Klef is in early access.</span>
-        <span className="text-muted-foreground">
-          {" "}
-          Found a bug?{" "}
-          <a
-            href="https://github.com/BenyD/klef/issues"
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-foreground underline underline-offset-4"
-          >
-            Report it on GitHub
-          </a>
-        </span>
-      </Banner>
-
       {/* No stored dismissal: the real dismiss is saving a key (rotation or
           the setup checkbox), which clears this across devices. */}
       {!recoveryConfirmed && (

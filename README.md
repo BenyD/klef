@@ -44,8 +44,26 @@ design: `klef unlock` lets one passphrase cover a run of commands, held in
 memory by a short-lived agent that locks after 15 idle minutes (or
 `--for 8h`, up to 7 days).
 
+One command gets a repo going, and skips whatever is already done:
+
 ```bash
-npx @klefsh/cli login   # paste a token from Settings -> Security -> Developer
+npx @klefsh/cli setup
+```
+
+It signs you in through the browser, links the repo to a project in your vault
+(every env file in it, in `.klef.json`), unlocks, and pulls the files that are
+not on disk yet. It also offers to write a Claude Code skill
+(`.claude/skills/klef/SKILL.md`) and a Cursor rule (`.cursor/rules/klef.mdc`),
+so every later agent session in the repo already knows how to sync these files
+and that it must never print a value. `setup claude-md agents` adds the same
+block to `CLAUDE.md` and `AGENTS.md`, and `setup claude --global` installs the
+skill for every project. Rerun it to refresh them; it only ever rewrites its
+own marked block.
+
+The individual commands:
+
+```bash
+npx @klefsh/cli login   # approve this machine in the browser
 npx @klefsh/cli list    # see what is in your vault (--json for scripts)
 npx @klefsh/cli link    # connect this directory to a project in your vault
 npx @klefsh/cli pull    # write it to disk (mode 0600), reporting only a count
