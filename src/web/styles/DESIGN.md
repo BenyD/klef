@@ -88,10 +88,15 @@ Every frequent action has a key, shown next to it (menu item, tooltip or
 | Keys          | Action                    |
 | ------------- | ------------------------- |
 | `⌘K`          | Command menu              |
-| `⌘⇧F`         | Search keys across files  |
 | `⌘B`          | Toggle the sidebar        |
 | `⌘S`          | Save the open file        |
 | `⌘⇧L`         | Lock the vault            |
+| `⌥1`-`⌥9`     | Jump to an open tab (9 is the last) |
+| `⌥[` `⌥]`     | Previous / next tab       |
+| `⌥W`          | Close the tab             |
+
+Tab keys use Option/Alt because the browser keeps `⌘1`-`9`, `⌘W` and `⌃Tab`
+for its own tabs and never hands them to the page.
 
 ## Motion
 

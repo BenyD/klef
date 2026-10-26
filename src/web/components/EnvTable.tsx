@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
   useState,
   type ClipboardEvent,
   type FormEvent,
@@ -17,12 +18,14 @@ import {
   removeLine,
   removeLines,
   setEntry,
+  splitEntryLine,
   type EntryChange,
   type EnvEntry,
 } from "../lib/env-table.ts";
 import { Button } from "./ui/button.tsx";
 import { Checkbox } from "./ui/checkbox.tsx";
 import { Input } from "./ui/input.tsx";
+import { Kbd } from "./ui/kbd.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip.tsx";
 
 interface Props {
@@ -370,6 +373,11 @@ function EntryRow({
   );
 }
 
+// The add row shares the table's column grid (a + where the checkbox sits,
+// then key = value), framed with a dashed edge so it reads as "a row you can
+// add", not two loose inputs. Enter adds; pasting `KEY=value` into the key
+// field splits it across both fields, and a multi-line paste appends as a
+// block like everywhere else in the table.
 function AddRow({
   onAdd,
   onPasteBlock,
@@ -379,8 +387,23 @@ function AddRow({
 }) {
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
+  const keyRef = useRef<HTMLInputElement>(null);
   const keyValid = ENV_KEY_RE.test(key);
   const onPaste = blockPasteHandler(onPasteBlock);
+
+  function onKeyPaste(e: ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData.getData("text");
+    if (onPasteBlock(text)) {
+      e.preventDefault();
+      return;
+    }
+    const split = splitEntryLine(text);
+    if (split) {
+      e.preventDefault();
+      setKey(split.key);
+      setValue(split.value);
+    }
+  }
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -388,31 +411,60 @@ function AddRow({
     onAdd(key, value);
     setKey("");
     setValue("");
+    // Straight on to the next one.
+    keyRef.current?.focus();
   }
 
   return (
-    <form onSubmit={submit} className="flex items-center gap-2">
+    <form
+      onSubmit={submit}
+      className="focus-within:border-ring/60 focus-within:bg-muted/30 flex items-center gap-2 rounded-md border border-dashed px-2 py-1 transition-interactive focus-within:border-solid"
+    >
+      <span
+        className="text-muted-foreground ml-0.5 flex size-4 shrink-0 items-center justify-center"
+        aria-hidden="true"
+      >
+        <Plus className="size-3.5" />
+      </span>
       <Input
+        ref={keyRef}
         aria-label="New key"
         placeholder="NEW_KEY"
         value={key}
         aria-invalid={(key !== "" && !keyValid) || undefined}
         onChange={(e) => setKey(e.target.value)}
-        onPaste={onPaste}
-        className={cn("h-8 w-2/5 max-w-56 font-mono text-xs", CELL_FOCUS)}
+        onPaste={onKeyPaste}
+        className={cn(
+          "h-7 w-2/5 max-w-56 shrink-0 border-transparent bg-transparent px-1.5 font-mono text-xs shadow-none dark:bg-transparent",
+          CELL_FOCUS,
+        )}
       />
       <span className="text-muted-foreground/50 select-none">=</span>
       <Input
         aria-label="New value"
-        placeholder="value"
+        placeholder="value, or paste KEY=value"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onPaste={onPaste}
-        className={cn("h-8 flex-1 font-mono text-xs", CELL_FOCUS)}
+        className={cn(
+          "h-7 flex-1 border-transparent bg-transparent px-1.5 font-mono text-xs shadow-none dark:bg-transparent",
+          CELL_FOCUS,
+        )}
       />
-      <Button type="submit" size="sm" variant="outline" disabled={!keyValid}>
-        <Plus />
-        Add
+      {keyValid && (
+        <span className="text-muted-foreground flex shrink-0 items-center gap-1 text-xs max-sm:hidden">
+          <Kbd>↵</Kbd>
+          to add
+        </span>
+      )}
+      <Button
+        type="submit"
+        size="sm"
+        variant="secondary"
+        disabled={!keyValid}
+        className="shrink-0"
+      >
+        Add key
       </Button>
     </form>
   );
