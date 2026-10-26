@@ -8,10 +8,10 @@ const sections: DocSection[] = [
     body: (
       <ul>
         <li>
-          <strong>Account details.</strong> When you sign in with Google,
-          Klef receives your name, email address, and profile picture. If
-          you register a passkey, its public key is stored. Better Auth
-          session cookies keep you signed in.
+          <strong>Account details.</strong> When you sign in with Google or
+          GitHub, Klef receives your name, email address, and profile
+          picture. If you register a passkey, its public key is stored. A
+          session cookie keeps you signed in for 30 days.
         </li>
         <li>
           <strong>Vault metadata.</strong> The names of your workspaces,
@@ -23,6 +23,11 @@ const sections: DocSection[] = [
           environment files are encrypted in your browser before upload.
           Klef stores only ciphertext and cannot decrypt it. See{" "}
           <Link to="/security">how the encryption works</Link>.
+        </li>
+        <li>
+          <strong>CLI access tokens.</strong> If you use the CLI, Klef stores
+          a hash of each token with its name, when it was created, and when
+          it was last used. The token itself is shown once and never stored.
         </li>
       </ul>
     ),
@@ -36,6 +41,11 @@ const sections: DocSection[] = [
         <li>No third-party scripts or CDN fonts; assets are self-hosted.</li>
         <li>No selling, sharing, or mining of your data.</li>
         <li>No plaintext secrets on the server, ever, by construction.</li>
+        <li>
+          No reading your Vercel, GitHub or Cloudflare accounts.{" "}
+          <code>klef audit</code> runs your own CLIs on your machine, and
+          nothing it sees is sent to Klef.
+        </li>
       </ul>
     ),
   },
@@ -43,12 +53,20 @@ const sections: DocSection[] = [
     id: "where-data-lives",
     heading: "Where data lives",
     body: (
-      <p>
-        Klef runs on Cloudflare Workers with data stored in Cloudflare D1.
-        Cloudflare acts as the hosting provider and processes traffic
-        according to its own privacy terms. Because content is end-to-end
-        encrypted, neither Klef nor Cloudflare can read your files.
-      </p>
+      <>
+        <p>
+          Klef runs on Cloudflare Workers with data stored in Cloudflare D1.
+          Cloudflare acts as the hosting provider and processes traffic
+          according to its own privacy terms. Because content is end-to-end
+          encrypted, neither Klef nor Cloudflare can read your files.
+        </p>
+        <p>
+          On your own devices, the browser keeps the unlocked key until
+          auto-lock, and the CLI keeps its access token in your OS keychain (or a private
+          file where there is no keychain).
+          Neither leaves your machine.
+        </p>
+      </>
     ),
   },
   {
@@ -97,7 +115,7 @@ export function Privacy() {
   return (
     <MarketingDoc
       title="Privacy policy"
-      updated="July 5, 2026"
+      updated="October 26, 2026"
       lead={
         <>
           Klef is built so that it cannot read your data. This page describes
