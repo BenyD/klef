@@ -1,0 +1,54 @@
+---
+// One button that flips light and dark, like the marketing nav, instead of
+// Starlight's three-way select. Writes the same `theme` key next-themes
+// reads (see ThemeProvider.astro).
+---
+
+<klef-theme-toggle>
+	<button type="button" class="klef-theme-toggle" aria-label="Toggle theme">
+		<svg class="klef-theme-sun" viewBox="0 0 24 24" aria-hidden="true">
+			<circle cx="12" cy="12" r="4"></circle>
+			<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+		</svg>
+		<svg class="klef-theme-moon" viewBox="0 0 24 24" aria-hidden="true">
+			<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+		</svg>
+	</button>
+</klef-theme-toggle>
+
+<script>
+	function apply(dark: boolean) {
+		const root = document.documentElement;
+		root.dataset.theme = dark ? "dark" : "light";
+		root.classList.toggle("dark", dark);
+	}
+
+	function stored(): string | null {
+		try {
+			return localStorage.getItem("theme");
+		} catch {
+			return null;
+		}
+	}
+
+	// Follow the OS while nothing explicit is stored ("system" or unset).
+	matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+		const t = stored();
+		if (t !== "light" && t !== "dark") apply(e.matches);
+	});
+
+	class KlefThemeToggle extends HTMLElement {
+		connectedCallback() {
+			this.querySelector("button")?.addEventListener("click", () => {
+				const dark = document.documentElement.dataset.theme !== "dark";
+				apply(dark);
+				try {
+					localStorage.setItem("theme", dark ? "dark" : "light");
+				} catch {}
+			});
+		}
+	}
+	if (!customElements.get("klef-theme-toggle")) {
+		customElements.define("klef-theme-toggle", KlefThemeToggle);
+	}
+</script>
