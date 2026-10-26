@@ -1,9 +1,11 @@
 # Klef
 
-> Klef (klef.sh) is a personal, zero-knowledge tool for syncing .env files
-> across machines. Environment files are encrypted with AES-256-GCM in the
-> browser before upload; the server stores only ciphertext it cannot decrypt.
-> Free, open source (AGPL-3.0), and self-hostable.
+> Klef (klef.sh) is a personal, end-to-end encrypted tool for keeping .env
+> files (by default .env.local and .env.production) in sync across machines.
+> Files are encrypted with AES-256-GCM on the device, in the browser or the
+> CLI, before upload; the server stores only ciphertext it cannot decrypt.
+> The CLI never prints a secret value, so coding agents such as Claude Code
+> and Cursor can run it. Free, open source (AGPL-3.0), and self-hostable.
 
 Key facts:
 
@@ -15,9 +17,15 @@ Key facts:
 - A 128-bit recovery key (KLEF-XXXXX-...) is shown exactly once at setup. If
   both the passphrase and the recovery key are lost, data is unrecoverable by
   design.
-- Sign-in (Google OAuth or passkeys) is separate from unlocking, which happens
-  entirely in the browser. Auto-lock and manual lock clear keys from memory.
+- Sign-in (Google, GitHub, or passkeys) is separate from unlocking, which
+  happens entirely on the device. Auto-lock and manual lock clear keys from memory.
 - Every save creates a new version, so files have history and restore.
+- CLI (@klefsh/cli): `setup` signs in, links a repo, installs a Claude Code
+  skill and a Cursor rule, and pulls missing files; `sync` pushes or pulls
+  whichever side changed and stops on conflicts; `restore` pulls every linked
+  checkout on a new machine; `audit` compares key names on Vercel, GitHub and
+  Cloudflare with local files, read-only. No command prints a secret value,
+  and the passphrase is read only from the terminal.
 - No analytics, trackers, ads, or third-party scripts.
 - Runs on Cloudflare Workers with D1; self-hostable on your own account.
 - Built by Beny Dishon K (https://beny.one).
@@ -28,6 +36,7 @@ Key facts:
 - [Security](https://klef.sh/security): the zero-knowledge encryption design in detail
 - [Terms](https://klef.sh/terms): terms of service
 - [Privacy](https://klef.sh/privacy): what is stored and what never is
+- [About](https://klef.sh/about): why Klef exists, from the person who built it
 
 ## Source
 
