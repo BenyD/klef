@@ -36,3 +36,4 @@ Allow: /
 Disallow: /api/
 
 Sitemap: https://klef.sh/sitemap.xml
+Sitemap: https://klef.sh/docs/sitemap-index.xml

@@ -1,0 +1,73 @@
+---
+title: Using Klef with Claude Code and Cursor
+description: Teach your coding agents to sync env files with klef setup, without a secret ever entering the conversation.
+sidebar:
+  order: 3
+---
+
+A coding agent can run the Klef CLI for you: pull the env files a repo needs, push one it changed, and settle a sync. It can do all that without seeing a single value, because no Klef command prints one.
+
+## Why this is safe to hand an agent
+
+- **No command prints a secret value.** There is no `klef get` and no `--print`. `pull` writes a file and reports a count. `push` reports how many lines changed. `diff` and `sync` name keys, never values. Errors are redacted on the way out as a backstop.
+- **The agent cannot unlock.** The passphrase is read from the terminal itself, never from a flag, a pipe or an environment variable, so the process that started the CLI can neither supply it nor see it. When the vault is locked, the CLI stops and says so; the agent asks you to run `klef unlock`.
+- **Files land where `.klef.json` says.** `pull` and `push` refuse absolute paths and `../`, so an agent cannot be talked into writing plaintext somewhere else or uploading an arbitrary file.
+- **A token is not a secret.** The CLI's access token reaches ciphertext and names only.
+
+The agent orchestrates; a person unlocks.
+
+## Set up a repo
+
+Run setup in the repo, or paste the agent prompt from the app (below) and let the agent run it:
+
+```bash
+npx @klefsh/cli setup
+```
+
+Along with signing in, linking and pulling, setup offers to write instructions for your agents:
+
+| Agent | File | Written |
+| --- | --- | --- |
+| Claude Code | `.claude/skills/klef/SKILL.md` | By default |
+| Cursor | `.cursor/rules/klef.mdc` | By default |
+| Claude Code, always loaded | `CLAUDE.md` | When asked |
+| Other agents | `AGENTS.md` | When asked |
+
+The instructions tell the agent how this repo's env files are synced (status, pull, push, unlock) and that it must never read or print a secret value. Commit them with the repo so every later session starts out knowing.
+
+Choose the files with targets:
+
+```bash
+klef setup claude cursor       # the default pair
+klef setup claude-md agents    # add a block to CLAUDE.md and AGENTS.md
+klef setup all                 # all four
+klef setup claude --global     # the skill for every project, in ~/.claude
+```
+
+Rerun setup any time to refresh them. In `CLAUDE.md` and `AGENTS.md`, which hold your own instructions too, setup only ever rewrites its own block between `<!-- klef:start ... -->` and `<!-- klef:end -->`.
+
+## The agent prompt in the app
+
+Every file in the web app has **Copy agent prompt** in its toolbar. It copies a prompt for Claude Code or Cursor that:
+
+- runs `npx @klefsh/cli setup` for that file's workspace and project
+- asks for your approval before writing the skill and rule files
+- hands `npx @klefsh/cli unlock` back to you to run
+- checks that the env file is gitignored
+- states the rule that secret values stay out of the transcript
+
+Paste it into a session once per repo. The landing page at [klef.sh](https://klef.sh) has general prompts too.
+
+## A typical session
+
+1. You start the agent and, if you will need the vault, run `klef unlock` in a terminal yourself. For a long session, `klef unlock --for 8h`.
+2. The agent runs `klef status` to see whether the repo is linked and the vault unlocked.
+3. It runs `klef sync`, `klef pull` or `klef push` as the task needs.
+4. On a conflict, it reads the key names `sync` printed and asks you which side wins.
+5. When you are done, `klef lock`, or let it time out.
+
+If the agent runs a command while the vault is locked, the CLI refuses to prompt (the agent has no terminal) and tells it to have you unlock. Nothing is written.
+
+## What agents should not do
+
+Even with Klef, the env file on disk is plaintext. An agent that runs `cat .env.local` puts the values in its context. The instructions setup writes tell it not to; keep that rule in your own prompts as well.

@@ -1,7 +1,8 @@
 # Klef - design language
 
-The tokens in `global.css` and the rules for reaching for them. See them all
-side by side at `/dev/design` (dev-only route, both themes at once).
+The tokens in `tokens.css` (imported by `global.css`, and by the docs site
+in `docs-site/`) and the rules for reaching for them. See them all side by
+side at `/dev/design` (dev-only route, both themes at once).
 
 The through-line: Klef holds secrets. The interface should feel **quiet,
 exact, and fast** - dense but calm, closer to a terminal someone cared about
