@@ -17,6 +17,7 @@ import { lock } from "./commands/lock.ts";
 import { sync } from "./commands/sync.ts";
 import { diff } from "./commands/diff.ts";
 import { restore } from "./commands/restore.ts";
+import { setup, defaultSetupDeps } from "./commands/setup.ts";
 import { AGENT_COMMAND } from "./agent-spawn.ts";
 import { runAgentProcess } from "./agent.ts";
 import { CLI_VERSION } from "./version.ts";
@@ -62,6 +63,8 @@ async function main(): Promise<number> {
       return unlock(args, env);
     case "lock":
       return lock(env);
+    case "setup":
+      return setup(args, cwd, defaultSetupDeps(args, env, cwd));
     case AGENT_COMMAND:
       return runAgentProcess();
     default:
