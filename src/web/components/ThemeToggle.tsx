@@ -11,7 +11,11 @@ export function ThemeGlyph({ className }: { className?: string }) {
 }
 
 // Default theme is "system"; clicking swaps between light and dark.
-export function ThemeToggle() {
+export function ThemeToggle({
+  size = "icon",
+}: {
+  size?: "icon" | "icon-sm";
+}) {
   const toggle = useThemeSwitch();
   return (
     <Tooltip>
@@ -19,8 +23,9 @@ export function ThemeToggle() {
         render={
           <Button
             variant="ghost"
-            size="icon"
+            size={size}
             aria-label="Toggle theme"
+            className="text-muted-foreground"
             onClick={toggle}
           >
             <ThemeGlyph />

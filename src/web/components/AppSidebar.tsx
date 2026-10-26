@@ -1,14 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Check,
-  FileText,
+  ChevronRight,
+  Columns3,
+  FilePlus2,
+  FolderInput,
+  KeyRound,
   LayoutGrid,
+  MoreHorizontal,
   Pencil,
   Plus,
-  Settings,
-  ShieldCheck,
+  Search,
   Trash2,
-  UserRound,
   X,
 } from "lucide-react";
 import { cn } from "../lib/utils.ts";
@@ -18,11 +21,10 @@ import {
   type EnvFileNode,
   type Environment,
   type ProjectNode,
-  type WorkspaceNode,
 } from "../../shared/api-types.ts";
 import { useEnvMeta } from "../lib/env-meta.ts";
+import { PaletteShortcutKeys } from "./CommandPalette.tsx";
 import { ProjectIcon } from "./ProjectIcon.tsx";
-import type { SettingsTab } from "./SettingsDialog.tsx";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -33,28 +35,50 @@ import {
   ContextMenuTrigger,
 } from "./ui/context-menu.tsx";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu.tsx";
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
 } from "./ui/sidebar.tsx";
 
 interface AppSidebarProps {
   /** Tree still loading; skeleton rows. */
   loading?: boolean;
-  workspace: WorkspaceNode | null;
-  /** Project of the open file; null on the workspace overview. */
-  currentProject: ProjectNode | null;
+  /** Workspace switcher, rendered at the top. */
+  header: ReactNode;
+  /** Account, lock and theme controls, pinned to the bottom. */
+  footer: ReactNode;
+  projects: ProjectNode[];
   selectedFileId: string | null;
+  /** True on the workspace overview (no file open). */
+  overviewActive: boolean;
+  /** Moving is only offered when there is another workspace to move to. */
+  canMoveProjects: boolean;
   onShowOverview: () => void;
+  onOpenPalette: () => void;
+  onSearchKeys: () => void;
   onSelectFile: (project: ProjectNode, file: EnvFileNode) => void;
+  onNewProject: () => void;
   onNewFile: (project: ProjectNode) => void;
   onRenameFile: (file: EnvFileNode) => void;
   onDeleteFile: (file: EnvFileNode) => void;
@@ -62,41 +86,89 @@ interface AppSidebarProps {
   /** Opens the dialog for typing a custom environment label. */
   onCustomEnvironment: (file: EnvFileNode) => void;
   onEditProject: (project: ProjectNode) => void;
-  onOpenSettings: (tab: SettingsTab) => void;
+  onMoveProject: (project: ProjectNode) => void;
+  onCompareEnvironments: (project: ProjectNode) => void;
+  onDeleteProject: (project: ProjectNode) => void;
+}
+
+// Which projects are expanded survives reloads on this device. Storage can be
+// unavailable (private mode, tests); the tree then just starts collapsed.
+const EXPANDED_KEY = "klef-sidebar-expanded";
+
+function readExpanded(): Set<string> {
+  try {
+    const raw = localStorage.getItem(EXPANDED_KEY);
+    const ids: unknown = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(ids) ? ids.filter((x) => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeExpanded(ids: ReadonlySet<string>) {
+  try {
+    localStorage.setItem(EXPANDED_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Still holds for this session via state.
+  }
 }
 
 /**
- * Contextual rail (Supabase-style): collapsed to icons, expands over the
- * content on hover. On the workspace overview it is global navigation; inside
- * a project it is that project's files plus its settings. Cross-navigation
- * (workspaces/projects/files) lives in the topbar switchers.
+ * The one navigation surface (Linear-style): workspace switcher, search, the
+ * overview, and every project as a collapsible row with its files beneath.
+ * The content header only shows where you are; moving around happens here.
+ * On phones the same tree opens as a sheet.
  */
 export function AppSidebar({
   loading = false,
-  workspace,
-  currentProject,
+  header,
+  footer,
+  projects,
   selectedFileId,
+  overviewActive,
+  canMoveProjects,
   onShowOverview,
+  onOpenPalette,
+  onSearchKeys,
   onSelectFile,
+  onNewProject,
   onNewFile,
   onRenameFile,
   onDeleteFile,
   onSetEnvironment,
   onCustomEnvironment,
   onEditProject,
-  onOpenSettings,
+  onMoveProject,
+  onCompareEnvironments,
+  onDeleteProject,
 }: AppSidebarProps) {
   const envMeta = useEnvMeta();
-  const { isMobile, setOpen, setOpenMobile } = useSidebar();
-  // Short intent delay before the rail expands, so mousing across it on the
-  // way to the content doesn't flare it open. Collapse stays immediate.
-  const expandTimer = useRef<number | null>(null);
-  useEffect(
-    () => () => {
-      if (expandTimer.current !== null) clearTimeout(expandTimer.current);
-    },
-    [],
-  );
+  const { setOpenMobile } = useSidebar();
+  const [expanded, setExpanded] = useState<Set<string>>(readExpanded);
+
+  // Opening a file from anywhere (palette, tabs, overview) reveals it here.
+  const selectedProjectId = selectedFileId
+    ? (projects.find((p) => p.files.some((f) => f.id === selectedFileId))?.id ??
+      null)
+    : null;
+  useEffect(() => {
+    if (!selectedProjectId) return;
+    setExpanded((prev) => {
+      if (prev.has(selectedProjectId)) return prev;
+      const next = new Set(prev).add(selectedProjectId);
+      writeExpanded(next);
+      return next;
+    });
+  }, [selectedProjectId]);
+
+  function toggle(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      writeExpanded(next);
+      return next;
+    });
+  }
 
   // On mobile the sidebar is a sheet; close it once a choice is made.
   function act(fn: () => void) {
@@ -105,230 +177,304 @@ export function AppSidebar({
   }
 
   return (
-    <Sidebar
-      collapsible="icon"
-      /* Anchored to the content row (relative) rather than the viewport, so
-         whatever sits above it (topbar, announcement banner) can vary in
-         height without the rail drifting out of place. */
-      className="absolute h-auto"
-      onMouseEnter={() => {
-        if (isMobile) return;
-        expandTimer.current = window.setTimeout(() => setOpen(true), 150);
-      }}
-      onMouseLeave={() => {
-        if (isMobile) return;
-        if (expandTimer.current !== null) {
-          clearTimeout(expandTimer.current);
-          expandTimer.current = null;
-        }
-        setOpen(false);
-      }}
-    >
+    <Sidebar variant="inset" collapsible="offcanvas">
+      <SidebarHeader className="gap-1 pb-1">
+        {header}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="text-muted-foreground"
+              onClick={() => act(onOpenPalette)}
+            >
+              <Search />
+              <span>Search</span>
+              <span className="ml-auto">
+                <PaletteShortcutKeys />
+              </span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={overviewActive}
+              onClick={() => act(onShowOverview)}
+            >
+              <LayoutGrid />
+              <span>All projects</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={() => act(onSearchKeys)}>
+              <KeyRound />
+              <span>Find a key</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+
       <SidebarContent>
-        {currentProject ? (
-          <SidebarGroup>
-            <SidebarGroupLabel className="gap-1.5">
-              <ProjectIcon project={currentProject} size="sm" />
-              <span className="truncate">{currentProject.name}</span>
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    tooltip="All projects"
-                    onClick={() => act(onShowOverview)}
-                  >
-                    <LayoutGrid />
-                    <span>All projects</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                {currentProject.files.map((file) => (
-                  <SidebarMenuItem key={file.id}>
-                    {/* Right-click manages the file in place; the row itself
-                        just opens it. */}
-                    <ContextMenu>
-                      <ContextMenuTrigger>
-                        <SidebarMenuButton
-                          tooltip={file.name}
-                          isActive={file.id === selectedFileId}
-                          className="font-mono"
-                          onClick={() =>
-                            act(() => onSelectFile(currentProject, file))
-                          }
-                        >
-                          <FileText />
-                          <span className="truncate">{file.name}</span>
-                          {file.environment && (
-                            <>
-                              <span
-                                className={cn(
-                                  "ml-auto size-1.5 shrink-0 rounded-full",
-                                  envMeta(file.environment).dot,
-                                )}
-                                title={file.environment}
-                                aria-hidden="true"
-                              />
-                              <span className="sr-only">
-                                {file.environment}
-                              </span>
-                            </>
-                          )}
-                        </SidebarMenuButton>
-                      </ContextMenuTrigger>
-                      <ContextMenuContent className="min-w-44">
-                        <ContextMenuItem
-                          onClick={() => act(() => onRenameFile(file))}
-                        >
-                          <Pencil />
-                          Rename
-                        </ContextMenuItem>
-                        <ContextMenuSeparator />
-                        <ContextMenuGroup>
-                          <ContextMenuLabel>Environment</ContextMenuLabel>
-                          {ENVIRONMENTS.map((env) => (
-                            <ContextMenuItem
-                              key={env}
-                              onClick={() => onSetEnvironment(file, env)}
-                            >
-                              <span
-                                className={cn(
-                                  "size-1.5 rounded-full",
-                                  envMeta(env).dot,
-                                )}
-                                aria-hidden="true"
-                              />
-                              {envMeta(env).label}
-                              {file.environment === env && (
-                                <Check className="ml-auto size-4" />
-                              )}
-                            </ContextMenuItem>
-                          ))}
-                          <ContextMenuItem
-                            onClick={() => act(() => onCustomEnvironment(file))}
-                          >
-                            <span
-                              className="size-1.5 rounded-full bg-env-custom"
-                              aria-hidden="true"
-                            />
-                            {file.environment &&
-                            !isPresetEnvironment(file.environment)
-                              ? file.environment
-                              : "Custom"}
-                            {file.environment &&
-                              !isPresetEnvironment(file.environment) && (
-                                <Check className="ml-auto size-4" />
-                              )}
-                          </ContextMenuItem>
-                          {file.environment && (
-                            <ContextMenuItem
-                              onClick={() => onSetEnvironment(file, null)}
-                            >
-                              <X />
-                              Clear label
-                            </ContextMenuItem>
-                          )}
-                        </ContextMenuGroup>
-                        <ContextMenuSeparator />
-                        <ContextMenuItem
-                          variant="destructive"
-                          onClick={() => act(() => onDeleteFile(file))}
-                        >
-                          <Trash2 />
-                          Delete
-                        </ContextMenuItem>
-                      </ContextMenuContent>
-                    </ContextMenu>
-                  </SidebarMenuItem>
-                ))}
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    tooltip="New file"
-                    className="text-muted-foreground"
-                    onClick={() => act(() => onNewFile(currentProject))}
-                  >
-                    <Plus />
-                    <span>New file</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ) : (
-          <SidebarGroup>
-            <SidebarGroupLabel className="truncate">
-              {workspace?.name ?? "Workspace"}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {loading ? (
-                  Array.from({ length: 3 }, (_, i) => (
+        <SidebarGroup>
+          <SidebarGroupLabel>Projects</SidebarGroupLabel>
+          <SidebarGroupAction
+            aria-label="New project"
+            title="New project"
+            onClick={() => act(onNewProject)}
+          >
+            <Plus />
+          </SidebarGroupAction>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {loading
+                ? Array.from({ length: 3 }, (_, i) => (
                     <SidebarMenuItem key={`skeleton-${i}`}>
                       <SidebarMenuSkeleton showIcon />
                     </SidebarMenuItem>
                   ))
-                ) : (
-                  <>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        tooltip="Projects"
-                        isActive
-                        onClick={() => act(onShowOverview)}
-                      >
-                        <LayoutGrid />
-                        <span>Projects</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        tooltip="Profile"
-                        onClick={() => act(() => onOpenSettings("profile"))}
-                      >
-                        <UserRound />
-                        <span>Profile</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        tooltip="Security"
-                        onClick={() => act(() => onOpenSettings("security"))}
-                      >
-                        <ShieldCheck />
-                        <span>Security</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        tooltip="Workspace settings"
-                        onClick={() => act(() => onOpenSettings("workspace"))}
-                      >
-                        <Settings />
-                        <span>Workspace settings</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  </>
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+                : projects.map((project) => {
+                    const open = expanded.has(project.id);
+                    return (
+                      <SidebarMenuItem key={project.id}>
+                        <SidebarMenuButton
+                          aria-expanded={open}
+                          onClick={() => toggle(project.id)}
+                          className="group/project"
+                        >
+                          <span className="relative flex size-4 shrink-0 items-center justify-center">
+                            <span className="flex group-hover/project:opacity-0">
+                              <ProjectIcon project={project} size="sm" />
+                            </span>
+                            <ChevronRight
+                              className={cn(
+                                "text-muted-foreground absolute opacity-0 transition-[rotate] duration-(--duration-fast) group-hover/project:opacity-100",
+                                open && "rotate-90",
+                              )}
+                            />
+                          </span>
+                          <span className="truncate">{project.name}</span>
+                        </SidebarMenuButton>
+                        <ProjectMenu
+                          project={project}
+                          canMove={canMoveProjects}
+                          onNewFile={() => act(() => onNewFile(project))}
+                          onEdit={() => act(() => onEditProject(project))}
+                          onMove={() => act(() => onMoveProject(project))}
+                          onCompare={() =>
+                            act(() => onCompareEnvironments(project))
+                          }
+                          onDelete={() => act(() => onDeleteProject(project))}
+                        />
+                        {open && (
+                          <SidebarMenuSub>
+                            {project.files.map((file) => (
+                              <SidebarMenuSubItem key={file.id}>
+                                {/* Right-click manages the file in place;
+                                    the row itself just opens it. */}
+                                <ContextMenu>
+                                  <ContextMenuTrigger
+                                    render={
+                                      <SidebarMenuSubButton
+                                        render={<button type="button" />}
+                                        isActive={file.id === selectedFileId}
+                                        className="w-full font-mono text-xs"
+                                        onClick={() =>
+                                          act(() => onSelectFile(project, file))
+                                        }
+                                      />
+                                    }
+                                  >
+                                    <span className="truncate">
+                                      {file.name}
+                                    </span>
+                                    {file.environment && (
+                                      <>
+                                        <span
+                                          className={cn(
+                                            "ml-auto size-1.5 shrink-0 rounded-full",
+                                            envMeta(file.environment).dot,
+                                          )}
+                                          title={envMeta(file.environment).label}
+                                          aria-hidden="true"
+                                        />
+                                        <span className="sr-only">
+                                          {envMeta(file.environment).label}
+                                        </span>
+                                      </>
+                                    )}
+                                  </ContextMenuTrigger>
+                                  <ContextMenuContent className="min-w-44">
+                                    <ContextMenuItem
+                                      onClick={() =>
+                                        act(() => onRenameFile(file))
+                                      }
+                                    >
+                                      <Pencil />
+                                      Rename
+                                    </ContextMenuItem>
+                                    <ContextMenuSeparator />
+                                    <ContextMenuGroup>
+                                      <ContextMenuLabel>
+                                        Environment
+                                      </ContextMenuLabel>
+                                      {ENVIRONMENTS.map((env) => (
+                                        <ContextMenuItem
+                                          key={env}
+                                          onClick={() =>
+                                            onSetEnvironment(file, env)
+                                          }
+                                        >
+                                          <span
+                                            className={cn(
+                                              "size-1.5 rounded-full",
+                                              envMeta(env).dot,
+                                            )}
+                                            aria-hidden="true"
+                                          />
+                                          {envMeta(env).label}
+                                          {file.environment === env && (
+                                            <Check className="ml-auto size-4" />
+                                          )}
+                                        </ContextMenuItem>
+                                      ))}
+                                      <ContextMenuItem
+                                        onClick={() =>
+                                          act(() => onCustomEnvironment(file))
+                                        }
+                                      >
+                                        <span
+                                          className="bg-env-custom size-1.5 rounded-full"
+                                          aria-hidden="true"
+                                        />
+                                        {file.environment &&
+                                        !isPresetEnvironment(file.environment)
+                                          ? file.environment
+                                          : "Custom"}
+                                        {file.environment &&
+                                          !isPresetEnvironment(
+                                            file.environment,
+                                          ) && (
+                                            <Check className="ml-auto size-4" />
+                                          )}
+                                      </ContextMenuItem>
+                                      {file.environment && (
+                                        <ContextMenuItem
+                                          onClick={() =>
+                                            onSetEnvironment(file, null)
+                                          }
+                                        >
+                                          <X />
+                                          Clear label
+                                        </ContextMenuItem>
+                                      )}
+                                    </ContextMenuGroup>
+                                    <ContextMenuSeparator />
+                                    <ContextMenuItem
+                                      variant="destructive"
+                                      onClick={() =>
+                                        act(() => onDeleteFile(file))
+                                      }
+                                    >
+                                      <Trash2 />
+                                      Delete
+                                    </ContextMenuItem>
+                                  </ContextMenuContent>
+                                </ContextMenu>
+                              </SidebarMenuSubItem>
+                            ))}
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton
+                                render={<button type="button" />}
+                                className="text-muted-foreground w-full text-xs"
+                                onClick={() => act(() => onNewFile(project))}
+                              >
+                                <Plus className="text-muted-foreground! size-3.5!" />
+                                <span>New file</span>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          </SidebarMenuSub>
+                        )}
+                      </SidebarMenuItem>
+                    );
+                  })}
+              {!loading && projects.length === 0 && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    className="text-muted-foreground"
+                    onClick={() => act(onNewProject)}
+                  >
+                    <Plus />
+                    <span>New project</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
-      {/* Configuration pins to the bottom; the top of the rail stays about
-          the project's contents. */}
-      {currentProject && (
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Project settings"
-                onClick={() => act(() => onEditProject(currentProject))}
-              >
-                <Settings />
-                <span>Project settings</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      )}
+
+      <SidebarFooter className="flex-row items-center gap-1">
+        {footer}
+      </SidebarFooter>
     </Sidebar>
+  );
+}
+
+function ProjectMenu({
+  project,
+  canMove,
+  onNewFile,
+  onEdit,
+  onMove,
+  onCompare,
+  onDelete,
+}: {
+  project: ProjectNode;
+  canMove: boolean;
+  onNewFile: () => void;
+  onEdit: () => void;
+  onMove: () => void;
+  onCompare: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <SidebarMenuAction
+            showOnHover
+            aria-label={`Actions for ${project.name}`}
+          />
+        }
+      >
+        <MoreHorizontal />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        side="right"
+        align="start"
+        className="min-w-52 whitespace-nowrap"
+      >
+        <DropdownMenuItem onClick={onNewFile}>
+          <FilePlus2 />
+          New file
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onEdit}>
+          <Pencil />
+          Edit project
+        </DropdownMenuItem>
+        {canMove && (
+          <DropdownMenuItem onClick={onMove}>
+            <FolderInput />
+            Move to workspace
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem onClick={onCompare}>
+          <Columns3 />
+          Compare environments
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onClick={onDelete}>
+          <Trash2 />
+          Delete project
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
