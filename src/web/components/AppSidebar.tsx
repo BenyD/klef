@@ -23,7 +23,7 @@ import {
   type ProjectNode,
 } from "../../shared/api-types.ts";
 import { useEnvMeta } from "../lib/env-meta.ts";
-import { PaletteShortcutKeys } from "./CommandPalette.tsx";
+import { isMacPlatform } from "../lib/auto-lock.ts";
 import { ProjectIcon } from "./ProjectIcon.tsx";
 import {
   ContextMenu,
@@ -178,21 +178,22 @@ export function AppSidebar({
 
   return (
     <Sidebar variant="inset" collapsible="offcanvas">
-      <SidebarHeader className="gap-1 pb-1">
+      <SidebarHeader className="gap-2 pb-1">
         {header}
+        {/* Styled as a search field, not a nav row: it opens the command
+            menu, which is where searching happens. */}
+        <button
+          type="button"
+          onClick={() => act(onOpenPalette)}
+          className="bg-background text-muted-foreground hover:text-foreground hover:border-foreground/20 focus-visible:ring-sidebar-ring flex h-8 w-full items-center gap-2 rounded-md border px-2 text-sm shadow-raised outline-none transition-interactive focus-visible:ring-2"
+        >
+          <Search className="size-3.5 shrink-0" />
+          <span>Search</span>
+          <span className="ml-auto text-xs tracking-wide max-sm:hidden">
+            {isMacPlatform() ? "⌘K" : "Ctrl K"}
+          </span>
+        </button>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              className="text-muted-foreground"
-              onClick={() => act(onOpenPalette)}
-            >
-              <Search />
-              <span>Search</span>
-              <span className="ml-auto">
-                <PaletteShortcutKeys />
-              </span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               isActive={overviewActive}

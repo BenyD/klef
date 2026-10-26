@@ -102,6 +102,21 @@ export function isEnvBlock(block: string): boolean {
 }
 
 /**
+ * A single pasted `KEY=value` line (an optional `export ` and spacing around
+ * `=` allowed), split for the table's add row: the key goes in the key field,
+ * the value in the value field. Anything else (multi-line, a comment, no
+ * `=`) returns null and pastes as typed.
+ */
+export function splitEntryLine(
+  text: string,
+): { key: string; value: string } | null {
+  const line = text.replace(/\r?\n$/, "");
+  if (line.includes("\n")) return null;
+  const m = ENTRY_RE.exec(line);
+  return m ? { key: m[2]!, value: m[4]! } : null;
+}
+
+/**
  * Append a pasted env block verbatim (comments, blank lines, and formatting
  * survive), following the file's trailing-newline style.
  */
