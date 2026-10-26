@@ -20,19 +20,19 @@ afterEach(() => {
 
 describe("Banner (announcement strip)", () => {
   it("renders its message", () => {
-    render(<Banner variant="warning">Klef is in early access</Banner>);
-    expect(screen.getByText("Klef is in early access")).toBeTruthy();
+    render(<Banner variant="warning">Klef has a new release</Banner>);
+    expect(screen.getByText("Klef has a new release")).toBeTruthy();
   });
 
   it("renders the brand variant (mark icon, still dismissible)", () => {
     render(
       <Banner variant="brand">
-        <span>Klef is in early access</span>
+        <span>Klef has a new release</span>
       </Banner>,
     );
-    expect(screen.getByText("Klef is in early access")).toBeTruthy();
+    expect(screen.getByText("Klef has a new release")).toBeTruthy();
     fireEvent.click(screen.getByLabelText("Dismiss"));
-    expect(screen.queryByText("Klef is in early access")).toBeNull();
+    expect(screen.queryByText("Klef has a new release")).toBeNull();
   });
 
   it("hides on dismiss", () => {
@@ -50,10 +50,10 @@ describe("Banner (announcement strip)", () => {
   });
 
   it("persists dismissal by id across mounts", () => {
-    render(<Banner id="early-access">Heads up</Banner>);
+    render(<Banner id="release-notice">Heads up</Banner>);
     fireEvent.click(screen.getByLabelText("Dismiss"));
     cleanup();
-    render(<Banner id="early-access">Heads up</Banner>);
+    render(<Banner id="release-notice">Heads up</Banner>);
     expect(screen.queryByText("Heads up")).toBeNull();
   });
 });
