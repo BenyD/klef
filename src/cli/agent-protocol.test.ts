@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { setupVault } from "../shared/crypto.ts";
 import {
+  describeLockAfter,
   describeTimeLeft,
   encodeFrame,
+  parseLockAfter,
   parseRequest,
   ProtocolError,
   vaultFingerprint,
@@ -73,5 +75,39 @@ describe("describeTimeLeft", () => {
 
   it("does not claim zero minutes while still unlocked", () => {
     expect(describeTimeLeft(59_000)).toBe("under a minute");
+  });
+
+  it("switches to hours and days for long timeouts", () => {
+    expect(describeTimeLeft(119 * 60_000)).toBe("119 min");
+    expect(describeTimeLeft(8 * 60 * 60_000)).toBe("8 hours");
+    expect(describeTimeLeft(6 * 24 * 60 * 60_000 + 5_000)).toBe("6 days");
+  });
+});
+
+describe("parseLockAfter", () => {
+  const WEEK = 7 * 24 * 60;
+
+  it("reads minutes, hours and days", () => {
+    expect(parseLockAfter("30m", WEEK)).toBe(30);
+    expect(parseLockAfter("30", WEEK)).toBe(30);
+    expect(parseLockAfter("8h", WEEK)).toBe(480);
+    expect(parseLockAfter("7d", WEEK)).toBe(WEEK);
+    expect(parseLockAfter("2H", WEEK)).toBe(120);
+  });
+
+  it("refuses anything it would have to guess at", () => {
+    for (const bad of ["", "forever", "0", "0h", "1.5h", "-1h", "8w", "8d", "h"]) {
+      expect(parseLockAfter(bad, WEEK)).toBeNull();
+    }
+  });
+});
+
+describe("describeLockAfter", () => {
+  it("says it the way it was asked for", () => {
+    expect(describeLockAfter(15)).toBe("15 minutes");
+    expect(describeLockAfter(1)).toBe("1 minute");
+    expect(describeLockAfter(60)).toBe("1 hour");
+    expect(describeLockAfter(480)).toBe("8 hours");
+    expect(describeLockAfter(7 * 24 * 60)).toBe("7 days");
   });
 });
