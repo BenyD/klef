@@ -10,8 +10,9 @@ import { keysOf } from "./env-drift.ts";
 export type KeyNames = ReadonlyMap<string, readonly string[]>;
 
 /**
- * Key names (never values) of every dotenv file in the workspace, for the
- * command menu. Files are decrypted in the browser only while `active` (the
+ * Key names (never values) of every dotenv file in the given workspaces, for
+ * the command menu (current workspace) and the key finder (all of them).
+ * Pass a memoized array: a new one each render restarts the work. Files are decrypted in the browser only while `active` (the
  * menu is open) and the vault is unlocked; each file's names are cached
  * against its current version id, so reopening the menu only decrypts what
  * changed. The decrypted text is dropped as soon as its names are read, and
@@ -19,7 +20,7 @@ export type KeyNames = ReadonlyMap<string, readonly string[]>;
  * UI) discards it.
  */
 export function useKeyNames(
-  workspace: WorkspaceNode | null,
+  workspaces: readonly WorkspaceNode[],
   active: boolean,
 ): { names: KeyNames; loading: boolean } {
   const { dek } = useVault();
@@ -30,10 +31,10 @@ export function useKeyNames(
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!active || !dek || !workspace) return;
+    if (!active || !dek) return;
     let cancelled = false;
-    const files = workspace.projects
-      .flatMap((p) => p.files)
+    const files = workspaces
+      .flatMap((w) => w.projects.flatMap((p) => p.files))
       .filter(
         (f) =>
           f.currentVersionId !== null && detectFormat(f.name) === "dotenv",
@@ -74,7 +75,7 @@ export function useKeyNames(
     return () => {
       cancelled = true;
     };
-  }, [active, dek, workspace]);
+  }, [active, dek, workspaces]);
 
   return { names, loading };
 }
