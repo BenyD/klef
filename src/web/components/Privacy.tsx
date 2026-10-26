@@ -114,6 +114,7 @@ const sections: DocSection[] = [
 export function Privacy() {
   return (
     <MarketingDoc
+      kicker="Privacy"
       title="Privacy policy"
       updated="October 26, 2026"
       lead={

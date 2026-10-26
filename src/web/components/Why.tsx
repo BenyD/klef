@@ -7,6 +7,7 @@ export function Why() {
   return (
     <MarketingLayout>
       <main className="marketing-page">
+        <p className="m-kicker">About</p>
         <h1>Why Klef</h1>
         <p className="marketing-page-lead">
           A short note on why this exists, from the person who built it.

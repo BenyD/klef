@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { MarketingDoc, type DocSection } from "./MarketingDoc.tsx";
+import { SecurityBoundary } from "./SecurityBoundary.tsx";
 
 // The prose version of SECURITY.md. When a claim here changes, change it
 // there too: that file is the one reviewers read.
@@ -238,6 +239,7 @@ const sections: DocSection[] = [
 export function Security() {
   return (
     <MarketingDoc
+      kicker="Security"
       title="How Klef keeps your secrets secret"
       lead={
         <>
@@ -247,6 +249,7 @@ export function Security() {
           only ever stores ciphertext it cannot read.
         </>
       }
+      intro={<SecurityBoundary />}
       sections={sections}
     >
       <div className="marketing-page-cta">

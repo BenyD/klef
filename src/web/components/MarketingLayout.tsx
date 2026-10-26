@@ -23,6 +23,7 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
         <div className="marketing-nav-sections">
           <a href="/#how-it-works">How it works</a>
           <a href="/#agents">Agents</a>
+          <a href="/#faq">FAQ</a>
           <Link to="/security">Security</Link>
         </div>
         <div className="marketing-nav-links">
