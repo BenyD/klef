@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { command } from "../invocation.ts";
 import { requireApi } from "../session.ts";
 import { readProjectConfig } from "../project-file.ts";
 import { allFiles, type ProjectConfig } from "../project-config.ts";
-import { openVault } from "../vault-key.ts";
+import { confirmOrFail, requireVault, shellArg, unlockedVault } from "../common.ts";
+import { CliError, done, emit, say, style, warn } from "../ui.ts";
 import { confirm } from "../prompt.ts";
-import { hasFlag, type ParsedArgs } from "../args.ts";
+import type { ParsedArgs } from "../args.ts";
 import { findProjects } from "../find-projects.ts";
 import { applySync, inspectProject } from "../project-sync.ts";
 import { redactAssignments } from "../output.ts";
@@ -39,70 +41,87 @@ export async function restore(
   prompt?: (question: string) => Promise<string>,
   ask: (question: string) => Promise<boolean> = confirm,
 ): Promise<number> {
-  const root = path.resolve(cwd, args.positionals[0] ?? ".");
+  // Real paths, so a checkout reached through a symlink (macOS's /tmp is
+  // /private/tmp) matches what this machine recorded when it last synced.
+  const root = await realpath(path.resolve(cwd, args.positionals[0] ?? ".")).catch(() =>
+    path.resolve(cwd, args.positionals[0] ?? "."),
+  );
+  const here = await realpath(cwd).catch(() => cwd);
   const shown = (dir: string) => path.relative(root, dir) || ".";
 
   const projects: { dir: string; config: ProjectConfig }[] = [];
-  let problems = 0;
+  const problems: { dir: string; error: string }[] = [];
   for (const dir of await findProjects(root)) {
     try {
       const config = await readProjectConfig(dir);
       if (config) projects.push({ dir, config });
     } catch (err) {
-      console.log(`${shown(dir)}: ${message(err)}`);
-      problems++;
+      problems.push({ dir: shown(dir), error: message(err) });
+      warn(`${shown(dir)}: ${message(err)}`);
     }
   }
 
   if (projects.length === 0) {
-    console.log(`No linked checkouts under ${root}. Clone your repos, then run this again.`);
-    return 1;
+    throw new CliError("not_linked", `No linked checkouts under ${root}.`, {
+      hint: "Clone your repos (their .klef.json is committed), then run this again.",
+    });
   }
 
-  console.log(`Linked checkouts under ${root}:`);
+  say(`Linked checkouts under ${root}:`);
+  const width = Math.max(...projects.map((p) => shown(p.dir).length));
   for (const { dir, config } of projects) {
     const files = allFiles(config).map((f) => f.file).join(", ");
-    console.log(`  ${shown(dir)}  ${config.workspace} / ${config.project}  (${files})`);
+    say(`  ${shown(dir).padEnd(width)}  ${config.workspace} / ${config.project}  ${style.dim(files)}`);
   }
   const question = projects.length === 1 ? "Restore it?" : `Restore these ${projects.length}?`;
-  if (!hasFlag(args, "yes", "y") && !(await ask(question))) {
-    console.log("Nothing restored.");
+  if (!(await confirmOrFail(question, "restore", args, ask))) {
+    say("Nothing restored.");
     return 1;
   }
 
   const api = await requireApi(env);
   const tree = await api.tree();
-  const vault = await api.vault();
-  if (!vault.exists || !vault.keyMaterial) {
-    console.error("This account has no vault yet. Set one up in the web app first.");
-    return 1;
-  }
-  const cipher = await openVault(vault.keyMaterial, env, prompt);
+  const cipher = await unlockedVault(await requireVault(api), env, prompt);
   const ctx = { api, tree, cipher, env };
 
+  const report: Record<string, unknown>[] = [];
   const leftOver: string[] = [];
   for (const { dir, config } of projects) {
-    console.log(`\n${shown(dir)}`);
+    say();
+    say(style.bold(shown(dir)));
+    const entry = { dir: shown(dir), workspace: config.workspace, project: config.project, files: [] as unknown[] };
+    report.push(entry);
     try {
       const files = await inspectProject(ctx, dir, config, allFiles(config));
-      for (const line of await applySync(ctx, dir, config, files, new Set(["in-sync", "pull"]))) {
-        console.log(`  ${line}`);
-      }
+      for (const line of await applySync(ctx, dir, config, files, new Set(["in-sync", "pull"]))) done(line, "  ");
       for (const file of files) {
         const { action, reason } = file.decision;
+        entry.files.push({ path: path.relative(dir, file.destination), action, reason });
         if (action === "pull") continue;
-        console.log(`  ${path.relative(dir, file.destination)}: ${reason}`);
+        say(`  ${path.relative(dir, file.destination)}  ${action === "in-sync" ? style.dim(reason) : reason}`);
         if (action !== "in-sync" && action !== "absent") leftOver.push(dir);
       }
     } catch (err) {
-      console.log(`  ${message(err)}`);
-      problems++;
+      problems.push({ dir: shown(dir), error: message(err) });
+      warn(`${shown(dir)}: ${message(err)}`);
     }
   }
 
   const needSync = [...new Set(leftOver)];
+  const data = { root, projects: report, problems };
   if (needSync.length) {
-    console.log(`\nRun \`${command("sync")}\` in ${needSync.map(shown).join(", ")} to settle the rest.`);
+    throw new CliError(
+      "conflict",
+      `Restored what could be pulled. ${needSync.length === 1 ? "1 checkout needs" : `${needSync.length} checkouts need`} a sync to settle the rest.`,
+      { next: needSync.map((dir) => command(`sync -C ${shellArg(cdPath(here, dir))}`)), data },
+    );
   }
-  return needSync.length || problems ? 1 : 0;
+  emit(data);
+  return problems.length ? 1 : 0;
+}
+
+/** A directory to pass to -C: relative when that is short, absolute when not. */
+function cdPath(from: string, dir: string): string {
+  const rel = path.relative(from, dir) || ".";
+  return rel.split(path.sep).filter((part) => part === "..").length > 2 ? dir : rel;
 }

@@ -105,8 +105,11 @@ describe("klef setup <targets>", () => {
   // An agent has no terminal to answer on. It should be told to ask in chat
   // and rerun with --yes, not handed the generic terminal error.
   it("tells an agent with no terminal how to proceed once the user agrees", async () => {
-    expect(await run("setup cursor", NO_TERMINAL)).toBe(1);
-    expect(output.join("\n")).toMatch(/Ask the user first, then run `klef setup cursor --yes`/);
+    await expect(run("setup cursor", NO_TERMINAL)).rejects.toMatchObject({
+      code: "confirmation_required",
+      exitCode: 2,
+      next: [{ command: "klef setup cursor --yes" }],
+    });
     expect(await exists(path.join(cwd, ".cursor/rules/klef.mdc"))).toBe(false);
   });
 
@@ -123,7 +126,7 @@ describe("klef setup <targets>", () => {
     output = [];
     expect(await run("setup all", ask)).toBe(0);
     expect(ask).not.toHaveBeenCalled();
-    expect(output.at(-1)).toBe("  Nothing to write.");
+    expect(output.at(-1)).toBe("     Nothing to write.");
   });
 
   it("keeps the user's own CLAUDE.md and AGENTS.md content", async () => {
@@ -144,8 +147,7 @@ describe("klef setup <targets>", () => {
   });
 
   it("installs the skill for every project with --global", async () => {
-    expect(await run("setup --global --yes")).toBe(1);
-    expect(output.join("\n")).toMatch(/cursor can only be set up per project/);
+    await expect(run("setup --global --yes")).rejects.toThrow(/cursor can only be set up per project/);
 
     expect(await run("setup claude --global --yes")).toBe(0);
     expect(await exists(path.join(home, ".claude/skills/klef/SKILL.md"))).toBe(true);
@@ -153,8 +155,10 @@ describe("klef setup <targets>", () => {
   });
 
   it("rejects a target it does not know", async () => {
-    expect(await run("setup vscode --yes")).toBe(1);
-    expect(output.join("\n")).toMatch(/Unknown target "vscode"/);
+    await expect(run("setup vscode --yes")).rejects.toMatchObject({
+      code: "usage",
+      message: expect.stringMatching(/Unknown target "vscode"/),
+    });
   });
 });
 
@@ -237,23 +241,29 @@ describe("klef setup (everything)", () => {
 
   // Run by an agent: every step that needs the user says what to hand them.
   it("tells an agent to ask the user which project", async () => {
-    expect(await run("setup", yes, { line: NO_TERMINAL })).toBe(1);
-    expect(output.join("\n")).toMatch(/Ask the user which one, then run `klef setup --workspace <workspace> --project <project>`/);
+    await expect(run("setup", yes, { line: NO_TERMINAL })).rejects.toMatchObject({
+      code: "confirmation_required",
+      next: [{ command: "klef setup --workspace <workspace> --project <project>" }],
+    });
     expect(await exists(path.join(cwd, ".klef.json"))).toBe(false);
   });
 
   it("hands the passphrase step to the user when an agent runs it", async () => {
     const pullFile = vi.fn(async () => 0);
-    expect(await run("setup --project lensdrop --yes", NO_TERMINAL, { unlock: NO_TERMINAL, pullFile })).toBe(1);
+    await expect(
+      run("setup --project lensdrop --yes", NO_TERMINAL, { unlock: NO_TERMINAL, pullFile }),
+    ).rejects.toMatchObject({
+      code: "locked",
+      exitCode: 4,
+      next: [{ command: "klef unlock" }, { command: "klef pull --all" }],
+    });
     // Agent files went in, because --yes says the user already agreed.
     expect(await exists(path.join(cwd, ".claude/skills/klef/SKILL.md"))).toBe(true);
-    expect(output.join("\n")).toMatch(/Ask them to run `klef unlock` in their own terminal, then run `klef pull --all`/);
     expect(pullFile).not.toHaveBeenCalled();
   });
 
   it("stops when the vault has nothing to link", async () => {
     const account = async () => ({ email: "me@example.com", tree: { workspaces: [] } });
-    expect(await run("setup", yes, { account })).toBe(1);
-    expect(output.join("\n")).toMatch(/no env files yet/);
+    await expect(run("setup", yes, { account })).rejects.toThrow(/no env files yet/);
   });
 });

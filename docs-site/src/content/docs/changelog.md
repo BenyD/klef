@@ -17,6 +17,7 @@ On `main`, not yet published to npm (the latest published version is 0.5.0):
 - `klef unlock` and `klef lock`: one passphrase for a run of commands, held by a background agent; `--for` keeps it for up to 7 days of idle time.
 - `pull --all` and `push --all`: every file listed in `.klef.json`.
 - `link` records `.env.local` and `.env.production` when the project has them.
+- Conventional output and input for every command: `--json` everywhere, as one object with a fixed error code and runnable `next` commands; stable exit codes; per-command help with examples (`klef help <command>`); unknown commands and flags rejected with a suggestion; colour that respects `NO_COLOR`; `-q`, `-y`, `--no-input` and `-C`; shell completion; and no prompt where nobody can answer it. `klef status` reports each file's sync state without the passphrase. The JSON of `status`, `list` and `audit` moved into the envelope's `data`.
 
 ## October 2026
 

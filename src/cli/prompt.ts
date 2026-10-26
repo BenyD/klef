@@ -10,15 +10,16 @@
 // For the same reason there is no --passphrase flag anywhere in this CLI:
 // argv is visible to `ps` and to the process that spawned it.
 
+import { CliError } from "./ui.ts";
 import { createInterface } from "node:readline";
 import { closeSync, openSync } from "node:fs";
 import { ReadStream, WriteStream } from "node:tty";
 
-export class NoTerminalError extends Error {
+export class NoTerminalError extends CliError {
   constructor() {
-    super(
-      "This needs an interactive terminal. Run it yourself rather than through a script or agent.",
-    );
+    super("no_terminal", "This needs a person at an interactive terminal.", {
+      hint: "Run it yourself rather than through a script or an agent.",
+    });
   }
 }
 

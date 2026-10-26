@@ -8,9 +8,14 @@
 // stays inside the directory the command was run from. Absolute paths and
 // `../` escapes are refused rather than silently resolved.
 
+import { CliError } from "./ui.ts";
 import path from "node:path";
 
-export class UnsafePathError extends Error {}
+export class UnsafePathError extends CliError {
+  constructor(message: string) {
+    super("unsafe_path", message);
+  }
+}
 
 /** Shared by pull (writing) and push (reading), so the wording stays neutral. */
 const OUTSIDE = "Refusing to leave this directory";

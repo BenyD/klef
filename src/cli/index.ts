@@ -3,8 +3,20 @@
 //
 // Entry point. Dispatch, and the one place errors become exit codes.
 
-import { parseArgs, hasFlag } from "./args.ts";
-import { HELP } from "./help.ts";
+import { realpathSync, statSync } from "node:fs";
+import path from "node:path";
+import { parseArgs, hasFlag, flagValue, type ParsedArgs } from "./args.ts";
+import {
+  commandHelp,
+  completionScript,
+  COMMANDS,
+  findCommand,
+  rootHelp,
+  suggest,
+  topicHelp,
+  TOPICS,
+  unknownFlag,
+} from "./commands-table.ts";
 import { login } from "./commands/login.ts";
 import { logout } from "./commands/logout.ts";
 import { status } from "./commands/status.ts";
@@ -22,70 +34,131 @@ import { setup, defaultSetupDeps } from "./commands/setup.ts";
 import { AGENT_COMMAND } from "./agent-spawn.ts";
 import { runAgentProcess } from "./agent.ts";
 import { CLI_VERSION } from "./version.ts";
-import { redactAssignments } from "./output.ts";
+import { command as suggested, invocationName } from "./invocation.ts";
+import { CliError, emit, EXIT, modeFor, reportError, setUiMode, uiMode } from "./ui.ts";
 
-async function main(): Promise<number> {
-  const args = parseArgs(process.argv.slice(2));
-  const env = process.env;
-  const cwd = process.cwd();
+type Run = (args: ParsedArgs, env: NodeJS.ProcessEnv, cwd: string) => Promise<number>;
 
-  if (hasFlag(args, "v", "version")) {
-    console.log(CLI_VERSION);
-    return 0;
+const RUN: Record<string, Run> = {
+  setup: (args, env, cwd) => setup(args, cwd, defaultSetupDeps(args, env, cwd)),
+  login: (args, env) => login(args, env),
+  logout: (_args, env) => logout(env),
+  status: (args, env, cwd) => status(args, env, cwd),
+  link: (args, env, cwd) => link(args, env, cwd),
+  list: (args, env) => list(args, env),
+  pull: (args, env, cwd) => pull(args, env, cwd),
+  push: (args, env, cwd) => push(args, env, cwd),
+  sync: (args, env, cwd) => sync(args, env, cwd),
+  diff: (args, env, cwd) => diff(args, env, cwd),
+  audit: (args, env, cwd) => audit(args, env, cwd),
+  restore: (args, env, cwd) => restore(args, env, cwd),
+  unlock: (args, env) => unlock(args, env),
+  lock: (_args, env) => lock(env),
+};
+
+function resolveCwd(args: ParsedArgs): string {
+  const dir = flagValue(args, "cwd");
+  if (dir === null) {
+    if (hasFlag(args, "cwd")) throw new CliError("usage", "--cwd needs a directory.");
+    return process.cwd();
   }
-
-  if (args.command === null || args.command === "help" || hasFlag(args, "h", "help")) {
-    console.log(HELP);
-    return args.command === null ? 1 : 0;
+  const resolved = path.resolve(dir);
+  let isDir = false;
+  try {
+    isDir = statSync(resolved).isDirectory();
+  } catch {
+    // Reported below.
   }
-
-  switch (args.command) {
-    case "login":
-      return login(args, env);
-    case "logout":
-      return logout(env);
-    case "status":
-      return status(args, env, cwd);
-    case "list":
-      return list(args, env);
-    case "link":
-      return link(args, env, cwd);
-    case "pull":
-      return pull(args, env, cwd);
-    case "push":
-      return push(args, env, cwd);
-    case "audit":
-      return audit(args, env, cwd);
-    case "sync":
-      return sync(args, env, cwd);
-    case "diff":
-      return diff(args, env, cwd);
-    case "restore":
-      return restore(args, env, cwd);
-    case "unlock":
-      return unlock(args, env);
-    case "lock":
-      return lock(env);
-    case "setup":
-      return setup(args, cwd, defaultSetupDeps(args, env, cwd));
-    case AGENT_COMMAND:
-      return runAgentProcess();
-    default:
-      console.error(`Unknown command "${args.command}". Try \`klef help\`.`);
-      return 1;
-  }
+  if (!isDir) throw new CliError("usage", `--cwd: ${dir} is not a directory.`);
+  // The real path, as process.cwd() would give, so sync records match.
+  return realpathSync(resolved);
 }
 
-try {
-  process.exitCode = await main();
-} catch (err) {
-  // Errors reach the user as one line. Stack traces are noise here, and a
-  // stack could carry values a message wouldn't.
-  //
-  // Redacted on the way out as a backstop: nothing is supposed to put an env
-  // line in an error, but this is the last place a message crosses into a
-  // terminal, and "no value is ever printed" should not rest on every future
-  // error string being careful.
-  console.error(redactAssignments(err instanceof Error ? err.message : String(err)));
-  process.exitCode = 1;
+function help(args: ParsedArgs): number {
+  const cli = invocationName();
+  const topic = args.command === "help" ? args.positionals[0] : args.command;
+  if (!topic) {
+    console.log(rootHelp(cli, CLI_VERSION));
+    return EXIT.ok;
+  }
+  if ((TOPICS as readonly string[]).includes(topic)) {
+    console.log(topicHelp(topic as (typeof TOPICS)[number], cli));
+    return EXIT.ok;
+  }
+  const spec = findCommand(topic);
+  if (!spec) throw unknownCommand(topic);
+  console.log(commandHelp(spec, cli));
+  return EXIT.ok;
+}
+
+function unknownCommand(name: string): CliError {
+  const names = COMMANDS.filter((c) => !c.hidden).flatMap((c) => [c.name, ...(c.aliases ?? [])]);
+  const guess = suggest(name, names);
+  return new CliError("usage", `Unknown command "${name}".${guess ? ` Did you mean "${guess}"?` : ""}`, {
+    next: [suggested("help")],
+  });
+}
+
+async function main(args: ParsedArgs): Promise<number> {
+  const env = process.env;
+
+  if (hasFlag(args, "version") && (args.command === null || !hasFlag(args, "help"))) {
+    if (uiMode().json) emit({ version: CLI_VERSION });
+    else console.log(CLI_VERSION);
+    return EXIT.ok;
+  }
+  if (args.command === null || args.command === "help" || hasFlag(args, "help")) return help(args);
+
+  const spec = findCommand(args.command);
+  if (!spec) throw unknownCommand(args.command);
+
+  const bad = unknownFlag(spec, args.flags.keys());
+  if (bad) {
+    const shown = bad.flag.length === 1 ? `-${bad.flag}` : `--${bad.flag}`;
+    throw new CliError(
+      "usage",
+      `Unknown flag ${shown} for ${spec.name}.${bad.suggestion ? ` Did you mean --${bad.suggestion}?` : ""}`,
+      { next: [suggested(`help ${spec.name}`)] },
+    );
+  }
+
+  if (spec.name === "completion") {
+    const shell = args.positionals[0];
+    if (shell !== "bash" && shell !== "zsh" && shell !== "fish") {
+      throw new CliError("usage", "Say which shell: bash, zsh or fish.", { next: [suggested("completion zsh")] });
+    }
+    process.stdout.write(completionScript(shell));
+    return EXIT.ok;
+  }
+
+  return RUN[spec.name]!(args, env, resolveCwd(args));
+}
+
+const args = parseArgs(process.argv.slice(2));
+
+if (args.command === AGENT_COMMAND) {
+  // The unlock agent's own process: no CLI surface at all.
+  process.exitCode = await runAgentProcess();
+} else {
+  setUiMode(
+    modeFor(
+      {
+        json: hasFlag(args, "json"),
+        quiet: hasFlag(args, "quiet"),
+        noInput: hasFlag(args, "no-input"),
+        noColor: hasFlag(args, "no-color"),
+      },
+      process.env,
+      { stdoutTty: process.stdout.isTTY === true, stderrTty: process.stderr.isTTY === true },
+    ),
+    findCommand(args.command ?? "")?.name ?? args.command ?? "klef",
+  );
+  try {
+    process.exitCode = await main(args);
+  } catch (err) {
+    // Errors reach the user as one line plus a next step. Stack traces are
+    // noise here, and a stack could carry values a message wouldn't. The
+    // message is redacted on the way out as a backstop (see ui.ts).
+    process.exitCode = reportError(err);
+  }
 }

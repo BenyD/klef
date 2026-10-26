@@ -1,6 +1,6 @@
 ---
 title: CLI overview
-description: Install the Klef CLI, sign in, and the rules every command follows. The full command reference is on its way.
+description: Install the Klef CLI, the flags every command takes, how output, colour and prompts work, and where it keeps things.
 sidebar:
   order: 0
 ---
@@ -12,17 +12,58 @@ npx @klefsh/cli setup        # run without installing
 npm install -g @klefsh/cli   # or install the `klef` command
 ```
 
-:::note[Reference coming soon]
-The CLI's commands, flags, `--json` output and exit codes are being reworked to follow common CLI conventions. This page will carry the full reference for every command once that lands, so it documents the new shapes rather than ones about to change. Until then, `klef help` prints the commands your installed version has.
-:::
+`klef help` lists the commands, `klef help <command>` shows one command's flags, examples and `--json` shape, and `klef <command> --help` does the same. Every command is described in [Commands](/docs/cli/commands/); the machine-readable output and exit codes are in [JSON output and exit codes](/docs/cli/json/).
 
 ## Rules every command follows
 
-- **No secret value is ever printed.** Not to stdout, not to stderr. There is no `klef get` and no `--print`. `pull` writes a file and reports a count; `push` reports how many lines changed; `diff` and `sync` name keys, never values.
+- **No secret value is ever printed.** Not to stdout, not to stderr. There is no `klef get` and no `--print`. `pull` writes a file and reports a count; `push` reports how many lines changed; `diff` and `sync` name keys, never values. Errors are redacted on the way out as a backstop.
 - **The passphrase comes from the terminal.** It is read from `/dev/tty`, never from a flag, stdin or an environment variable. If the CLI cannot turn off echo on the stream it has, it refuses to prompt rather than show what you type.
 - **Plaintext stays inside the working directory.** Files are written with mode `0600`, and absolute paths and `../` escapes are refused.
 - **It cannot run unattended.** Every decrypt needs a person to have typed the passphrase, either for that command or into `klef unlock` within its idle window.
 - **It never writes to Vercel, GitHub or Cloudflare.** `klef audit` only lists key names there.
+- **No telemetry and no update checks.** The CLI talks to your Klef server and, for `audit`, your own platform CLIs. Nothing else.
+
+## Global flags
+
+Every command takes these, before or after the command name:
+
+| Flag | Does |
+| --- | --- |
+| `--json` | Print exactly one JSON object on stdout. See [JSON output](/docs/cli/json/) |
+| `-q`, `--quiet` | Print only what changed (the ✓ lines) and warnings |
+| `-y`, `--yes` | Answer yes to confirmations. Needed wherever nobody can answer a prompt |
+| `--no-input` | Never prompt; fail with the command to run instead |
+| `--no-color` | No colour, even on a terminal |
+| `-C`, `--cwd <dir>` | Run as if started in `<dir>` |
+| `-h`, `--help` | Show help for klef or a command |
+| `--version` | Print the version (`-v` works too) |
+
+Short flags combine (`-qy`), `--flag=value` and `--flag value` both work, and `--` ends the flags. An unknown command or flag is an error (exit 2) with a suggestion, never silently ignored.
+
+## Output and colour
+
+- **stdout carries the result**: the human lines, or with `--json` one object and nothing else, so `klef status --json | jq` always works.
+- **stderr carries everything else**: errors, hints, progress, and the code `klef login` asks you to compare.
+- A finished step starts with `✓`, a warning with `!` and an error with `✗`. Where the locale is not UTF-8, or `TERM=dumb`, they are `ok`, `warn` and `error`.
+- **Colour only on a terminal**, decided for stdout and stderr separately. `NO_COLOR` (any value), `CLICOLOR=0`, `TERM=dumb` and `--no-color` turn it off. `FORCE_COLOR` (any value but `0`) or `CLICOLOR_FORCE` turn it on off a terminal. `--json` output is never coloured.
+
+## Prompts, scripts and agents
+
+klef asks two kinds of question: a yes before something that writes (push, restore, writing agent files), and the passphrase.
+
+- **It never asks where nobody can answer.** Under `--json`, `--no-input`, `KLEF_NO_INPUT`, `CI`, with no terminal, or when a coding agent is detected (Claude Code, Cursor, Codex, Gemini CLI and others set a marker variable), a command that needs a yes stops with `confirmation_required` (exit 2) and the exact command to rerun with `--yes` once you have agreed.
+- **The passphrase is always a person's.** Where it is needed and there is no terminal, or prompts are off, the command stops with `locked` (exit 4) and `klef unlock` for a person to run in their own terminal. Later commands, from anywhere, use the unlock agent until it locks.
+- Detecting an agent changes only presentation and confirmations, never how secrets are handled.
+
+## Shell completion
+
+```bash
+klef completion zsh > "${fpath[1]}/_klef"                  # zsh
+klef completion bash >> ~/.bashrc                         # bash
+klef completion fish > ~/.config/fish/completions/klef.fish  # fish
+```
+
+The scripts are static: completing a command never runs klef.
 
 ## Where it keeps things
 
@@ -40,13 +81,10 @@ The CLI's commands, flags, `--json` output and exit codes are being reworked to 
 | `KLEF_API_URL` | Points the CLI at a self-hosted Klef (default `https://klef.sh`) |
 | `KLEF_TOKEN` | Uses this access token instead of the stored one |
 | `KLEF_NO_KEYCHAIN` | Stores the token in a `0600` file instead of the OS keychain |
+| `KLEF_CONFIG_DIR` | Where klef keeps its state (default `~/.config/klef`) |
+| `KLEF_AGENT_SOCK` | Where the unlock agent's socket lives |
+| `KLEF_NO_INPUT` | Never prompt, like `--no-input` |
+| `CI` | Set by CI systems; klef then never prompts |
+| `NO_COLOR`, `FORCE_COLOR` | Colour off, or on off a terminal |
 
-## In the meantime
-
-The guides cover the everyday commands:
-
-- [Quickstart](/docs/quickstart/): `setup`
-- [Syncing `.env.local` and `.env.production`](/docs/guides/sync/): `sync`, `diff`, `pull`, `push`, `unlock`, `lock`
-- [Restoring on a new Mac](/docs/guides/new-machine/): `login`, `restore`
-- [Using Klef with Claude Code and Cursor](/docs/guides/coding-agents/): `setup` targets
-- [Auditing Vercel, GitHub and Cloudflare](/docs/guides/audit/): `audit`
+Precedence is flags, then environment, then `.klef.json`, then defaults. There is no variable or flag for the passphrase, by design.

@@ -18,6 +18,7 @@ import { pull } from "./commands/pull.ts";
 import { push } from "./commands/push.ts";
 import { unlock } from "./commands/unlock.ts";
 import { lock } from "./commands/lock.ts";
+import { NoTerminalError } from "./prompt.ts";
 
 // pull, push and unlock end to end against an in-memory API: real crypto, real
 // files, real agent socket, fake network. What these pin down is the point of
@@ -179,14 +180,28 @@ describe("pull --all", () => {
     const mobile = path.join(cwd, "apps/mobile/.env.local");
     expect(await readFile(mobile, "utf8")).toBe(FILES["mobile.env.local"]);
     expect((await stat(mobile)).mode & 0o777).toBe(0o600);
-    expect(output).toContain("Wrote 1 variable to apps/mobile/.env.local");
+    expect(output).toContain("✓ Wrote 1 variable to apps/mobile/.env.local");
   });
 
   it("writes nothing when one listed file has no saved version", async () => {
     await seedVersions();
     versions.delete(".env.production");
 
-    expect(await pull(parseArgs(["pull", "--all"]), env, cwd, never)).toBe(1);
+    await expect(pull(parseArgs(["pull", "--all"]), env, cwd, never)).rejects.toMatchObject({
+      code: "not_found",
+      exitCode: 6,
+    });
+    await expect(stat(path.join(cwd, ".env.local"))).rejects.toThrow();
+  });
+
+  it("tells an agent to hand unlocking to the user when there is no terminal", async () => {
+    await seedVersions();
+    const noTerminal = () => Promise.reject(new NoTerminalError());
+    await expect(pull(parseArgs(["pull", "--all"]), env, cwd, noTerminal)).rejects.toMatchObject({
+      code: "locked",
+      exitCode: 4,
+      next: [{ command: "klef unlock" }],
+    });
     await expect(stat(path.join(cwd, ".env.local"))).rejects.toThrow();
   });
 
@@ -220,7 +235,7 @@ describe("push --all", () => {
     expect(versions.get(".env.local")).toHaveLength(1);
     expect(await stored(".env.production")).toBe(`${FILES[".env.production"]}NEW=1\n`);
     expect(await stored("mobile.env.local")).toBe("# Mobile\nEXPO_KEY=rotated\n");
-    expect(output).toContain(".env.local is already up to date. Nothing to push.");
+    expect(output).toContain("✓ .env.local is already up to date");
   });
 
   it("reads every file before asking for anything, and stops on a missing one", async () => {
@@ -229,9 +244,10 @@ describe("push --all", () => {
     const fetchSpy = vi.fn(fakeFetch);
     vi.stubGlobal("fetch", fetchSpy);
 
-    expect(await push(parseArgs(["push", "--all", "-y"]), env, cwd, never, yes)).toBe(1);
+    await expect(push(parseArgs(["push", "--all", "-y"]), env, cwd, never, yes)).rejects.toThrow(
+      "Can't read apps/mobile/.env.local here. Nothing pushed.",
+    );
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(output).toContain("Can't read apps/mobile/.env.local here. Nothing to push.");
   });
 
   it("pushes nothing when the confirmation is declined", async () => {
@@ -280,7 +296,7 @@ describe("unlock, then push and pull", () => {
   it("does not prompt again when already unlocked", async () => {
     await unlock(parseArgs(["unlock"]), env, counting(), startInProcess);
     expect(await unlock(parseArgs(["unlock"]), env, never, startInProcess)).toBe(0);
-    expect(output.at(-1)).toMatch(/^Already unlocked\. Locks in \d+ min without use\.$/);
+    expect(output.at(-1)).toMatch(/^✓ Already unlocked\. Locks in \d+ min without use$/);
   });
 
   it("prompts again after lock", async () => {
@@ -293,12 +309,12 @@ describe("unlock, then push and pull", () => {
     const prompt = counting();
     expect(await pull(parseArgs(["pull"]), env, cwd, prompt)).toBe(0);
     expect(prompt.calls).toBe(1);
-    expect(output).toContain("Locked.");
+    expect(output).toContain("✓ Locked. The key is gone from memory");
   });
 
   it("--for holds the key longer than the 15-minute default", async () => {
     expect(await unlock(parseArgs(["unlock", "--for", "8h"]), env, counting(), startInProcess)).toBe(0);
-    expect(output.at(-1)).toMatch(/^Unlocked\. Locks after 8 hours without use/);
+    expect(output).toContain("✓ Unlocked. Locks after 8 hours without use");
     const status = await agentStatus(env.KLEF_AGENT_SOCK!);
     expect(status?.idleMinutes).toBe(8 * 60);
     expect(status?.msLeft).toBeGreaterThan(7 * 60 * 60_000);
@@ -306,7 +322,9 @@ describe("unlock, then push and pull", () => {
 
   it("refuses a bad --for before asking for the passphrase", async () => {
     for (const bad of ["forever", "0m", "8 weeks", "8d", "-1h"]) {
-      expect(await unlock(parseArgs(["unlock", `--for=${bad}`]), env, never, startInProcess)).toBe(1);
+      await expect(unlock(parseArgs(["unlock", `--for=${bad}`]), env, never, startInProcess)).rejects.toMatchObject({
+        code: "usage",
+      });
     }
     expect(await agentStatus(env.KLEF_AGENT_SOCK!)).toBeNull();
   });

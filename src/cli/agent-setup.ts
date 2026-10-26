@@ -48,7 +48,7 @@ export function isSetupTarget(value: string): value is SetupTarget {
 /** One line for the description fields that decide when an agent loads this. */
 const SUMMARY =
   "Sync this project's .env files with the Klef vault using the klef CLI " +
-  "(status, pull, push, unlock) without ever reading or printing a secret value.";
+  "(status, sync, pull, push, unlock) without ever reading or printing a secret value.";
 
 /**
  * The shared body. `cli` is how the user reaches the CLI ("klef" or
@@ -78,43 +78,63 @@ value, which is what makes it safe for you to run.
 \`.klef.json\` (safe to read and commit: names only) links this directory to a
 project in the vault. \`file\` is the default env file, and the optional
 \`files\` list is everything \`--all\` covers, each with the local \`path\` it
-lives at. Run \`${cli} status\` to see sign-in, the link, and whether the vault
-is unlocked; add \`--json\` to parse it.
+lives at.
+
+### Start with status
+
+Run \`${cli} status --json\` first. In one call, without the passphrase, it
+says who is signed in, what this directory is linked to, whether the vault is
+unlocked, each file's state (\`in-sync\`, \`edited-here\`, \`changed-in-vault\`,
+\`missing-here\`, ...), and \`next\`: the commands that would move things on.
 
 ### Commands
 
-    ${cli} status             # signed in? linked to what? unlocked?
-    ${cli} list --json        # files in the vault, names only
-    ${cli} pull --all         # write every file in .klef.json to disk
-    ${cli} push --all --yes   # save local changes as new versions
-    ${cli} pull --file <name> # one file instead of all of them
+    ${cli} status --json         # the one call to start with
+    ${cli} sync --dry-run --json # what a sync would do, writing nothing
+    ${cli} sync --yes            # pull or push each file, whichever side changed
+    ${cli} diff --all --json     # which keys differ (names, never values)
+    ${cli} pull --all            # write every file in .klef.json to disk
+    ${cli} push --all --yes      # save local changes as new versions
+    ${cli} list --json           # files in the vault, names only
 
-- **Locked vault**: pull and push need the passphrase. If \`status\` says
-  locked, ask the user to run \`${cli} unlock\` themselves in their own
-  terminal, and wait. It keeps the key in memory until it has gone unused
-  for 15 minutes (or as long as \`--for\` says), and after that you can run
-  pull and push. Do not retry a command that fails
-  with "This needs an interactive terminal"; hand it to the user instead.
-- **Not signed in or not linked**: run \`${cli} setup\`. Sign-in opens the
-  browser for the user to approve; when it needs a choice from the user, it
-  prints the exact command to rerun once they have answered.
+With \`--json\` every command prints one object: \`{ "ok": true, "data": ... }\`,
+or \`{ "ok": false, "error": { "code", "message", "next": [...] } }\`. Act on
+\`error.code\`, not on the wording, and run \`next\` commands as they are. The
+exit code says the same (\`${cli} help exit-codes\`). klef never prompts an
+agent: where it would need a person, it stops with one of these codes.
+
+- **\`locked\` or \`no_terminal\` (exit 4)**: the passphrase is needed. Ask the
+  user to run \`${cli} unlock\` themselves in their own terminal, and wait. It
+  keeps the key in memory until it has gone unused for 15 minutes (or as long
+  as \`--for\` says), and after that you can run pull, push and sync. Never
+  retry in a loop; hand it to the user.
+- **\`confirmation_required\` (exit 2)**: the command writes something and
+  needs a yes. Say what will change (the plan is in the output), get a yes in
+  the chat, then run the \`next\` command, which adds \`--yes\`.
+- **\`conflict\` (exit 5)**: both sides changed and nothing was written. Show
+  the user which keys differ (in \`data\`) and let them choose; \`next\` holds
+  the pull and push that settle it.
+- **\`not_signed_in\` or \`not_linked\` (exit 3 or 6)**: run \`${cli} setup\`.
+  Sign-in opens the browser for the user to approve; when it needs a choice
+  from the user, it stops with the exact command to rerun once they answer.
 - **Before pushing**, say which files will change and get a yes in the chat,
   then use \`--yes\`. Push reports only how many lines changed, and every
   earlier version is kept, so a bad push can be restored in the web app.
 - **Before pulling** over a file the user may have edited, ask first: pull
-  overwrites the local copy and that cannot be undone.
+  overwrites the local copy and that cannot be undone. \`sync\` is the safe
+  choice: it never pulls over a local edit.
 - After a pull, check git does not track what it wrote:
   \`git ls-files --error-unmatch <path>\` should fail for every env file. If
   one is tracked, tell the user straight away.
-- Newer versions of the CLI may add more commands. \`${cli} help\` lists
-  them, and the same rules apply to every one of them.
+- \`${cli} help <command>\` shows a command's flags and its \`--json\` shape.
+  Newer versions may add commands; the same rules apply to every one.
 
 ### Deploy platforms (Vercel, GitHub, Cloudflare)
 
 Syncing the local env files with Klef (status, pull, push) is routine; do it
 whenever the work calls for it. The platforms are different: Klef only
 audits them, read-only, comparing the variable names set on each platform
-with the local file. If \`${cli} help\` lists an audit command, use it:
+with the local file, with \`${cli} audit --json\`:
 
 - Run it when it is relevant: setting up a project, a deploy failing on a
   missing variable, or the user asking.

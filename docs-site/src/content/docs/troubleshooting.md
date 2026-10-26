@@ -23,13 +23,21 @@ A network error, not a problem with your data; nothing was changed. Check your c
 
 ## CLI
 
-### "This needs an interactive terminal"
+### "The vault is locked, and only a person at a terminal can unlock it"
 
-The command needed your passphrase but was not run from a terminal it can prompt on, for example when an agent or a script ran it. Run `klef unlock` yourself in a terminal; later commands, from anywhere, use the unlock agent until it locks. On Windows, where there is no unlock agent yet, run the command yourself.
+The command needed your passphrase but was not run from a terminal it can prompt on, for example when an agent or a script ran it (exit 4, `locked`). Run `klef unlock` yourself in a terminal; later commands, from anywhere, use the unlock agent until it locks. On Windows, where there is no unlock agent yet, run the command yourself.
+
+### "... needs a yes before it changes anything"
+
+A command that writes, such as `push`, `sync`, `restore` or `setup`, needed a confirmation and nobody could answer it: no terminal, `--json`, `--no-input`, `CI`, or an agent ran it (exit 2, `confirmation_required`). Check what it said it would change, then rerun the command it printed, which adds `--yes`.
+
+### "Unknown flag" or "Unknown command"
+
+The CLI rejects anything it does not recognise rather than ignoring it (exit 2), and suggests the closest match. `klef help <command>` lists a command's flags.
 
 ### "Your access token was rejected"
 
-The token expired or was revoked. Run `klef login` again. If `KLEF_TOKEN` is set in your environment, it takes precedence over the stored token, so update or unset it.
+The token expired or was revoked (exit 3). Run `klef login` again. If `KLEF_TOKEN` is set in your environment, it takes precedence over the stored token, so update or unset it.
 
 ### `klef setup` says the vault has no env files yet
 
@@ -43,9 +51,9 @@ Both sides changed since this machine last synced, or this machine has never syn
 
 `klef restore` only pulls, and never overwrites a local file that differs from the vault. It names those files; run `klef sync` in that checkout.
 
-### "No .klef.json here"
+### "No .klef.json here, so this directory is not linked"
 
-The directory is not linked. Run `klef setup` (or `klef link`) in the repo root.
+Exit 6. Run `klef setup` (or `klef link`) in the repo root, or point the command at the repo with `-C <dir>`.
 
 ### `klef unlock` refuses to start
 
