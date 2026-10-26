@@ -109,9 +109,27 @@ describe("formatListing", () => {
     expect(out).toContain("  Personal / klef");
   });
 
-  it("annotates the environment and an unsaved file", () => {
+  it("annotates an unsaved file, without repeating what the name says", () => {
     const out = render(TREE);
-    expect(out).toContain(".env.production  (production, no saved version yet)");
+    // .env.production marked production: the label adds nothing.
+    expect(out).toContain(".env.production  (no saved version yet)");
+  });
+
+  it("annotates an environment the name doesn't imply", () => {
+    const tree: VaultTree = {
+      workspaces: [
+        {
+          ...TREE.workspaces[0]!,
+          projects: [
+            {
+              ...TREE.workspaces[0]!.projects[0]!,
+              files: [file(".env", "production", "v1")],
+            },
+          ],
+        },
+      ],
+    };
+    expect(render(tree)).toContain(".env  (production)");
   });
 
   it("never offers an example with nothing to pull", () => {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { environmentWorthShowing } from "../../shared/env-from-name.ts";
 import { command } from "../invocation.ts";
 import { KlefApi, UnauthorizedError } from "../api.ts";
 import { loadToken } from "../credentials.ts";
@@ -91,7 +92,8 @@ export async function status(
   if (!config) {
     console.log(`Linked:    no ${CONFIG_FILENAME} here (run \`${command("link")}\`)`);
   } else {
-    const label = config.environment ? ` (${config.environment})` : "";
+    const env = environmentWorthShowing(config.file, config.environment);
+    const label = env ? ` (${env})` : "";
     console.log(
       `Linked:    ${config.workspace} / ${config.project} / ${config.file}${label}`,
     );

@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseArgs } from "./args.ts";
-import { groupNames, readWorkerName } from "./audit.ts";
+import { groupNames, localFileFor, readWorkerName, SCOPES } from "./audit.ts";
+import type { ProjectConfig } from "./project-config.ts";
 import { audit } from "./commands/audit.ts";
 
 // `klef audit` against fake `vercel`, `gh` and `wrangler` executables on PATH
@@ -253,5 +254,51 @@ describe("readWorkerName", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("localFileFor", () => {
+  const vercel = (env: string) => SCOPES.vercel.find((s) => s.environment === env)!;
+  const base: ProjectConfig = {
+    workspace: "Team",
+    project: "web",
+    file: ".env.local",
+    environment: null,
+  };
+
+  it("uses the conventional file without a linked config", () => {
+    expect(localFileFor(vercel("production"), null)).toBe(".env.production");
+  });
+
+  it("keeps the conventional file when the repo syncs it, at its path", () => {
+    const config = {
+      ...base,
+      files: [
+        { file: ".env.production", path: "apps/web/.env.production" },
+        { file: ".env", path: ".env" },
+      ],
+    };
+    expect(localFileFor(vercel("production"), config)).toBe(
+      "apps/web/.env.production",
+    );
+  });
+
+  it("finds production in a file whose name implies it", () => {
+    const config = {
+      ...base,
+      files: [{ file: ".env.production.local", path: ".env.production.local" }],
+    };
+    expect(localFileFor(vercel("production"), config)).toBe(".env.production.local");
+  });
+
+  it("finds production in a plain .env explicitly marked production", () => {
+    const config = { ...base, file: ".env", environment: "production" };
+    expect(localFileFor(vercel("production"), config)).toBe(".env");
+    expect(localFileFor(SCOPES.cloudflare[0]!, config)).toBe(".env");
+  });
+
+  it("falls back to the conventional name when nothing matches", () => {
+    const config = { ...base, file: ".env", environment: null };
+    expect(localFileFor(vercel("preview"), config)).toBe(".env.preview");
   });
 });
