@@ -12,15 +12,15 @@ import {
 
 // The JS constants are a hand-kept mirror of the CSS tokens (see motion.ts).
 // A mirror that can drift silently is worse than no mirror, so read the
-// stylesheet and hold them to it.
-const css = readFileSync(
-  path.join(import.meta.dirname, "../styles/global.css"),
-  "utf8",
-);
+// stylesheets and hold them to it. Easings sit in global.css's Tailwind
+// theme; durations are raw tokens in tokens.css, which global.css imports.
+const css = ["global.css", "tokens.css"]
+  .map((f) => readFileSync(path.join(import.meta.dirname, "../styles", f), "utf8"))
+  .join("\n");
 
 function token(name: string): string {
   const match = new RegExp(`^\\s*${name}:\\s*(.+);$`, "m").exec(css);
-  if (!match) throw new Error(`${name} is not defined in global.css`);
+  if (!match) throw new Error(`${name} is not defined in global.css or tokens.css`);
   return match[1]!.trim();
 }
 
@@ -31,7 +31,7 @@ describe("motion tokens", () => {
     expect(token("--ease-in-out")).toBe(EASE_IN_OUT);
   });
 
-  it("mirrors the durations declared in global.css", () => {
+  it("mirrors the durations declared in tokens.css", () => {
     expect(token("--duration-fast")).toBe(`${DURATION_FAST}ms`);
     expect(token("--duration-base")).toBe(`${DURATION_BASE}ms`);
     expect(token("--duration-slow")).toBe(`${DURATION_SLOW}ms`);
