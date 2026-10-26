@@ -1503,6 +1503,13 @@ function StackCombobox({
   );
 }
 
+// "New file" creates a file, so its button says so; edits and renames save.
+function submitLabel(title: string | undefined): string {
+  return title?.startsWith("New ")
+    ? `Create ${title.slice(4).toLowerCase()}`
+    : "Save";
+}
+
 function NameDialogView({
   dialog,
   onClose,
@@ -1784,7 +1791,7 @@ function NameDialogView({
           )}
           <DialogFooter>
             <Button type="submit" disabled={busy || !value.trim()}>
-              {busy ? "Saving..." : "Save"}
+              {busy ? "Saving..." : submitLabel(dialog?.title)}
             </Button>
           </DialogFooter>
         </form>
