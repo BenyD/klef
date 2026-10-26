@@ -95,7 +95,7 @@ describe("UnlockScreen keep unlocked on this device", () => {
 
   it("is off unless the user opts in", async () => {
     const value = renderUnlock({ unlock: vi.fn().mockResolvedValue(undefined) });
-    const box = screen.getByRole("checkbox", { name: "Keep unlocked on this device" });
+    const box = screen.getByRole("checkbox", { name: "Keep unlocked for 7 days" });
     expect(box.getAttribute("aria-checked")).toBe("false");
     submitPassphrase();
     await waitFor(() => expect(value.unlock).toHaveBeenCalledWith("correct horse"));
@@ -104,7 +104,7 @@ describe("UnlockScreen keep unlocked on this device", () => {
 
   it("ticking it keeps this device unlocked for 7 days", async () => {
     const value = renderUnlock({ unlock: vi.fn().mockResolvedValue(undefined) });
-    fireEvent.click(screen.getByRole("checkbox", { name: "Keep unlocked on this device" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Keep unlocked for 7 days" }));
     submitPassphrase();
     await waitFor(() => expect(value.unlock).toHaveBeenCalled());
     await waitFor(() => expect(getAutoLockMinutes()).toBe(REMEMBER_DEVICE_MINUTES));
@@ -112,7 +112,7 @@ describe("UnlockScreen keep unlocked on this device", () => {
 
   it("does not change the setting when the unlock fails", async () => {
     renderUnlock({ unlock: vi.fn().mockRejectedValue(new Error("nope")) });
-    fireEvent.click(screen.getByRole("checkbox", { name: "Keep unlocked on this device" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Keep unlocked for 7 days" }));
     submitPassphrase();
     await screen.findByText("That passphrase didn't work.");
     expect(getAutoLockMinutes()).toBe(AUTO_LOCK_DEFAULT_MINUTES);
@@ -121,7 +121,7 @@ describe("UnlockScreen keep unlocked on this device", () => {
   it("starts ticked once opted in, and clearing it revokes", async () => {
     setAutoLockMinutes(REMEMBER_DEVICE_MINUTES);
     const value = renderUnlock({ unlock: vi.fn().mockResolvedValue(undefined) });
-    const box = screen.getByRole("checkbox", { name: "Keep unlocked on this device" });
+    const box = screen.getByRole("checkbox", { name: "Keep unlocked for 7 days" });
     expect(box.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(box);
     submitPassphrase();

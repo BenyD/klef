@@ -389,19 +389,12 @@ export function CommandPalette({
               text={entry.file.name}
               indices={highlights[0]}
             />
-            <Marked
-              className="text-muted-foreground min-w-0 truncate text-xs"
-              text={entry.project.name}
-              indices={highlights[1]}
+            <RowTrail
+              project={entry.project}
+              projectIndices={highlights[1]}
+              environment={entry.file.environment}
+              environmentIndices={highlights[2]}
             />
-            {entry.file.environment && (
-              <CommandShortcut>
-                <EnvLabel
-                  environment={entry.file.environment}
-                  indices={highlights[2]}
-                />
-              </CommandShortcut>
-            )}
           </CommandItem>
         );
       case "key":
@@ -418,15 +411,13 @@ export function CommandPalette({
               text={entry.key}
               indices={highlights[0]}
             />
-            <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs">
-              <span className="truncate font-mono">{entry.file.name}</span>
-              <span className="truncate">{entry.project.name}</span>
+            <span className="text-muted-foreground min-w-0 truncate font-mono text-xs">
+              {entry.file.name}
             </span>
-            {entry.file.environment && (
-              <CommandShortcut>
-                <EnvLabel environment={entry.file.environment} />
-              </CommandShortcut>
-            )}
+            <RowTrail
+              project={entry.project}
+              environment={entry.file.environment}
+            />
           </CommandItem>
         );
       case "project":
@@ -623,6 +614,36 @@ function Marked({
         ),
       )}
     </span>
+  );
+}
+
+// The right end of a file or key row: the project (logo and name), then the
+// environment, so the environment column lines up at the edge.
+function RowTrail({
+  project,
+  projectIndices,
+  environment,
+  environmentIndices,
+}: {
+  project: ProjectNode;
+  projectIndices?: readonly number[];
+  environment?: string | null;
+  environmentIndices?: readonly number[];
+}) {
+  return (
+    <CommandShortcut className="flex min-w-0 shrink items-center gap-3 tracking-normal">
+      <span className="flex min-w-0 items-center gap-1.5">
+        <ProjectIcon project={project} size="sm" />
+        <Marked
+          className="min-w-0 truncate"
+          text={project.name}
+          indices={projectIndices}
+        />
+      </span>
+      {environment && (
+        <EnvLabel environment={environment} indices={environmentIndices} />
+      )}
+    </CommandShortcut>
   );
 }
 
