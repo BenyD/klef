@@ -27,6 +27,8 @@ dark mode. Cards and popovers step up from there.
 | `--background`              | Content panel                                  |
 | `--card` `--popover`        | Raised surfaces, menus and dialogs             |
 | `--muted`                   | Hover and quiet fills                          |
+| `--accent`                  | Active and selected rows, pressed toggles      |
+| `--sidebar-hover` `--sidebar-accent` | The same two steps on the canvas      |
 | `--primary`                 | The one bright fill: the primary action in view, active marks |
 | `--brand`                   | Ember as text/icon where the fill can't hold contrast |
 | `--muted-foreground`        | Every piece of secondary text                  |
@@ -49,9 +51,12 @@ Checked in both themes against the surface each pair actually sits on
 | Pair                                   | Light | Dark  |
 | -------------------------------------- | ----- | ----- |
 | `foreground` / `background`            | 17.7  | 16.4  |
-| `muted-foreground` / `background`      | 6.0   | 7.0   |
-| `muted-foreground` / `sidebar`         | 5.6   | 7.3   |
-| `muted-foreground` / `muted`           | 5.3   | 6.1   |
+| `muted-foreground` / `background`      | 6.3   | 7.2   |
+| `muted-foreground` / `sidebar`         | 5.8   | 7.6   |
+| `muted-foreground` / `muted` (hover)   | 5.6   | 6.5   |
+| `muted-foreground` / `accent` (active) | 5.1   | 5.8   |
+| `muted-foreground` / `sidebar-hover`   | 5.4   | 6.9   |
+| `muted-foreground` / `sidebar-accent`  | 4.9   | 6.0   |
 | `primary-foreground` / `primary`       | 7.5   | 8.1   |
 | `brand` / `background`                 | 5.5   | 9.0   |
 | `destructive` / `background`           | 5.2   | 6.5   |
@@ -79,6 +84,47 @@ ember focus ring, and no state is shown by a border colour alone.
   `h-11`. Page gutters are `px-4` on phones and `px-6` from `sm`.
 - The content panel sits inset on the canvas with a 1px border and
   `rounded-lg` from `md` up; on phones it runs edge to edge.
+
+## Spacing
+
+Everything sits on a 4px grid (Tailwind's default steps). Reach for these and
+nothing in between:
+
+| Step  | px | For                                                       |
+| ----- | -- | --------------------------------------------------------- |
+| `0.5` | 2  | Between adjacent interactive rows (see below)             |
+| `1`   | 4  | Icon to keycap, chip internals                            |
+| `2`   | 8  | Icon to label, padding inside rows and menus              |
+| `3`   | 12 | Between sidebar sections; toolbar gutters                 |
+| `4`   | 16 | Between groups on a page; dialog padding; phone gutters   |
+| `6`   | 24 | Page heading to content; dialog body on wide screens      |
+| `8`   | 32 | Page gutters from `sm`, page top                          |
+
+- **Rows never touch.** Any stack of hoverable rows (sidebar menus and the
+  tree, dropdown and context menus, selects, comboboxes, the command menu)
+  keeps 2px between rows: `gap-0.5` on a flex list, or the adjacent-row rule
+  the menu primitives carry. Without it a hovered row merges with the active
+  one above it into a single slab.
+- Rows divided by hairlines (the overview's file lists, the key finder's
+  projects) are the exception: the rule separates them.
+- **The tree indents to the label.** Files sit under their project's name,
+  not its icon: the sub-list's rule lines up with the icon's centre and the
+  file names with the project name.
+
+## Interaction states
+
+Three quiet steps, the same in every list, each visibly apart from the one
+before it in both themes. Hover never equals active.
+
+| State              | Content panel | Canvas (sidebar)  |
+| ------------------ | ------------- | ----------------- |
+| Rest               | none          | none              |
+| Hover              | `bg-muted`    | `bg-sidebar-hover` |
+| Active / selected  | `bg-accent`   | `bg-sidebar-accent` + `font-medium` |
+| Focus (keyboard)   | 2px ring in `--ring` (ember), on top of any fill | |
+
+Hovering an active row keeps it active: the fill doesn't step back down.
+Pressed toggles (filters, segmented controls) use the active step.
 
 ## Keyboard
 
@@ -160,8 +206,24 @@ Inter for the interface, JetBrains Mono for anything the user pasted.
 | `text-lg`   | 17 / 24     | Dialog and section titles                 |
 | `text-xl`   | 20 / 28     | Page titles                               |
 
+- **Nothing below 12px, nothing in between.** No `text-[11px]`,
+  `text-[0.8rem]` or other one-offs: if a size isn't in the table, the design
+  is asking for a weight or colour change instead.
 - Weights: 400 body, 500 for anything you can click or that labels a group,
-  600 only for page titles. Nothing bolder.
+  600 only for page titles and the workspace name. Nothing bolder (the 404
+  wordmark is the one exception).
+- Hierarchy, top to bottom: page title (`text-xl` 600), section label
+  (`text-xs` 500 `muted-foreground`, like "Projects"), row text (`text-sm`),
+  meta (`text-xs` `muted-foreground`). File and key names are mono at
+  `text-xs`, which matches the optical size of 13px Inter.
+- Headings get their tracking from the base layer; don't add
+  `tracking-tight` on top.
+- Muted text is `text-muted-foreground`, never `text-foreground/60` or an
+  opacity on top of muted: opacity drops a pair below 4.5:1 without the
+  contrast table noticing. Decorative glyphs (the `=` in the key table,
+  breadcrumb chevrons) are the only exception.
+- `truncate` sits on line heights of at least 1.25, so descenders on g, j,
+  p and y are never clipped.
 - Headings pull tracking in to `-0.014em` and use `text-wrap: balance`; body
   copy uses `text-wrap: pretty`.
 - Inter runs with `cv01` and `cv08` (flagged 1, serifed I), so `l`, `I` and
