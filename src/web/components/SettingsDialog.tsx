@@ -6,12 +6,16 @@ import {
   type FormEvent,
 } from "react";
 import {
+  Boxes,
   CircleAlert,
   Fingerprint,
   Pencil,
   Plus,
+  ShieldCheck,
+  SlidersHorizontal,
   Trash2,
   Upload,
+  UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { authClient } from "../auth.ts";
@@ -137,28 +141,46 @@ export function SettingsDialog({
   // min-w-0 lets the panel shrink inside the vertical tab row; without it a
   // wide child would push the whole dialog past its max width and clip.
   const panelClass =
-    "flex min-w-0 max-h-[60svh] flex-col gap-6 overflow-y-auto sm:min-h-96 sm:pr-1";
+    "flex min-w-0 max-h-[65svh] flex-col gap-6 overflow-y-auto p-4 sm:max-h-none sm:p-6";
+  // Linear-style settings: a quiet nav column on the canvas colour, the
+  // section filling the rest. Rows fill when active instead of growing a bar.
+  const navItem =
+    "h-7 flex-none justify-start gap-2 px-2 font-normal text-muted-foreground after:hidden hover:bg-sidebar-accent data-active:bg-sidebar-accent! data-active:font-medium data-active:text-foreground sm:w-full";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl">
         <Tabs
           orientation={isMobile ? "horizontal" : "vertical"}
           value={tab}
           onValueChange={(value) => onTabChange(value as SettingsTab)}
-          className="sm:gap-6"
+          className="gap-0 sm:h-[min(40rem,85svh)]"
         >
-          <TabsList
-            variant={isMobile ? "default" : "line"}
-            className="w-full sm:w-36 sm:shrink-0"
-          >
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="workspace">Workspace</TabsTrigger>
-          </TabsList>
+          <div className="bg-sidebar flex shrink-0 flex-col gap-1 border-b p-2 sm:w-48 sm:border-r sm:border-b-0 sm:p-3">
+            <DialogTitle className="px-2 pt-1 pb-1 text-sm font-semibold sm:pb-2">
+              Settings
+            </DialogTitle>
+            <TabsList
+              variant="line"
+              className="no-scrollbar w-full justify-start gap-0.5 overflow-x-auto p-0 sm:flex-col sm:items-stretch"
+            >
+              <TabsTrigger value="profile" className={navItem}>
+                <UserRound />
+                Profile
+              </TabsTrigger>
+              <TabsTrigger value="preferences" className={navItem}>
+                <SlidersHorizontal />
+                Preferences
+              </TabsTrigger>
+              <TabsTrigger value="security" className={navItem}>
+                <ShieldCheck />
+                Security
+              </TabsTrigger>
+              <TabsTrigger value="workspace" className={navItem}>
+                <Boxes />
+                Workspace
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="profile" className={panelClass}>
             <ProfileSection name={name} email={email} image={image} />

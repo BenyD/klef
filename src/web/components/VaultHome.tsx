@@ -13,11 +13,11 @@ import {
   Bug,
   Check,
   ChevronLeft,
+  ChevronRight,
   ChevronsUpDown,
   FileText,
   FolderPlus,
   Image as ImageIcon,
-  LayoutGrid,
   Lock,
   LogOut,
   Plus,
@@ -41,6 +41,7 @@ import {
 } from "../lib/project-icon.ts";
 import {
   AUTO_LOCK_OPTIONS,
+  isMacPlatform,
   setAutoLockMinutes,
   useAutoLock,
   useAutoLockMinutes,
@@ -70,9 +71,8 @@ import {
 } from "../lib/env-file-names.ts";
 import { AppSidebar } from "./AppSidebar.tsx";
 import { Banner } from "./Banner.tsx";
-import { CommandPalette, PaletteShortcutKeys } from "./CommandPalette.tsx";
+import { CommandPalette } from "./CommandPalette.tsx";
 import { FrameworkIcon } from "./FrameworkIcon.tsx";
-import { KlefMark } from "./KlefMark.tsx";
 import { ProjectIcon } from "./ProjectIcon.tsx";
 import { WorkspaceIcon } from "./WorkspaceIcon.tsx";
 import { ProjectsOverview } from "./ProjectsOverview.tsx";
@@ -121,6 +121,8 @@ import {
   EmptyTitle,
 } from "./ui/empty.tsx";
 import { Input } from "./ui/input.tsx";
+import { Kbd, KbdGroup } from "./ui/kbd.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip.tsx";
 import { Label } from "./ui/label.tsx";
 import { Skeleton } from "./ui/skeleton.tsx";
 import {
@@ -431,7 +433,7 @@ export function VaultHome({
     setSelected(null);
     requestAnimationFrame(() => {
       document
-        .getElementById(`project-card-${project.id}`)
+        .getElementById(`project-${project.id}`)
         ?.scrollIntoView({ block: "nearest" });
     });
   }
@@ -607,281 +609,237 @@ export function VaultHome({
 
   return (
     <SidebarProvider
-      defaultOpen={false}
-      className="klef-screen **:data-[slot=sidebar-gap]:w-12! h-svh flex-col overflow-hidden"
+      defaultOpen={readSidebarOpen()}
+      className="klef-screen h-svh overflow-hidden"
     >
-      {/* No stored dismissal: the real dismiss is saving a key (rotation or
-          the setup checkbox), which clears this across devices. */}
-      {!recoveryConfirmed && (
-        <Banner variant="info">
-          <span className="font-medium">Save your recovery key.</span>
-          <span className="text-muted-foreground">
-            {" "}
-            If you forget your passphrase, it's the only way back in.{" "}
-          </span>
-          <button
-            type="button"
-            className="hover:text-foreground cursor-pointer underline underline-offset-4"
-            onClick={() => {
-              setSettingsTab("security");
-              scrollToRecoverySection();
-            }}
-          >
-            Get one now
-          </button>
-        </Banner>
-      )}
+      <AppSidebar
+        loading={loading}
+        header={
+          <WorkspaceSwitcher
+            workspaces={workspaces}
+            workspace={workspace}
+            onPick={pickWorkspace}
+            onNew={openNewWorkspace}
+            onOpenSettings={() => setSettingsTab("workspace")}
+          />
+        }
+        footer={
+          <>
+            <UserMenu
+              name={name}
+              email={email}
+              image={image}
+              onOpenSettings={setSettingsTab}
+              beforeSignOut={(proceed) =>
+                guardDirty(proceed, {
+                  verb: "Signing out",
+                  confirmLabel: "Sign out and discard",
+                })
+              }
+            />
+            <LockMenu lock={requestLock} />
+            <ThemeToggle size="icon-sm" />
+          </>
+        }
+        projects={projects}
+        selectedFileId={selected?.id ?? null}
+        overviewActive={!selected}
+        canMoveProjects={workspaces.length > 1}
+        onShowOverview={() => setSelected(null)}
+        onOpenPalette={() => setPaletteOpen(true)}
+        onSearchKeys={() => setKeySearchOpen(true)}
+        onSelectFile={selectFile}
+        onNewProject={openNewProject}
+        onNewFile={openNewFile}
+        onRenameFile={openRenameFile}
+        onDeleteFile={openDeleteFile}
+        onSetEnvironment={(file, env) => void setFileEnvironment(file, env)}
+        onCustomEnvironment={openCustomEnvironment}
+        onEditProject={openEditProject}
+        onMoveProject={openMoveProject}
+        onCompareEnvironments={openCompareEnvironments}
+        onDeleteProject={openDeleteProject}
+      />
 
-      {/* Supabase-style topbar: brand, then breadcrumb switchers, then the
-          global cluster. Cross-navigation lives here so the rail below stays
-          purely contextual. */}
-      <header className="bg-background flex h-12 w-full shrink-0 items-center gap-1 border-b px-3">
-        {/* Mobile drill-down: a back arrow replaces the sheet trigger while
-            a file is open. after:-inset-2 grows the hit area to ~44px. */}
-        {selected && (
+      <SidebarInset className="min-h-0 overflow-hidden">
+        {/* No stored dismissal: the real dismiss is saving a key (rotation or
+            the setup checkbox), which clears this across devices. */}
+        {!recoveryConfirmed && (
+          <Banner variant="info">
+            <span className="font-medium">Save your recovery key.</span>
+            <span className="text-muted-foreground">
+              {" "}
+              If you forget your passphrase, it's the only way back in.{" "}
+            </span>
+            <button
+              type="button"
+              className="hover:text-foreground cursor-pointer underline underline-offset-4"
+              onClick={() => {
+                setSettingsTab("security");
+                scrollToRecoverySection();
+              }}
+            >
+              Get one now
+            </button>
+          </Banner>
+        )}
+
+        {/* Where you are, not how to get elsewhere: navigation lives in the
+            sidebar. The file crumb still switches between the project's
+            files, the one jump that's handy without leaving the editor. */}
+        <header className="flex h-11 w-full shrink-0 items-center gap-1 border-b px-2 sm:px-3">
+          {/* Mobile drill-down: a back arrow replaces the sheet trigger while
+              a file is open. after:-inset-2 grows the hit area to ~44px. */}
+          {selected && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Back to projects"
+              onClick={() => setSelected(null)}
+              className="relative after:absolute after:-inset-2 sm:hidden"
+            >
+              <ChevronLeft />
+            </Button>
+          )}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <SidebarTrigger
+                  className={cn(
+                    "text-muted-foreground",
+                    selected && "max-sm:hidden",
+                  )}
+                />
+              }
+            />
+            <TooltipContent className="flex items-center gap-2">
+              Toggle sidebar
+              <SidebarShortcutKeys />
+            </TooltipContent>
+          </Tooltip>
+
+          <nav
+            aria-label="Breadcrumb"
+            className="flex min-w-0 items-center gap-0.5 text-sm"
+          >
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              aria-current={selected ? undefined : "page"}
+              className={cn(
+                "hover:bg-muted text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 flex h-7 min-w-0 items-center gap-1.5 rounded-md px-1.5 outline-none transition-interactive focus-visible:ring-2",
+                !selected && "text-foreground font-medium",
+                selected && "max-sm:hidden",
+              )}
+            >
+              <WorkspaceIcon workspace={workspace} />
+              <span className="truncate">{workspace?.name ?? "Workspace"}</span>
+            </button>
+            {selected && currentProject && (
+              <>
+                <Crumb className="max-sm:hidden" />
+                <button
+                  type="button"
+                  onClick={() => showProject(currentProject)}
+                  className="hover:bg-muted text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 flex h-7 min-w-0 items-center gap-1.5 rounded-md px-1.5 outline-none transition-interactive focus-visible:ring-2 max-sm:hidden"
+                >
+                  <ProjectIcon project={currentProject} size="sm" />
+                  <span className="max-w-40 truncate">
+                    {currentProject.name}
+                  </span>
+                </button>
+                <Crumb className="max-sm:hidden" />
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-current="page"
+                        className="min-w-0 gap-1.5 px-1.5"
+                      />
+                    }
+                  >
+                    {selected.environment && (
+                      <span
+                        className={cn(
+                          "size-1.5 shrink-0 rounded-full",
+                          envMeta(selected.environment).dot,
+                        )}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <span className="truncate font-mono text-xs">
+                      {selected.name}
+                    </span>
+                    <ChevronsUpDown className="text-muted-foreground size-3 shrink-0" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-56">
+                    {currentProject.files.map((f) => (
+                      <DropdownMenuItem
+                        key={f.id}
+                        className="font-mono text-xs"
+                        onClick={() => selectFile(currentProject, f)}
+                      >
+                        <FileText />
+                        <span className="truncate">{f.name}</span>
+                        <span className="ml-auto flex items-center gap-1.5">
+                          {f.environment && (
+                            <span
+                              className={cn(
+                                "size-1.5 rounded-full",
+                                envMeta(f.environment).dot,
+                              )}
+                              title={f.environment}
+                              aria-hidden="true"
+                            />
+                          )}
+                          {f.id === selected.id && <Check className="size-4" />}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => openNewFile(currentProject)}
+                    >
+                      <Plus />
+                      New file
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )}
+          </nav>
+
+          {/* The sidebar's search is a sheet away on phones. */}
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Back to projects"
-            onClick={() => setSelected(null)}
-            className="relative -ml-1 after:absolute after:-inset-2 sm:hidden"
-          >
-            <ChevronLeft />
-          </Button>
-        )}
-        <SidebarTrigger
-          className={cn("-ml-1 md:hidden", selected && "max-sm:hidden")}
-        />
-        <button
-          type="button"
-          aria-label="Workspace overview"
-          onClick={() => setSelected(null)}
-          className={cn(
-            "bg-primary text-primary-foreground flex size-6 shrink-0 items-center justify-center rounded-md",
-            selected && "max-sm:hidden",
-          )}
-        >
-          <KlefMark className="size-3.5" />
-        </button>
-
-        <Slash className={cn(selected && "max-sm:hidden")} />
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "max-w-40 gap-1 px-1.5",
-                  selected && "max-sm:hidden",
-                )}
-              />
-            }
-          >
-            <WorkspaceIcon workspace={workspace} />
-            <span className="truncate">{workspace?.name ?? "Workspace"}</span>
-            <ChevronsUpDown className="text-muted-foreground size-3 shrink-0" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-56">
-            {workspaces.map((w) => (
-              <DropdownMenuItem key={w.id} onClick={() => pickWorkspace(w.id)}>
-                <WorkspaceIcon workspace={w} />
-                <span className="truncate">{w.name}</span>
-                {w.id === workspace?.id && <Check className="ml-auto size-4" />}
-              </DropdownMenuItem>
-            ))}
-            {workspaces.length > 0 && <DropdownMenuSeparator />}
-            <DropdownMenuItem onClick={openNewWorkspace}>
-              <Plus />
-              New workspace
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {projects.length > 0 && (
-          <>
-            {/* On mobile the project crumb only shows on the overview; once a
-                file is open the workspace crumb takes that scarce room. */}
-            <Slash className={cn(selected && "max-sm:hidden")} />
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "max-w-40 gap-1.5 px-1.5",
-                      selected && "max-sm:hidden",
-                    )}
-                  />
-                }
-              >
-                {currentProject ? (
-                  <>
-                    <ProjectIcon project={currentProject} size="sm" />
-                    <span className="truncate">{currentProject.name}</span>
-                  </>
-                ) : (
-                  <>
-                    <LayoutGrid className="text-muted-foreground size-4" />
-                    <span className="truncate">All projects</span>
-                  </>
-                )}
-                <ChevronsUpDown className="text-muted-foreground size-3 shrink-0" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-56">
-                {projects.map((p) => (
-                  <DropdownMenuItem key={p.id} onClick={() => showProject(p)}>
-                    <ProjectIcon project={p} size="sm" />
-                    <span className="truncate">{p.name}</span>
-                    {p.id === currentProject?.id && (
-                      <Check className="ml-auto size-4" />
-                    )}
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={openNewProject}>
-                  <Plus />
-                  New project
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        )}
-
-        {selected && currentProject && (
-          <>
-            {/* File crumb: switches within the current project, mirroring the
-                workspace and project crumbs. On mobile it stays visible next
-                to the back arrow, using the room the hidden crumbs free up. */}
-            <Slash className="max-sm:hidden" />
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="max-w-40 gap-1.5 px-1.5"
-                  />
-                }
-              >
-                {selected.environment && (
-                  <span
-                    className={cn(
-                      "size-1.5 shrink-0 rounded-full",
-                      envMeta(selected.environment).dot,
-                    )}
-                    aria-hidden="true"
-                  />
-                )}
-                <span className="truncate font-mono text-xs">
-                  {selected.name}
-                </span>
-                <ChevronsUpDown className="text-muted-foreground size-3 shrink-0" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-56">
-                {currentProject.files.map((f) => (
-                  <DropdownMenuItem
-                    key={f.id}
-                    className="font-mono"
-                    onClick={() => selectFile(currentProject, f)}
-                  >
-                    <FileText />
-                    <span className="truncate">{f.name}</span>
-                    <span className="ml-auto flex items-center gap-1.5">
-                      {f.environment && (
-                        <span
-                          className={cn(
-                            "size-1.5 rounded-full",
-                            envMeta(f.environment).dot,
-                          )}
-                          title={f.environment}
-                          aria-hidden="true"
-                        />
-                      )}
-                      {f.id === selected.id && <Check className="size-4" />}
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => openNewFile(currentProject)}>
-                  <Plus />
-                  New file
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        )}
-
-        <div className="ml-auto flex items-center gap-1">
-          {/* Sized like a search field, not a button, so it reads as the
-              app's search box; a plain icon button on phones. */}
-          <Button
-            variant="outline"
-            size="sm"
             aria-label="Search"
-            className="text-muted-foreground relative h-8 font-normal max-sm:w-8 max-sm:px-0 max-sm:after:absolute max-sm:after:-inset-1.5 sm:w-48 sm:justify-start md:w-56"
+            className="text-muted-foreground relative ml-auto after:absolute after:-inset-1.5 md:hidden"
             onClick={() => setPaletteOpen(true)}
           >
             <Search />
-            <span className="hidden sm:inline">Search</span>
-            <span className="sm:ml-auto">
-              <PaletteShortcutKeys />
-            </span>
           </Button>
-          <LockMenu lock={requestLock} />
-          <ThemeToggle />
-          <UserMenu
-            name={name}
-            email={email}
-            image={image}
-            onOpenSettings={setSettingsTab}
-            beforeSignOut={(proceed) =>
-              guardDirty(proceed, {
-                verb: "Signing out",
-                confirmLabel: "Sign out and discard",
-              })
-            }
+        </header>
+
+        {error && (
+          <p className="text-destructive px-4 py-2 text-sm">{error}</p>
+        )}
+
+        {/* The strip belongs to the file area; the overview stands alone.
+            Tabs (and their drafts) survive hidden and return with any file. */}
+        {openFiles.length > 0 && selected && (
+          <FileTabs
+            files={openFiles}
+            activeId={selected.id}
+            dirtyIds={dirtyIds}
+            onSelect={setSelected}
+            onClose={closeFileTab}
           />
-        </div>
-      </header>
+        )}
 
-      {/* relative: the rail inside anchors to this row, not the viewport. */}
-      <div className="relative flex min-h-0 w-full flex-1">
-        <AppSidebar
-          loading={loading}
-          workspace={workspace}
-          currentProject={currentProject}
-          selectedFileId={selected?.id ?? null}
-          onShowOverview={() => setSelected(null)}
-          onSelectFile={selectFile}
-          onNewFile={openNewFile}
-          onRenameFile={openRenameFile}
-          onDeleteFile={openDeleteFile}
-          onSetEnvironment={(file, env) => void setFileEnvironment(file, env)}
-          onCustomEnvironment={openCustomEnvironment}
-          onEditProject={openEditProject}
-          onOpenSettings={setSettingsTab}
-        />
-
-        <SidebarInset className="min-h-0 overflow-hidden">
-          {error && (
-            <p className="text-destructive px-4 py-2 text-sm">{error}</p>
-          )}
-
-          {/* The strip belongs to the file area; the overview stands alone.
-              Tabs (and their drafts) survive hidden and return with any file. */}
-          {openFiles.length > 0 && selected && (
-            <FileTabs
-              files={openFiles}
-              activeId={selected.id}
-              dirtyIds={dirtyIds}
-              onSelect={setSelected}
-              onClose={closeFileTab}
-            />
-          )}
-
-          <div className="flex flex-1 flex-col overflow-y-auto">
+        <div className="flex flex-1 flex-col overflow-y-auto">
           {/* Every open file keeps its pane (and draft) mounted; only the
               active one is visible. The overview renders when no tab is
               active, with the strip still up top. */}
@@ -901,17 +859,17 @@ export function VaultHome({
             </div>
           ))}
           {selected ? null : loading ? (
-            <div className="w-full flex-1 px-4 py-6 sm:px-6">
+            <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-8">
               <div className="mb-6 flex items-center justify-between gap-4">
                 <div className="space-y-2">
                   <Skeleton className="h-6 w-40" />
                   <Skeleton className="h-4 w-20" />
                 </div>
-                <Skeleton className="h-8 w-28 rounded-lg" />
+                <Skeleton className="h-7 w-28 rounded-md" />
               </div>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-4">
-                {Array.from({ length: 3 }, (_, i) => (
-                  <Skeleton key={i} className="h-40 rounded-xl" />
+              <div className="flex flex-col gap-1">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <Skeleton key={i} className="h-8 rounded-md" />
                 ))}
               </div>
             </div>
@@ -929,7 +887,7 @@ export function VaultHome({
             <NextStep
               icon={<FolderPlus />}
               title="Create your first project"
-              description="Projects live inside your workspace. Add one for an app or service to hold its env files."
+              description="A project holds the env files for one app or service."
               actionLabel="New project"
               onAction={openNewProject}
             />
@@ -941,14 +899,13 @@ export function VaultHome({
               onNewFile={openNewFile}
               onNewProject={openNewProject}
               onEditProject={openEditProject}
-              onMoveProject={openMoveProject}
+              onMoveProject={workspaces.length > 1 ? openMoveProject : null}
               onCompareEnvironments={openCompareEnvironments}
               onDeleteProject={openDeleteProject}
             />
           )}
-          </div>
-        </SidebarInset>
-      </div>
+        </div>
+      </SidebarInset>
 
       <CommandPalette
         open={paletteOpen}
@@ -1101,22 +1058,84 @@ export function VaultHome({
   );
 }
 
-// Lock button + auto-lock timing in one menu: "Lock now" acts immediately,
-// the options below persist the inactivity timeout (same setting as in
-// Settings → Account).
-// Roomy on purpose (Supabase-style): each segment gets clear air around
-// the slash.
-function Slash({ className }: { className?: string }) {
+// The sidebar remembers whether it was open (shadcn's sidebar writes this
+// cookie on every toggle); first visits start open.
+function readSidebarOpen(): boolean {
+  return !document.cookie.split("; ").includes("sidebar_state=false");
+}
+
+function SidebarShortcutKeys() {
+  const mac = isMacPlatform();
   return (
-    <span
-      className={cn(
-        "text-border mx-0.5 select-none text-base font-light",
-        className,
-      )}
+    <KbdGroup className="max-sm:hidden">
+      <Kbd>{mac ? "⌘" : "Ctrl"}</Kbd>
+      <Kbd>B</Kbd>
+    </KbdGroup>
+  );
+}
+
+function Crumb({ className }: { className?: string }) {
+  return (
+    <ChevronRight
+      className={cn("text-muted-foreground/60 size-3.5 shrink-0", className)}
       aria-hidden="true"
-    >
-      /
-    </span>
+    />
+  );
+}
+
+// Top of the sidebar: which workspace you are in, and the way to every other
+// one. Workspace settings live here too, next to the thing they configure.
+function WorkspaceSwitcher({
+  workspaces,
+  workspace,
+  onPick,
+  onNew,
+  onOpenSettings,
+}: {
+  workspaces: WorkspaceNode[];
+  workspace: WorkspaceNode | null;
+  onPick: (id: string) => void;
+  onNew: () => void;
+  onOpenSettings: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <button
+            type="button"
+            className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-1.5 text-left text-sm font-medium outline-none transition-interactive focus-visible:ring-2"
+          />
+        }
+      >
+        <span className="bg-background flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] border">
+          <WorkspaceIcon workspace={workspace} className="size-3.5" />
+        </span>
+        <span className="truncate">{workspace?.name ?? "Workspace"}</span>
+        <ChevronsUpDown className="text-muted-foreground ml-auto size-3.5 shrink-0" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-(--anchor-width) sm:min-w-60">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+          {workspaces.map((w) => (
+            <DropdownMenuItem key={w.id} onClick={() => onPick(w.id)}>
+              <WorkspaceIcon workspace={w} />
+              <span className="truncate">{w.name}</span>
+              {w.id === workspace?.id && <Check className="ml-auto size-4" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onNew}>
+          <Plus />
+          New workspace
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onOpenSettings}>
+          <Settings />
+          Workspace settings
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -1152,22 +1171,22 @@ function UserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button
-            variant="ghost"
-            size="icon-sm"
+          <button
+            type="button"
             aria-label="Account menu"
-            className="rounded-full"
+            className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none transition-interactive focus-visible:ring-2"
           />
         }
       >
-        <Avatar className="size-6">
+        <Avatar className="size-5">
           {image && (
             <AvatarImage src={image} alt="" referrerPolicy="no-referrer" />
           )}
-          <AvatarFallback className="text-xs">{initial}</AvatarFallback>
+          <AvatarFallback className="text-[10px]">{initial}</AvatarFallback>
         </Avatar>
+        <span className="truncate">{displayName}</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-56">
+      <DropdownMenuContent side="top" align="start" className="min-w-56">
         <div className="flex items-center gap-2 px-2 py-1.5">
           <Avatar className="size-8">
             {image && (
@@ -1217,18 +1236,26 @@ function UserMenu({
   );
 }
 
+// Lock button + auto-lock timing in one menu: "Lock now" acts immediately,
+// the options below persist the inactivity timeout (same setting as in
+// Settings → Account).
 function LockMenu({ lock }: { lock: () => void }) {
   const autoLockMinutes = useAutoLockMinutes();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="ghost" size="icon" aria-label="Lock options">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Lock options"
+            className="text-muted-foreground"
+          >
             <Lock />
           </Button>
         }
       />
-      <DropdownMenuContent align="end" className="min-w-52">
+      <DropdownMenuContent side="top" align="end" className="min-w-52">
         <DropdownMenuItem onClick={lock}>
           <Lock />
           Lock now
@@ -1274,19 +1301,14 @@ function NextStep({
   onAction: () => void;
 }) {
   return (
-    <Empty className="bg-muted/40 m-4 w-auto flex-1 border border-dashed">
+    <Empty className="m-4 w-auto flex-1">
       <EmptyHeader>
-        <EmptyMedia
-          variant="icon"
-          className="size-10 [&_svg:not([class*='size-'])]:size-5"
-        >
-          {icon}
-        </EmptyMedia>
-        <EmptyTitle className="text-base">{title}</EmptyTitle>
+        <EmptyMedia variant="icon">{icon}</EmptyMedia>
+        <EmptyTitle>{title}</EmptyTitle>
         <EmptyDescription>{description}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button onClick={onAction}>
+        <Button size="sm" onClick={onAction}>
           <Plus />
           {actionLabel}
         </Button>
@@ -1321,7 +1343,7 @@ function FileTabs({
     <div
       role="tablist"
       aria-label="Open files"
-      className="bg-muted/40 flex h-9 shrink-0 items-center overflow-x-auto border-b"
+      className="bg-sidebar/60 flex h-9 shrink-0 items-center overflow-x-auto border-b"
     >
       {files.map((f) => {
         const active = f.id === activeId;
@@ -1330,16 +1352,12 @@ function FileTabs({
           <div
             key={f.id}
             className={cn(
-              "group/tab relative flex h-full max-w-48 shrink-0 items-center border-r",
-              active ? "bg-background" : "hover:bg-background/50",
+              "group/tab relative flex h-full max-w-52 shrink-0 items-center border-r",
+              active
+                ? "bg-background after:bg-background after:absolute after:inset-x-0 after:-bottom-px after:h-px"
+                : "hover:bg-background/50",
             )}
           >
-            {active && (
-              <span
-                className="bg-primary absolute inset-x-0 top-0 h-0.5"
-                aria-hidden="true"
-              />
-            )}
             <button
               type="button"
               role="tab"
@@ -1363,7 +1381,7 @@ function FileTabs({
               )}
               <span className="truncate">{f.name}</span>
               {(nameCounts.get(f.name) ?? 0) > 1 && (
-                <span className="text-muted-foreground/70 truncate font-sans text-[11px]">
+                <span className="text-muted-foreground truncate font-sans text-xs">
                   {f.project}
                 </span>
               )}
@@ -1469,6 +1487,13 @@ function StackCombobox({
       </ComboboxContent>
     </Combobox>
   );
+}
+
+// "New file" creates a file, so its button says so; edits and renames save.
+function submitLabel(title: string | undefined): string {
+  return title?.startsWith("New ")
+    ? `Create ${title.slice(4).toLowerCase()}`
+    : "Save";
 }
 
 function NameDialogView({
@@ -1752,7 +1777,7 @@ function NameDialogView({
           )}
           <DialogFooter>
             <Button type="submit" disabled={busy || !value.trim()}>
-              {busy ? "Saving..." : "Save"}
+              {busy ? "Saving..." : submitLabel(dialog?.title)}
             </Button>
           </DialogFooter>
         </form>

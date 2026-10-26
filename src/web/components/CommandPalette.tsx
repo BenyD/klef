@@ -242,6 +242,25 @@ export function CommandPalette({
             </CommandItem>
           </CommandGroup>
         </CommandList>
+        {/* Keyboard legend: the palette is the app's keyboard home, so it
+            says how to drive it. Phones have no keys to show. */}
+        <div className="text-muted-foreground flex h-9 shrink-0 items-center gap-4 border-t px-4 text-xs max-sm:hidden">
+          <span className="flex items-center gap-1.5">
+            <KbdGroup>
+              <Kbd>↑</Kbd>
+              <Kbd>↓</Kbd>
+            </KbdGroup>
+            Move
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Kbd>↵</Kbd>
+            Open
+          </span>
+          <span className="ml-auto flex items-center gap-1.5">
+            <Kbd>esc</Kbd>
+            Close
+          </span>
+        </div>
       </Command>
     </CommandDialog>
   );

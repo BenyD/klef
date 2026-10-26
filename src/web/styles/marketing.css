@@ -9,22 +9,22 @@
   /* light (default) */
   --m-bg: var(--background);
   --m-fg: var(--foreground);
-  --m-muted: #575757; /* darker than --muted-foreground: hero copy wants more contrast */
-  --m-dim: #a3a3a3;
+  --m-muted: oklch(0.42 0.01 264); /* darker than --muted-foreground: hero copy wants more contrast */
+  --m-dim: oklch(0.55 0.009 264); /* a step under --m-muted, still 4.5:1 for text */
   --m-border: var(--border);
-  --m-card: #fafafa; /* off-white card vs the app's flat white */
+  --m-card: var(--sidebar); /* the app canvas: cards sit a step off the page */
   /* Primary CTAs wear the ember accent, same fill in light and dark. */
   --m-primary-bg: var(--primary);
   --m-primary-fg: var(--primary-foreground);
   --m-primary-hover: color-mix(in oklab, var(--primary) 88%, black);
-  --m-hover: rgba(0, 0, 0, 0.05);
-  --m-outline-hover: #d4d4d4;
-  --m-add: #16a34a;
-  --m-remove: #dc2626;
-  --m-add-tint: rgba(22, 163, 74, 0.12);
-  --m-glow: rgba(0, 0, 0, 0.04);
-  --m-dot: #dcdcdc;
-  --m-shadow: rgba(0, 0, 0, 0.14);
+  --m-hover: oklch(0.21 0.006 264 / 5%);
+  --m-outline-hover: oklch(0.85 0.006 264);
+  --m-add: var(--diff-add);
+  --m-remove: var(--diff-remove);
+  --m-add-tint: color-mix(in oklab, var(--diff-add) 12%, transparent);
+  --m-glow: oklch(0.21 0.006 264 / 4%);
+  --m-dot: oklch(0.88 0.004 264);
+  --m-shadow: oklch(0.21 0.006 264 / 14%);
   --m-radius-sm: calc(var(--radius) - 2px); /* = app --radius-md */
   --m-radius: var(--radius);
   --m-radius-lg: calc(var(--radius) + 4px); /* = app --radius-xl */
@@ -42,18 +42,18 @@
 
 /* bg/fg/border/primary flip automatically via the app tokens. */
 .dark .marketing {
-  --m-muted: #a1a1a1;
-  --m-dim: #6b6b6b;
-  --m-card: #101010;
+  /* Dark marketing sits on the deeper canvas, with cards one step up. */
+  --m-bg: var(--sidebar);
+  --m-card: var(--background);
+  --m-muted: oklch(0.74 0.01 264);
+  --m-dim: oklch(0.6 0.009 264);
   --m-primary-hover: color-mix(in oklab, var(--primary) 88%, white);
-  --m-hover: rgba(255, 255, 255, 0.06);
-  --m-outline-hover: #3f3f3f;
-  --m-add: #4ade80;
-  --m-remove: #f87171;
-  --m-add-tint: rgba(74, 222, 128, 0.14);
-  --m-glow: rgba(255, 255, 255, 0.06);
-  --m-dot: #2a2a2a;
-  --m-shadow: rgba(0, 0, 0, 0.7);
+  --m-hover: oklch(1 0 0 / 6%);
+  --m-outline-hover: oklch(0.36 0.006 264);
+  --m-add-tint: color-mix(in oklab, var(--diff-add) 14%, transparent);
+  --m-glow: oklch(1 0 0 / 5%);
+  --m-dot: oklch(0.27 0.005 264);
+  --m-shadow: oklch(0 0 0 / 70%);
 }
 
 .marketing a {
