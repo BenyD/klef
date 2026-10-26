@@ -6,6 +6,7 @@ import {
   groupNames,
   isPlatform,
   listPlatformNames,
+  localFileFor,
   platformMissing,
   PLATFORMS,
   readWorkerName,
@@ -15,7 +16,6 @@ import {
   type NameGroups,
   type Platform,
 } from "../audit.ts";
-import { localPathFor } from "../project-config.ts";
 import { readProjectConfig } from "../project-file.ts";
 import { redactAssignments } from "../output.ts";
 import { ToolError } from "../run-tool.ts";
@@ -58,7 +58,7 @@ export async function audit(args: ParsedArgs, env: NodeJS.ProcessEnv, cwd: strin
   for (const platform of platforms) {
     const missing = platformMissing(platform, cwd);
     for (const scope of SCOPES[platform]) {
-      const file = (config && localPathFor(config, scope.file)) ?? scope.file;
+      const file = localFileFor(scope, config);
       const local = await localNames(cwd, file);
       // Preview is only worth a line when the repo keeps a preview file.
       if (scope.environment === "preview" && local === null) continue;
