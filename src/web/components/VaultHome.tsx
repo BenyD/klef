@@ -1309,15 +1309,17 @@ function UserMenu({
           />
         }
       >
-        <Avatar className="size-6">
+        {/* One 32px axis: avatar, the two 16px lines beside it, and the
+            lock button next door all share the height. */}
+        <Avatar className="size-8 shrink-0">
           {image && (
             <AvatarImage src={image} alt="" referrerPolicy="no-referrer" />
           )}
           <AvatarFallback className="text-xs">{initial}</AvatarFallback>
         </Avatar>
-        <span className="flex min-w-0 flex-col leading-tight">
-          <span className="truncate text-sm font-medium">{displayName}</span>
-          <span className="text-muted-foreground truncate text-xs">{email}</span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-sm/4 font-medium">{displayName}</span>
+          <span className="text-muted-foreground truncate text-xs/4">{email}</span>
         </span>
         <ChevronsUpDown className="text-muted-foreground ml-auto size-3.5 shrink-0" />
       </DropdownMenuTrigger>
@@ -1423,10 +1425,11 @@ function LockButton({ lock }: { lock: () => void }) {
         render={
           <Button
             variant="outline"
-            size="icon-sm"
+            size="icon"
             aria-label="Lock vault"
             onClick={lock}
-            className="text-muted-foreground hover:text-foreground shrink-0"
+            // The account trigger's height, so the footer is one row.
+            className="text-muted-foreground hover:text-foreground size-10 shrink-0"
           >
             <Lock />
           </Button>
