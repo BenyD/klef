@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Fingerprint } from "lucide-react";
+import { Fingerprint, Info } from "lucide-react";
 import { VaultWriteError } from "../vault-api.ts";
 import { PasskeyPrfError } from "../lib/passkey-prf.ts";
 import { applyRememberDevice, remembersDevice } from "../lib/auto-lock.ts";
@@ -19,6 +19,7 @@ import { Input } from "./ui/input.tsx";
 import { Label } from "./ui/label.tsx";
 import { PasswordInput } from "./ui/password-input.tsx";
 import { StrengthMeter } from "./StrengthMeter.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip.tsx";
 
 export function UnlockScreen() {
   const { unlock, recoverAndReset, passkeyWraps, unlockWithPasskey } =
@@ -185,21 +186,33 @@ export function UnlockScreen() {
                   </Field>
                 </>
               )}
-              <div className="flex items-start gap-2">
+              <div className="flex items-center gap-2">
                 <Checkbox
                   id="remember-device"
-                  className="mt-0.5"
                   checked={remember}
                   onCheckedChange={(checked) => setRemember(checked === true)}
                 />
-                <div className="grid gap-0.5">
+                <div className="flex items-center gap-1">
                   <Label htmlFor="remember-device" className="font-normal">
-                    Keep unlocked on this device
+                    Keep unlocked for 7 days
                   </Label>
-                  <p className="text-muted-foreground text-xs">
-                    Skips the passphrase here for 7 days of inactivity. Use
-                    only on a device you trust. Lock anytime to end it.
-                  </p>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          type="button"
+                          aria-label="About keeping unlocked"
+                          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 rounded-sm outline-none transition-interactive focus-visible:ring-2"
+                        />
+                      }
+                    >
+                      <Info className="size-3.5" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-64">
+                      Skips the passphrase on this device until 7 days without
+                      use. Only tick it on a device you trust; locking ends it.
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
               <Button
