@@ -81,6 +81,18 @@ the untouched local copy, and a file changed on both sides, or one this
 machine has never synced, stops the whole run with a key-level diff and the
 two commands that settle it. A file the vault does not have yet is created.
 
+`klef audit` lists which key names Vercel, GitHub Actions and Cloudflare
+Workers hold that your local files lack, and the reverse, so you (or an agent)
+can ask "OLD_FLAG is on Vercel Production but not in `.env.production`; still
+needed?". It is read-only and prints names only, through your own `vercel`,
+`gh` and `wrangler` sign-ins; `--json` for agents. Klef never writes to those
+platforms.
+
+```bash
+npx @klefsh/cli audit           # every platform set up in this directory
+npx @klefsh/cli audit vercel --json
+```
+
 ### A new or reset Mac
 
 Clone your repos (their `.klef.json` is committed), then:

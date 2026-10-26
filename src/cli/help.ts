@@ -15,6 +15,8 @@ Commands:
   logout             Forget the stored token on this machine
   status             Show sign-in state and what this directory is linked to
   list               Show the env files in your vault (read-only)
+  audit [platform]   Key names on Vercel, GitHub or Cloudflare that your local
+                     files lack, and the reverse (read-only, names only)
   link [ws] [proj]   Link this directory to the vault (.klef.json); records
                      .env.local and .env.production when the project has them
   sync               Pull or push each linked file, whichever side changed;
@@ -36,7 +38,7 @@ Options:
                      setup: which project to link, without the menu
   -y, --yes          Skip the confirmation on push, sync, restore and setup
   --global           setup: install the Claude Code skill for every project
-  --json             Machine-readable output (list, status)
+  --json             Machine-readable output (list, status, audit)
   --paste            Sign in by pasting a token, for machines with no browser
   --for <time>       How long unlock lasts without use: 30m, 8h, 7d (default 15m)
   -h, --help         Show this
@@ -50,6 +52,8 @@ Environment:
 klef never prints a secret value. Pull writes to a file, push reports only how
 many lines changed, diff and sync name keys but never values, and nothing
 secret goes to stdout either way.
+klef never writes to Vercel, GitHub or Cloudflare. \`klef audit\` only lists key
+names there, through your own vercel, gh and wrangler sign-ins.
 The master passphrase is read from the terminal only, never from a flag or a
 pipe, so the process that spawned klef cannot supply or observe it. After
 \`klef unlock\`, a background agent holds the key in memory (never on disk) and

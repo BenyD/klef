@@ -126,6 +126,27 @@ added later is browser-only until someone deliberately opens it.
   file that exists only locally, with an environment label taken from its
   name. Deleting stays browser-only.
 
+## Auditing Vercel, GitHub and Cloudflare
+
+`klef audit` compares key names in local env files with what Vercel, GitHub
+Actions and Cloudflare Workers hold. It is built to be safe to hand an agent:
+
+- **Read-only, everywhere.** It runs only listing commands (`vercel env ls`,
+  `gh secret list`, `wrangler secret list`) and has no code path that writes to
+  a platform. Klef never pushes to these platforms at all.
+- **Names only.** GitHub and Cloudflare return names. Vercel's listing also
+  carries the values of variables that are not Sensitive; those are parsed in
+  memory, dropped, and never printed or written. Local files are read for key
+  names, and their values are discarded the same way. No vault unlock needed.
+- **Your sign-ins, not Klef's.** It runs your own `vercel`, `gh` and
+  `wrangler` (wrangler from the project's `node_modules/.bin` first). Klef
+  never reads, stores or forwards their tokens, and the Klef server is not
+  involved. It trusts those tools exactly as much as you do when you run them.
+- **Failures stay quiet.** A missing CLI, a signed-out tool or a missing
+  environment is reported per platform. Only the last line of the tool's
+  stderr is shown, never its stdout, and any `NAME=value` in that line is
+  redacted.
+
 ## The unlock agent
 
 `klef unlock` asks for the passphrase once and starts a background process
