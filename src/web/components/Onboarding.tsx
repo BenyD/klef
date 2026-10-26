@@ -109,7 +109,7 @@ export function Onboarding({ email }: { email: string }) {
             <div className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-lg">
               <KlefMark className="size-4" />
             </div>
-            <span className="text-sm font-semibold tracking-tight">Klef</span>
+            <span className="text-sm font-semibold">Klef</span>
           </div>
 
           <ol className="flex flex-col">
@@ -165,7 +165,7 @@ export function Onboarding({ email }: { email: string }) {
               <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
                 <KlefMark className="size-3.5" />
               </div>
-              <span className="text-sm font-semibold tracking-tight">Klef</span>
+              <span className="text-sm font-semibold">Klef</span>
             </div>
             <span className="text-muted-foreground text-xs tabular-nums">
               Step {stepIndex + 1} of {STEPS.length}
@@ -317,7 +317,7 @@ function StepHeader({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+      <h1 className="text-xl font-semibold">{title}</h1>
       <p className="text-muted-foreground text-sm">{description}</p>
     </div>
   );

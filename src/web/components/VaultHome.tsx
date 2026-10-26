@@ -1220,7 +1220,7 @@ function WorkspaceSwitcher({
         render={
           <button
             type="button"
-            className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-1.5 text-left outline-none transition-interactive focus-visible:ring-2"
+            className="hover:bg-sidebar-hover aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-1.5 text-left outline-none transition-interactive focus-visible:ring-2"
           />
         }
       >
@@ -1305,7 +1305,7 @@ function UserMenu({
           <button
             type="button"
             aria-label="Account menu"
-            className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-left outline-none transition-interactive focus-visible:ring-2"
+            className="hover:bg-sidebar-hover aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-left outline-none transition-interactive focus-visible:ring-2"
           />
         }
       >
@@ -1586,7 +1586,7 @@ function FileTabs({
                       "group/tab relative flex h-7 max-w-56 shrink-0 items-center rounded-md transition-interactive",
                       active
                         ? "bg-background text-foreground shadow-raised ring-1 ring-border"
-                        : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
                       dragFrom === i && "opacity-50",
                       dropAt === i &&
                         dragFrom !== null &&
