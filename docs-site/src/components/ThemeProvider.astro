@@ -1,0 +1,22 @@
+---
+// Replaces Starlight's ThemeProvider so the docs share the app's theme
+// preference: next-themes stores "light" | "dark" | "system" under `theme`
+// on the same origin, so a choice made on klef.sh carries into /docs and
+// back. Sets both Starlight's data-theme and the `.dark` class that
+// tokens.css keys on. Inlined to avoid a flash of the wrong theme.
+---
+
+<script is:inline>
+	(() => {
+		let stored = null;
+		try {
+			stored = localStorage.getItem("theme");
+		} catch {}
+		const dark =
+			stored === "dark" ||
+			(stored !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+		const root = document.documentElement;
+		root.dataset.theme = dark ? "dark" : "light";
+		root.classList.toggle("dark", dark);
+	})();
+</script>
