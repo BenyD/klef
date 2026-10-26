@@ -61,8 +61,7 @@ export function ProjectsOverview({
         <div className="min-w-0">
           <h1 className="truncate text-xl font-semibold">{workspaceName}</h1>
           <p className="text-muted-foreground text-sm tabular-nums">
-            {projects.length} {projects.length === 1 ? "project" : "projects"}
-            <span aria-hidden="true"> · </span>
+            {projects.length} {projects.length === 1 ? "project" : "projects"},{" "}
             {fileCount} {fileCount === 1 ? "file" : "files"}
           </p>
         </div>
