@@ -1185,11 +1185,9 @@ function Crumb({ className }: { className?: string }) {
 // tile, so the switcher reads as "this workspace" rather than a generic cube.
 function WorkspaceTile({ workspace }: { workspace: WorkspaceNode | null }) {
   if (workspace?.icon) {
-    return (
-      <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md border">
-        <WorkspaceIcon workspace={workspace} className="size-full rounded-none" />
-      </span>
-    );
+    // No frame: uploaded logos usually bring their own shape, and a border
+    // around one reads as a box inside a box.
+    return <WorkspaceIcon workspace={workspace} className="size-7 rounded-md" />;
   }
   return (
     <span
