@@ -10,6 +10,7 @@ import {
   pnpmScriptsIn,
   promptText,
   SECRET_SAFETY_RULE,
+  SETUP_COMMAND,
 } from "./agent-prompts.ts";
 
 const packageScripts = Object.keys(
@@ -97,10 +98,14 @@ describe("agent prompts", () => {
     const connect = AGENT_PROMPTS.find((p) => p.id === "connect");
     expect(connect, "the connect prompt should exist").toBeDefined();
     const text = promptText(connect!);
-    expect(text).toContain("npx @klefsh/cli setup");
+    expect(text).toContain(`\`${SETUP_COMMAND}\``);
     expect(text).toMatch(/ask me first/i);
     expect(text).toMatch(/once I say yes, rerun with `--yes`/);
     expect(text).toMatch(/give me\s+`npx @klefsh\/cli unlock` to run myself/);
+  });
+
+  it("copies a setup command that names a published package", () => {
+    expect(npxPackagesIn(SETUP_COMMAND).every((p) => PUBLISHED_PACKAGES.includes(p))).toBe(true);
   });
 
   it("uses no em dashes", () => {
