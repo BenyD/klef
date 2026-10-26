@@ -125,7 +125,7 @@ type ActionEntry = Extract<Entry, { kind: "action" }>;
 
 // How many rows each group shows for a query: enough to pick from, few
 // enough that the best match is always in view.
-const LIMIT = { files: 8, keys: 6, projects: 5, actions: 6 } as const;
+const LIMIT = { files: 8, keys: 6, projects: 5, actions: 6, keyMode: 50 } as const;
 const RECENT_LIMIT = 5;
 // Key names only join the results once a query is specific enough to mean
 // one; a single letter would flood the list with every key in the vault.
@@ -158,10 +158,8 @@ export function CommandPalette({
   const envMeta = useEnvMeta();
   const { resolvedTheme, setTheme } = useTheme();
   const { toggleSidebar } = useSidebar();
-  const { names: keyNames, loading: keysLoading } = useKeyNames(
-    workspace,
-    open,
-  );
+  const scope = useMemo(() => (workspace ? [workspace] : []), [workspace]);
+  const { names: keyNames, loading: keysLoading } = useKeyNames(scope, open);
 
   const projects = useMemo(() => workspace?.projects ?? [], [workspace]);
   // "New file" lands next to what's being worked on: the selected file's
@@ -343,11 +341,17 @@ export function CommandPalette({
 
   const q = query.trim();
   const searching = q !== "";
+  // "#" switches to key names only: "#stripe", or "#" alone to browse them.
+  const keyMode = q.startsWith("#");
+  const keyQuery = keyMode ? q.slice(1).trim() : q;
 
   // For a query, each group is ranked on its own and the groups are then
   // ordered by their best hit, so the best match leads the list wherever it
   // lives.
-  const groups = searching
+  const groups = keyMode
+    ? [{ heading: "Keys", results: searchItems(keys, keyQuery).slice(0, LIMIT.keyMode) }]
+        .filter((g) => g.results.length > 0)
+    : searching
     ? [
         { heading: "Files", results: searchItems(files, q).slice(0, LIMIT.files) },
         {
@@ -468,7 +472,7 @@ export function CommandPalette({
         <CommandInput
           value={query}
           onValueChange={setQuery}
-          placeholder="Search files, keys, and actions..."
+          placeholder="Search files, keys, and actions. Type # for keys only"
         />
         <CommandList>
           {searching ? (
@@ -476,7 +480,11 @@ export function CommandPalette({
               <CommandEmpty>
                 {keysLoading
                   ? "Searching key names..."
-                  : `Nothing matches "${q}".`}
+                  : keyMode
+                    ? keyQuery
+                      ? `No key in this workspace matches "${keyQuery}".`
+                      : "No saved env files in this workspace yet."
+                    : `Nothing matches "${q}".`}
               </CommandEmpty>
               {groups.map((g) => (
                 <CommandGroup key={g.heading} heading={g.heading}>
