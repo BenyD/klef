@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { command } from "../invocation.ts";
-import { writeFile, chmod, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { requireApi } from "../session.ts";
+import type { CurrentVersion } from "../api.ts";
 import { readProjectConfig } from "../project-file.ts";
 import { CONFIG_FILENAME, type ProjectConfig } from "../project-config.ts";
 import { resolveTarget } from "../resolve.ts";
@@ -12,9 +12,8 @@ import { syncTargets } from "../targets.ts";
 import { countVariables, describeWrite } from "../output.ts";
 import { flagValue, hasFlag, type ParsedArgs } from "../args.ts";
 import { resolveWritePath } from "../write-path.ts";
-
-/** Env files are owner-only; they hold the plaintext this whole tool protects. */
-const OWNER_ONLY = 0o600;
+import { writeEnvFile } from "../env-file.ts";
+import { recordSynced } from "../sync-state.ts";
 
 /**
  * Which file in the vault to pull. `--file` names a sibling in the same
@@ -84,7 +83,7 @@ export async function pull(
     return 1;
   }
 
-  const versions = [];
+  const versions: CurrentVersion[] = [];
   for (const { resolved } of planned) {
     const { version } = await api.currentVersion(resolved.fileId);
     if (!version) {
@@ -103,9 +102,7 @@ export async function pull(
 
   for (const [i, { resolved, destination }] of planned.entries()) {
     const plaintext = plaintexts[i]!;
-    await mkdir(path.dirname(destination), { recursive: true });
-    await writeFile(destination, plaintext, { mode: OWNER_ONLY });
-    await chmod(destination, OWNER_ONLY);
+    await writeEnvFile(destination, plaintext);
 
     console.log(
       describeWrite({
@@ -114,5 +111,10 @@ export async function pull(
       }),
     );
   }
+  // What `sync` measures "edited since" against.
+  await recordSynced(
+    env,
+    planned.map(({ destination }, i) => ({ file: destination, versionId: versions[i]!.id })),
+  );
   return 0;
 }

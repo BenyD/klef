@@ -104,6 +104,28 @@ added later is browser-only until someone deliberately opens it.
   `../` escapes are refused, so an agent that can be talked into running either
   cannot choose where plaintext lands or which file gets uploaded.
 
+## Sync and restore
+
+- **`diff` and `sync` print key names, never values.** A conflict cannot be
+  settled without knowing which keys moved, and a key name says what a value
+  is for, not what it is. The result type they print from holds names only.
+- **A pull never overwrites an edit.** `sync` pulls a vault change only over a
+  local file whose mtime and size are what they were when it last matched the
+  vault; anything else is a conflict, and a conflict writes nothing to either
+  side. A push is safe by construction, since vault versions are append-only.
+- **The record of what matched holds no secret.** `~/.config/klef/sync-state.json`
+  (mode `0600`) stores, per local path, a version id, an mtime and a size. Not
+  a hash of the contents, which for a short env file would be a guessable
+  fingerprint of its values.
+- **`restore` asks before it writes.** It walks a directory for committed
+  `.klef.json` files, and a cloned repo can name any workspace and project.
+  So it lists every checkout and the vault project it asks for, and decrypts
+  nothing until you confirm. It only pulls, so a stale checkout cannot
+  overwrite a good version.
+- **A token can create an env file, not delete one.** `sync` creates a vault
+  file that exists only locally, with an environment label taken from its
+  name. Deleting stays browser-only.
+
 ## The unlock agent
 
 `klef unlock` asks for the passphrase once and starts a background process
