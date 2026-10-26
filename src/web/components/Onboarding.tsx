@@ -88,14 +88,14 @@ export function Onboarding({ email }: { email: string }) {
   return (
     <div className="klef-screen relative flex min-h-svh flex-col items-center justify-center overflow-hidden px-4 py-10">
       <WorkbenchBackdrop />
-      <div className="bg-background/70 absolute inset-0" aria-hidden="true" />
+      <div className="bg-sidebar/80 absolute inset-0" aria-hidden="true" />
 
       <div className="absolute top-4 right-4 z-20 flex items-center gap-1">
         <ThemeToggle />
         <Button
           variant="ghost"
           size="sm"
-          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          className="text-muted-foreground"
           onClick={() => void onSignOut()}
         >
           <LogOut />
@@ -103,8 +103,8 @@ export function Onboarding({ email }: { email: string }) {
         </Button>
       </div>
 
-      <div className="bg-card relative z-10 flex w-full max-w-2xl overflow-hidden rounded-xl border">
-        <aside className="bg-muted/40 hidden w-56 shrink-0 flex-col gap-8 border-r p-6 sm:flex">
+      <div className="bg-background shadow-overlay relative z-10 flex w-full max-w-2xl overflow-hidden rounded-xl border">
+        <aside className="bg-sidebar hidden w-56 shrink-0 flex-col gap-8 border-r p-6 sm:flex">
           <div className="flex items-center gap-2">
             <div className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-lg">
               <KlefMark className="size-4" />
@@ -123,9 +123,9 @@ export function Onboarding({ email }: { email: string }) {
                     <span
                       className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium transition-colors ${
                         done
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-foreground text-background"
                           : current
-                            ? "border-primary text-foreground border-2"
+                            ? "border-foreground text-foreground border-2"
                             : "border-border text-muted-foreground border"
                       }`}
                     >
@@ -134,7 +134,7 @@ export function Onboarding({ email }: { email: string }) {
                     {!last && (
                       <span
                         className={`my-1 w-px flex-1 transition-colors ${
-                          done ? "bg-primary" : "bg-border"
+                          done ? "bg-foreground/40" : "bg-border"
                         }`}
                       />
                     )}
