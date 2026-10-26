@@ -1,7 +1,8 @@
 /* Klef's design tokens: the colour, motion and elevation custom properties
-   for both themes. Kept free of Tailwind so the docs site (docs-site/, built
-   by Astro) can import the same file the app does. global.css imports it and
-   maps it into Tailwind's theme; DESIGN.md says when to reach for which. */
+   for both themes. Kept free of Tailwind so the docs site (docs-site/,
+   built with Fumadocs) can import the same file the app does. global.css
+   imports it and maps it into Tailwind's theme; DESIGN.md says when to
+   reach for which. */
 
 /* Neutrals are a cool grey ramp (hue 264, chroma under 0.01): close enough
    to neutral that nothing reads tinted, cool enough that the ember accent is
