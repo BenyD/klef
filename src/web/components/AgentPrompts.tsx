@@ -48,15 +48,16 @@ export function AgentPrompts() {
   }
 
   return (
-    <div className="marketing-agent">
-      <h3 className="marketing-agent-title">Or start from a prompt</h3>
-      <p className="marketing-agent-lead">
-        Paste one into Claude Code or Cursor. Connect my agent runs setup for
-        you and hands the passphrase steps back to you. Prefer your own
-        terminal? Run <code>npx @klefsh/cli setup</code>.
-      </p>
+    <div className="m-card marketing-agent" id="prompts">
+      <div className="m-card-head">
+        <span className="m-card-title">Or start from a prompt</span>
+        <span className="m-card-sub">
+          Paste one into Claude Code or Cursor. Prefer your own terminal? Run{" "}
+          <code className="m-code">npx @klefsh/cli setup</code>.
+        </span>
+      </div>
 
-      <div className="marketing-agent-card">
+      <div>
         <div className="marketing-agent-tabs" role="tablist" aria-label="Agent prompts">
           {AGENT_PROMPTS.map((prompt, index) => (
             <button
@@ -82,7 +83,7 @@ export function AgentPrompts() {
           ))}
           <CopyPromptButton
             prompt={active}
-            className="marketing-agent-copy"
+            className="m-btn m-btn-sm m-btn-outline marketing-agent-copy"
           />
         </div>
 
@@ -90,7 +91,7 @@ export function AgentPrompts() {
           role="tabpanel"
           id={PANEL_ID}
           aria-labelledby={`agent-tab-${active.id}`}
-          className="marketing-agent-panel"
+          className="m-panel marketing-agent-panel"
         >
           <p className="marketing-agent-desc">{active.description}</p>
           <pre className="marketing-agent-prompt">{promptText(active)}</pre>

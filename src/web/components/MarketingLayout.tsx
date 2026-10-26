@@ -1,53 +1,221 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router";
+import { ArrowUp, Menu, X } from "lucide-react";
 import { KlefMark } from "./KlefMark.tsx";
 import { ThemeGlyph } from "./ThemeToggle.tsx";
 import { useThemeSwitch } from "../lib/use-theme-switch.ts";
 import "../styles/marketing.css";
 
+const GITHUB = "https://github.com/BenyD/klef";
+
+// Plain anchors for the landing sections, not router links: from /security
+// they load the landing page and land on the section, which a Link with a
+// hash would not scroll to.
+const SECTIONS = [
+  { href: "/#how-it-works", label: "How it works", n: "01" },
+  { href: "/#cli", label: "The CLI", n: "02" },
+  { href: "/#agents", label: "For your agent", n: "03" },
+  { href: "/#security", label: "Security model", n: "04" },
+  { href: "/#faq", label: "Questions", n: "06" },
+];
+
 // Shared chrome for the public marketing pages (landing, security, terms,
-// privacy, about): nav + footer around page-specific content.
+// privacy, about): the header bar and the footer card around the page.
 export function MarketingLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="marketing">
-      <nav className="marketing-nav" aria-label="Main">
-        <Link to="/" className="marketing-brand">
-          <span className="marketing-brand-mark">
-            <KlefMark className="size-3.5" />
-          </span>
-          Klef
-        </Link>
-        {/* Plain anchors, not router links: from /security they load the
-            landing page and land on the section, which a Link with a hash
-            would not scroll to. */}
-        <div className="marketing-nav-sections">
+    <div className="marketing" id="top">
+      <SiteHeader />
+      {children}
+      <SiteFooter />
+    </div>
+  );
+}
+
+function Brand({ onClick }: { onClick?: () => void }) {
+  return (
+    <Link to="/" className="m-brand" onClick={onClick}>
+      <span className="m-brand-mark">
+        <KlefMark className="size-3.5" />
+      </span>
+      Klef
+    </Link>
+  );
+}
+
+/**
+ * A white pill bar inset from the top, sticky, with a blurred backdrop so
+ * the page reads through it. Phones get a menu button and one card of links
+ * under the bar, closed by Escape, a link, or widening the window.
+ */
+function SiteHeader() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    const wide = window.matchMedia("(min-width: 861px)");
+    const onWide = () => wide.matches && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    wide.addEventListener("change", onWide);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      wide.removeEventListener("change", onWide);
+    };
+  }, [open]);
+
+  const close = () => setOpen(false);
+
+  return (
+    <header className="m-header m-wrap">
+      <div className="m-bar">
+        <Brand onClick={close} />
+
+        <nav className="m-nav" aria-label="Primary">
           <a href="/#how-it-works">How it works</a>
+          <a href="/#cli">The CLI</a>
           <a href="/#agents">Agents</a>
           <Link to="/security">Security</Link>
-        </div>
-        <div className="marketing-nav-links">
-          <ThemeButton />
+          <Link to="/docs">Docs</Link>
+        </nav>
+
+        <div className="m-actions">
           <a
-            href="https://github.com/BenyD/klef"
+            href={GITHUB}
             target="_blank"
             rel="noreferrer"
-            className="m-btn m-btn-ghost m-btn-sm m-btn-icon"
+            className="m-icon-btn m-hide-sm"
             aria-label="Klef on GitHub"
           >
             <GitHubIcon />
           </a>
-          {/* Outline, not ember: the page's own call to action is the one
-              primary in view (DESIGN.md, "One primary per view"). */}
-          <Link to="/auth" className="m-btn m-btn-outline m-btn-sm">
+          <Link to="/auth" className="m-signin m-hide-sm">
             Sign in
           </Link>
+          {/* Ink, not ember: the page's own call to action is the one ember
+              button in view (DESIGN.md, "One primary per view"). */}
+          <Link to="/auth" className="m-btn m-btn-sm m-btn-ink">
+            Get started
+          </Link>
+          <button
+            type="button"
+            className="m-icon-btn m-menu-btn"
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+            aria-controls="m-menu"
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? <X /> : <Menu />}
+          </button>
         </div>
-      </nav>
+      </div>
 
-      {children}
+      {open && (
+        <nav id="m-menu" className="m-menu" aria-label="Menu">
+          <div className="m-menu-panel">
+            {SECTIONS.map((s) => (
+              <a key={s.href} href={s.href} onClick={close}>
+                {s.label}
+                <span>{s.n}</span>
+              </a>
+            ))}
+            <Link to="/docs" onClick={close}>
+              Docs
+              <span aria-hidden="true">&#8599;</span>
+            </Link>
+            <a href={GITHUB} target="_blank" rel="noreferrer" onClick={close}>
+              GitHub
+              <span aria-hidden="true">&#8599;</span>
+            </a>
+          </div>
+          <div className="m-menu-actions">
+            <Link to="/auth" className="m-btn m-btn-primary" onClick={close}>
+              Get started free
+            </Link>
+            <Link to="/auth" className="m-btn m-btn-outline" onClick={close}>
+              Sign in
+            </Link>
+          </div>
+        </nav>
+      )}
+    </header>
+  );
+}
 
-      <footer className="marketing-footer">
-        <div className="marketing-footer-inner">
+type FooterLink = { label: string; to?: string; href?: string; external?: boolean };
+
+const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
+  {
+    title: "Product",
+    links: [
+      { label: "How it works", href: "/#how-it-works" },
+      { label: "The CLI", href: "/#cli" },
+      { label: "For your agent", href: "/#agents" },
+      { label: "Compared", href: "/#compare" },
+      { label: "Questions", href: "/#faq" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { label: "Docs", to: "/docs" },
+      { label: "Security model", to: "/security" },
+      { label: "CLI on npm", href: "https://www.npmjs.com/package/@klefsh/cli", external: true },
+      { label: "Self-hosting", href: `${GITHUB}#self-hosting`, external: true },
+      { label: "Report a vulnerability", href: `${GITHUB}/blob/main/SECURITY.md`, external: true },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About", to: "/about" },
+      { label: "Privacy", to: "/privacy" },
+      { label: "Terms", to: "/terms" },
+      { label: "GitHub", href: GITHUB, external: true },
+    ],
+  },
+];
+
+function SiteFooter() {
+  return (
+    <footer className="m-footer m-wrap">
+      <div className="m-card">
+        <div className="m-panel m-footer-panel">
+          <div className="m-footer-brand">
+            <Brand />
+            <p>
+              End-to-end encrypted .env sync for one developer and their coding
+              agents. Open source under <span className="m-nowrap">AGPL-3.0</span>,
+              and self-hostable on Cloudflare.
+            </p>
+            <code className="m-code">npm install -g @klefsh/cli</code>
+          </div>
+
+          {FOOTER_COLUMNS.map((col) => (
+            <nav key={col.title} className="m-footer-col" aria-label={col.title}>
+              <h2>{col.title}</h2>
+              <ul>
+                {col.links.map((link) => (
+                  <li key={link.label}>
+                    {link.to ? (
+                      <Link to={link.to}>{link.label}</Link>
+                    ) : (
+                      <a
+                        href={link.href}
+                        {...(link.external ? { target: "_blank", rel: "noreferrer" } : {})}
+                      >
+                        {link.label}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
+        </div>
+
+        <div className="m-footer-base">
           <span>
             &copy; {new Date().getFullYear()} Klef. Built by{" "}
             <a
@@ -61,35 +229,24 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
             </a>
             .
           </span>
-          <nav className="marketing-footer-links" aria-label="Footer">
-            <Link to="/about">About</Link>
-            <Link to="/security">Security</Link>
-            <Link to="/terms">Terms</Link>
-            <Link to="/privacy">Privacy</Link>
-            <a
-              href="https://github.com/BenyD/klef/blob/main/LICENSE"
-              target="_blank"
-              rel="noreferrer"
-            >
-              AGPL-3.0
+          <span>No analytics, no trackers, no ads.</span>
+          <span className="m-footer-tools">
+            <a href="#top" className="m-icon-btn" aria-label="Back to top">
+              <ArrowUp />
             </a>
-          </nav>
+            <ThemeButton />
+          </span>
         </div>
-      </footer>
-    </div>
+      </div>
+    </footer>
   );
 }
 
 function ThemeButton() {
   const toggle = useThemeSwitch();
   return (
-    <button
-      type="button"
-      aria-label="Toggle theme"
-      onClick={toggle}
-      className="m-btn m-btn-ghost m-btn-sm m-btn-icon"
-    >
-      <ThemeGlyph className="size-4" />
+    <button type="button" aria-label="Switch theme" onClick={toggle} className="m-icon-btn">
+      <ThemeGlyph className="size-3.5" />
     </button>
   );
 }
