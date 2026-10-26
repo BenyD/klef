@@ -144,6 +144,13 @@ export function promptText(prompt: AgentPrompt): string {
  */
 export const PUBLISHED_PACKAGES: readonly string[] = ["@klefsh/cli"];
 
+/**
+ * The one command that connects a repo: signs in, links, installs the agent
+ * instructions and pulls. The command menu copies it; the prompts above spell
+ * it out inline, and a test holds the "connect" prompt to this exact string.
+ */
+export const SETUP_COMMAND = "npx @klefsh/cli setup";
+
 /** Every `npx <package>` a prompt tells the reader to run. */
 export function npxPackagesIn(text: string): string[] {
   return [
