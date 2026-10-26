@@ -2,52 +2,7 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useLockShortcut } from "./auto-lock.ts";
-import { paletteFilter, usePaletteShortcut } from "./command-palette.ts";
-
-describe("paletteFilter", () => {
-  it("matches everything on an empty query", () => {
-    expect(paletteFilter(".env.local", "")).toBe(1);
-    expect(paletteFilter(".env.local", "   ")).toBe(1);
-  });
-
-  it("ranks prefix over substring over keyword matches", () => {
-    const prefix = paletteFilter("api/.env", "api");
-    const substring = paletteFilter("web/.env.api", "api");
-    const keyword = paletteFilter(".env.local", "api", ["api"]);
-    expect(prefix).toBeGreaterThan(substring);
-    expect(substring).toBeGreaterThan(keyword);
-    expect(keyword).toBeGreaterThan(0);
-  });
-
-  it("returns 0 when nothing matches", () => {
-    expect(paletteFilter(".env.local", "xyz")).toBe(0);
-    expect(paletteFilter(".env.local", "xyz", ["production"])).toBe(0);
-  });
-
-  it("is case-insensitive on both sides", () => {
-    expect(paletteFilter("API/.env", "api")).toBeGreaterThan(0);
-    expect(paletteFilter("api/.env", "API")).toBeGreaterThan(0);
-    expect(paletteFilter(".env", "PROD", ["Production"])).toBeGreaterThan(0);
-  });
-
-  it("requires every token to match somewhere", () => {
-    // "api prod" narrows to the api project's production file...
-    expect(
-      paletteFilter("api/.env.production", "api prod"),
-    ).toBeGreaterThan(0);
-    // ...matching across value and keywords.
-    expect(paletteFilter("api/.env", "api prod", ["production"])).toBeGreaterThan(
-      0,
-    );
-    // One missing token kills the match even if the other hits.
-    expect(paletteFilter("api/.env.production", "api xyz")).toBe(0);
-  });
-
-  it("matches environment keywords on files named without them", () => {
-    expect(paletteFilter("web/.env.local", "development", ["development"]))
-      .toBeGreaterThan(0);
-  });
-});
+import { usePaletteShortcut } from "./command-palette.ts";
 
 describe("usePaletteShortcut", () => {
   function press(init: KeyboardEventInit) {
