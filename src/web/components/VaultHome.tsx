@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useNavigate, useParams } from "react-router";
+import { useTheme } from "next-themes";
 import {
   Boxes,
   Bug,
@@ -25,6 +26,8 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  SunMoon,
+  Timer,
   Trash2,
   Upload,
   X,
@@ -95,7 +98,6 @@ import { LockShortcutKeys } from "./LockShortcutKeys.tsx";
 import { envMeta, useEnvMeta } from "../lib/env-meta.ts";
 import { FilePane } from "./FilePane.tsx";
 import { SettingsDialog, type SettingsTab } from "./SettingsDialog.tsx";
-import { ThemeToggle } from "./ThemeToggle.tsx";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -122,7 +124,12 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu.tsx";
 import {
@@ -724,6 +731,7 @@ export function VaultHome({
               email={email}
               image={image}
               onOpenSettings={setSettingsTab}
+              onLock={requestLock}
               beforeSignOut={(proceed) =>
                 guardDirty(proceed, {
                   verb: "Signing out",
@@ -731,8 +739,7 @@ export function VaultHome({
                 })
               }
             />
-            <LockMenu lock={requestLock} />
-            <ThemeToggle size="icon-sm" />
+            <LockButton lock={requestLock} />
           </>
         }
         projects={projects}
@@ -1174,6 +1181,26 @@ function Crumb({ className }: { className?: string }) {
   );
 }
 
+// The workspace's own mark: its uploaded icon, or its initial on a solid
+// tile, so the switcher reads as "this workspace" rather than a generic cube.
+function WorkspaceTile({ workspace }: { workspace: WorkspaceNode | null }) {
+  if (workspace?.icon) {
+    return (
+      <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md border">
+        <WorkspaceIcon workspace={workspace} className="size-full rounded-none" />
+      </span>
+    );
+  }
+  return (
+    <span
+      className="bg-foreground text-background flex size-7 shrink-0 items-center justify-center rounded-md text-sm font-semibold"
+      aria-hidden="true"
+    >
+      {(workspace?.name.trim().charAt(0) || "W").toUpperCase()}
+    </span>
+  );
+}
+
 // Top of the sidebar: which workspace you are in, and the way to every other
 // one. Workspace settings live here too, next to the thing they configure.
 function WorkspaceSwitcher({
@@ -1195,14 +1222,21 @@ function WorkspaceSwitcher({
         render={
           <button
             type="button"
-            className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-1.5 text-left text-sm font-medium outline-none transition-interactive focus-visible:ring-2"
+            className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-1.5 text-left outline-none transition-interactive focus-visible:ring-2"
           />
         }
       >
-        <span className="bg-background flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] border">
-          <WorkspaceIcon workspace={workspace} className="size-3.5" />
+        <WorkspaceTile workspace={workspace} />
+        <span className="flex min-w-0 flex-col leading-tight">
+          <span className="truncate text-sm font-semibold">
+            {workspace?.name ?? "Workspace"}
+          </span>
+          <span className="text-muted-foreground truncate text-xs tabular-nums">
+            {workspace
+              ? `${workspace.projects.length} ${workspace.projects.length === 1 ? "project" : "projects"}`
+              : "Loading..."}
+          </span>
         </span>
-        <span className="truncate">{workspace?.name ?? "Workspace"}</span>
         <ChevronsUpDown className="text-muted-foreground ml-auto size-3.5 shrink-0" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-(--anchor-width) sm:min-w-60">
@@ -1230,23 +1264,31 @@ function WorkspaceSwitcher({
   );
 }
 
+// The sidebar's account menu: who you are, then everything about this
+// session in one place (settings, theme, locking, signing out), each with
+// its shortcut. Replaces a row of unlabelled icon buttons.
 function UserMenu({
   name,
   email,
   image,
   onOpenSettings,
+  onLock,
   beforeSignOut,
 }: {
   name: string;
   email: string;
   image?: string | null;
   onOpenSettings: (tab: SettingsTab) => void;
+  onLock: () => void;
   /** Owner-provided gate (e.g. the dirty-draft guard) around signing out. */
   beforeSignOut: (proceed: () => void) => void;
 }) {
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
+  const autoLockMinutes = useAutoLockMinutes();
   const displayName = name.trim() || email;
   const initial = displayName.charAt(0).toUpperCase();
+  const mac = isMacPlatform();
 
   async function onSignOut() {
     await clearDek();
@@ -1265,45 +1307,89 @@ function UserMenu({
           <button
             type="button"
             aria-label="Account menu"
-            className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none transition-interactive focus-visible:ring-2"
+            className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-left outline-none transition-interactive focus-visible:ring-2"
           />
         }
       >
-        <Avatar className="size-5">
+        <Avatar className="size-6">
           {image && (
             <AvatarImage src={image} alt="" referrerPolicy="no-referrer" />
           )}
-          <AvatarFallback className="text-[10px]">{initial}</AvatarFallback>
+          <AvatarFallback className="text-xs">{initial}</AvatarFallback>
         </Avatar>
-        <span className="truncate">{displayName}</span>
+        <span className="flex min-w-0 flex-col leading-tight">
+          <span className="truncate text-sm font-medium">{displayName}</span>
+          <span className="text-muted-foreground truncate text-xs">{email}</span>
+        </span>
+        <ChevronsUpDown className="text-muted-foreground ml-auto size-3.5 shrink-0" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent side="top" align="start" className="min-w-56">
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <Avatar className="size-8">
-            {image && (
-              <AvatarImage src={image} alt="" referrerPolicy="no-referrer" />
-            )}
-            <AvatarFallback className="text-xs">{initial}</AvatarFallback>
-          </Avatar>
-          <div className="flex min-w-0 flex-col">
-            <span className="truncate text-sm font-medium">{displayName}</span>
-            <span className="text-muted-foreground truncate text-xs">
-              {email}
-            </span>
-          </div>
-        </div>
+      <DropdownMenuContent side="top" align="start" className="min-w-60">
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => onOpenSettings("profile")}>
+            <Settings />
+            Settings
+          </DropdownMenuItem>
+          {/* Security surfaces the vault-critical pages (passphrase,
+              recovery key, passkeys) without a second hop through Profile. */}
+          <DropdownMenuItem onClick={() => onOpenSettings("security")}>
+            <ShieldCheck />
+            Security
+          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <SunMoon />
+              Theme
+              <span className="text-muted-foreground ml-auto pl-4 text-xs capitalize">
+                {theme ?? "system"}
+              </span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="min-w-36">
+              <DropdownMenuRadioGroup
+                value={theme ?? "system"}
+                onValueChange={(v) => setTheme(String(v))}
+              >
+                <DropdownMenuRadioItem value="system">System</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="light">Light</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="dark">Dark</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        {/* Both jump into the same dialog, landing on different tabs:
-            Security surfaces the vault-critical pages (passphrase, recovery
-            key, passkeys) without a second hop through Profile. */}
-        <DropdownMenuItem onClick={() => onOpenSettings("profile")}>
-          <Settings />
-          Settings
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onOpenSettings("security")}>
-          <ShieldCheck />
-          Security
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={onLock}>
+            <Lock />
+            Lock now
+            <span className="ml-auto pl-4">
+              <LockShortcutKeys />
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Timer />
+              Auto-lock
+              <span className="text-muted-foreground ml-auto pl-4 text-xs">
+                {AUTO_LOCK_OPTIONS.find((o) => o.minutes === autoLockMinutes)
+                  ?.label ?? ""}
+              </span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="min-w-40">
+              <DropdownMenuRadioGroup
+                value={String(autoLockMinutes)}
+                onValueChange={(v) => setAutoLockMinutes(Number(v))}
+              >
+                {AUTO_LOCK_OPTIONS.map((option) => (
+                  <DropdownMenuRadioItem
+                    key={option.minutes}
+                    value={String(option.minutes)}
+                  >
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           render={
@@ -1317,62 +1403,42 @@ function UserMenu({
           <Bug />
           Report a bug
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onClick={requestSignOut}>
           <LogOut />
           Sign out
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <p className="text-muted-foreground px-2 py-1 text-xs">
+          Search everything with {mac ? "⌘" : "Ctrl+"}K
+        </p>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-// Lock button + auto-lock timing in one menu: "Lock now" acts immediately,
-// the options below persist the inactivity timeout (same setting as in
-// Settings → Account).
-function LockMenu({ lock }: { lock: () => void }) {
-  const autoLockMinutes = useAutoLockMinutes();
+// Locking is the one session action worth a permanent button: outlined so
+// it reads as a control, with its shortcut a hover away.
+function LockButton({ lock }: { lock: () => void }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Tooltip>
+      <TooltipTrigger
         render={
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon-sm"
-            aria-label="Lock options"
-            className="text-muted-foreground"
+            aria-label="Lock vault"
+            onClick={lock}
+            className="text-muted-foreground hover:text-foreground shrink-0"
           >
             <Lock />
           </Button>
         }
       />
-      <DropdownMenuContent side="top" align="end" className="min-w-52">
-        <DropdownMenuItem onClick={lock}>
-          <Lock />
-          Lock now
-          <span className="ml-auto">
-            <LockShortcutKeys />
-          </span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="text-muted-foreground text-xs">
-            Auto-lock
-          </DropdownMenuLabel>
-          {AUTO_LOCK_OPTIONS.map((option) => (
-            <DropdownMenuItem
-              key={option.minutes}
-              onClick={() => setAutoLockMinutes(option.minutes)}
-            >
-              {option.label}
-              {option.minutes === autoLockMinutes && (
-                <Check className="ml-auto size-4" />
-              )}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <TooltipContent className="flex items-center gap-2">
+        Lock vault
+        <LockShortcutKeys />
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

@@ -9,6 +9,7 @@ import {
   removeLine,
   removeLines,
   setEntry,
+  splitEntryLine,
 } from "./env-table.ts";
 
 const SAMPLE = [
@@ -139,6 +140,22 @@ describe("block paste (isEnvBlock + appendBlock)", () => {
   it("normalizes CRLF and follows the trailing-newline style", () => {
     expect(appendBlock("", "A=1\r\nB=2")).toBe("A=1\nB=2\n");
     expect(appendBlock("X=0", "A=1\nB=2")).toBe("X=0\nA=1\nB=2");
+  });
+});
+
+describe("splitEntryLine", () => {
+  it("splits a single KEY=value line, keeping the value as typed", () => {
+    expect(splitEntryLine("STRIPE_KEY=sk_test_1=2")).toEqual({
+      key: "STRIPE_KEY",
+      value: "sk_test_1=2",
+    });
+    expect(splitEntryLine("export API = x\n")).toEqual({ key: "API", value: "x" });
+  });
+
+  it("leaves anything else to paste as typed", () => {
+    expect(splitEntryLine("JUST_A_KEY")).toBeNull();
+    expect(splitEntryLine("# A=1")).toBeNull();
+    expect(splitEntryLine("A=1\nB=2")).toBeNull();
   });
 });
 
