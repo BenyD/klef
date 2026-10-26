@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Banner } from "./Banner.tsx";
 
@@ -24,7 +30,9 @@ describe("Banner (announcement strip)", () => {
     expect(screen.getByText("Klef has a new release")).toBeTruthy();
   });
 
-  it("renders the brand variant (mark icon, still dismissible)", () => {
+  // Dismissing plays the collapse animation first (happy-dom implements
+  // element.animate), so these wait for the strip to unmount.
+  it("renders the brand variant (mark icon, still dismissible)", async () => {
     render(
       <Banner variant="brand">
         <span>Klef has a new release</span>
@@ -32,13 +40,15 @@ describe("Banner (announcement strip)", () => {
     );
     expect(screen.getByText("Klef has a new release")).toBeTruthy();
     fireEvent.click(screen.getByLabelText("Dismiss"));
-    expect(screen.queryByText("Klef has a new release")).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByText("Klef has a new release")).toBeNull(),
+    );
   });
 
-  it("hides on dismiss", () => {
+  it("hides on dismiss", async () => {
     render(<Banner>Heads up</Banner>);
     fireEvent.click(screen.getByLabelText("Dismiss"));
-    expect(screen.queryByText("Heads up")).toBeNull();
+    await waitFor(() => expect(screen.queryByText("Heads up")).toBeNull());
   });
 
   it("does not persist dismissal without an id", () => {

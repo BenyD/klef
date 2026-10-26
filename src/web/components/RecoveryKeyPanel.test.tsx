@@ -46,17 +46,18 @@ describe("RecoveryKeyPanel", () => {
   });
 
   it("reports the key as saved after downloading", () => {
-    vi.stubGlobal("URL", {
-      ...URL,
-      createObjectURL: vi.fn(() => "blob:test"),
-      revokeObjectURL: vi.fn(),
-    });
+    // Spy rather than replace the global: happy-dom follows the download
+    // link's click and needs URL to stay a constructor.
+    const create = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:test");
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
     const onSaved = vi.fn();
     render(
       <RecoveryKeyPanel recoveryKey={KEY} email={EMAIL} onSaved={onSaved} />,
     );
     fireEvent.click(screen.getByRole("button", { name: /download/i }));
     expect(onSaved).toHaveBeenCalledOnce();
+    create.mockRestore();
+    revoke.mockRestore();
   });
 
 });
