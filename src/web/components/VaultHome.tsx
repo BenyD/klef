@@ -95,7 +95,7 @@ import { ProjectsOverview } from "./ProjectsOverview.tsx";
 import { CompareEnvironmentsDialog } from "./CompareEnvironmentsDialog.tsx";
 import { KeySearchDialog } from "./KeySearchDialog.tsx";
 import { LockShortcutKeys } from "./LockShortcutKeys.tsx";
-import { envMeta, useEnvMeta } from "../lib/env-meta.ts";
+import { useEnvMeta, useEnvTag } from "../lib/env-meta.ts";
 import { FilePane } from "./FilePane.tsx";
 import { SettingsDialog, type SettingsTab } from "./SettingsDialog.tsx";
 import {
@@ -238,6 +238,7 @@ export function VaultHome({
 }) {
   const { tree, loading, error, reload } = useTree();
   const { lock, recoveryConfirmed } = useVault();
+  const envTag = useEnvTag();
   useAutoLock(lock);
   // The shortcut is a deliberate action, so it gets the dirty-draft guard
   // (requestLock below); only idle auto-lock skips it.
@@ -861,18 +862,14 @@ export function VaultHome({
                       />
                     }
                   >
-                    {selected.environment && (
-                      <span
-                        className={cn(
-                          "size-1.5 shrink-0 rounded-full",
-                          envMeta(selected.environment).dot,
-                        )}
-                        aria-hidden="true"
-                      />
-                    )}
                     <span className="truncate font-mono text-xs">
                       {selected.name}
                     </span>
+                    {envTag(selected.name, selected.environment) && (
+                      <span className="text-muted-foreground shrink-0 text-xs">
+                        {envTag(selected.name, selected.environment)}
+                      </span>
+                    )}
                     <ChevronsUpDown className="text-muted-foreground size-3 shrink-0" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="min-w-56">
@@ -885,15 +882,10 @@ export function VaultHome({
                         <FileText />
                         <span className="truncate">{f.name}</span>
                         <span className="ml-auto flex items-center gap-1.5">
-                          {f.environment && (
-                            <span
-                              className={cn(
-                                "size-1.5 rounded-full",
-                                envMeta(f.environment).dot,
-                              )}
-                              title={f.environment}
-                              aria-hidden="true"
-                            />
+                          {envTag(f.name, f.environment) && (
+                            <span className="text-muted-foreground font-sans">
+                              {envTag(f.name, f.environment)}
+                            </span>
                           )}
                           {f.id === selected.id && <Check className="size-4" />}
                         </span>
@@ -1605,15 +1597,8 @@ function FileTabs({
                   aria-selected={active}
                   title={`${f.project} / ${f.name}`}
                   onClick={() => onSelect(f)}
-                  className="focus-visible:ring-ring/50 flex h-full min-w-0 items-center gap-1.5 rounded-md pr-1 pl-2 font-mono text-xs outline-none focus-visible:ring-2"
+                  className="focus-visible:ring-ring/50 flex h-full min-w-0 items-center gap-1.5 rounded-md pr-1 pl-2.5 font-mono text-xs outline-none focus-visible:ring-2"
                 >
-                  <span
-                    className={cn(
-                      "size-1.5 shrink-0 rounded-full",
-                      f.environment ? envMeta(f.environment).dot : "bg-transparent",
-                    )}
-                    aria-hidden="true"
-                  />
                   <span className="truncate">{f.name}</span>
                   {ambiguous.has(f.id) && (
                     <span className="text-muted-foreground truncate font-sans">
@@ -1702,13 +1687,6 @@ function FileTabs({
                 className="font-mono text-xs"
                 onClick={() => onSelect(f)}
               >
-                <span
-                  className={cn(
-                    "size-1.5 shrink-0 rounded-full",
-                    f.environment ? envMeta(f.environment).dot : "bg-transparent",
-                  )}
-                  aria-hidden="true"
-                />
                 <span className="truncate">{f.name}</span>
                 <span className="text-muted-foreground truncate font-sans">
                   {f.project}
@@ -1977,10 +1955,10 @@ function NameDialogView({
         <form onSubmit={submit} className="flex flex-col gap-4">
           {dialog?.withEnvironment && (
             <div className="grid gap-2">
-              <Label>Environment (optional)</Label>
+              <Label>Environment</Label>
               <div className="flex flex-wrap gap-1.5" role="group">
                 <EnvChip
-                  label="None"
+                  label="Auto"
                   active={!customOpen && environment === null}
                   onClick={() => pickEnvironment(null)}
                 />
@@ -1988,18 +1966,22 @@ function NameDialogView({
                   <EnvChip
                     key={env}
                     label={envMetaOf(env).label}
-                    dot={envMetaOf(env).dot}
                     active={!customOpen && environment === env}
                     onClick={() => pickEnvironment(env)}
                   />
                 ))}
                 <EnvChip
                   label="Custom"
-                  dot="bg-env-custom"
                   active={customOpen}
                   onClick={pickCustom}
                 />
               </div>
+              {!customOpen && environment === null && (
+                <p className="text-muted-foreground text-xs">
+                  Read from the file name: .env.local is development,
+                  .env.production is production.
+                </p>
+              )}
               {customOpen && (
                 <Input
                   autoFocus
@@ -2187,12 +2169,10 @@ function DialogIconPreview({ icon }: { icon: string | null }) {
 
 function EnvChip({
   label,
-  dot,
   active,
   onClick,
 }: {
   label: string;
-  dot?: string;
   active: boolean;
   onClick: () => void;
 }) {
@@ -2207,12 +2187,6 @@ function EnvChip({
         active && "border-primary bg-primary/5 text-foreground",
       )}
     >
-      {dot && (
-        <span
-          className={cn("size-1.5 shrink-0 rounded-full", dot)}
-          aria-hidden="true"
-        />
-      )}
       {label}
     </button>
   );

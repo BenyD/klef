@@ -84,13 +84,6 @@ const INKS = [
   { token: "diff-remove", use: "Removed lines" },
 ];
 
-const DOTS = [
-  "env-development",
-  "env-preview",
-  "env-production",
-  "env-custom",
-] as const;
-
 function Palette({ theme }: { theme: "light" | "dark" }) {
   return (
     <div
@@ -126,17 +119,6 @@ function Palette({ theme }: { theme: "light" | "dark" }) {
             <span className="text-muted-foreground truncate">{ink.use}</span>
           </div>
         ))}
-        <div className="mt-1 flex items-center gap-3 border-t pt-2">
-          {DOTS.map((d) => (
-            <span key={d} className="flex items-center gap-1.5 text-xs">
-              <span
-                className="size-1.5 rounded-full"
-                style={{ background: `var(--${d})` }}
-              />
-              {d.replace("env-", "")}
-            </span>
-          ))}
-        </div>
       </div>
     </div>
   );

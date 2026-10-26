@@ -12,7 +12,6 @@ import {
   Plus,
   Search,
   Trash2,
-  X,
 } from "lucide-react";
 import { cn } from "../lib/utils.ts";
 import {
@@ -22,7 +21,8 @@ import {
   type Environment,
   type ProjectNode,
 } from "../../shared/api-types.ts";
-import { useEnvMeta } from "../lib/env-meta.ts";
+import { useEnvMeta, useEnvTag } from "../lib/env-meta.ts";
+import { environmentFromName } from "../../shared/env-from-name.ts";
 import { isMacPlatform } from "../lib/auto-lock.ts";
 import { ProjectIcon } from "./ProjectIcon.tsx";
 import {
@@ -142,7 +142,7 @@ export function AppSidebar({
   onCompareEnvironments,
   onDeleteProject,
 }: AppSidebarProps) {
-  const envMeta = useEnvMeta();
+  const envTag = useEnvTag();
   const { setOpenMobile } = useSidebar();
   const [expanded, setExpanded] = useState<Set<string>>(readExpanded);
 
@@ -289,20 +289,12 @@ export function AppSidebar({
                                     <span className="truncate">
                                       {file.name}
                                     </span>
-                                    {file.environment && (
-                                      <>
-                                        <span
-                                          className={cn(
-                                            "ml-auto size-1.5 shrink-0 rounded-full",
-                                            envMeta(file.environment).dot,
-                                          )}
-                                          title={envMeta(file.environment).label}
-                                          aria-hidden="true"
-                                        />
-                                        <span className="sr-only">
-                                          {envMeta(file.environment).label}
-                                        </span>
-                                      </>
+                                    {/* Only when the name doesn't already say
+                                        it: .env.production needs no tag. */}
+                                    {envTag(file.name, file.environment) && (
+                                      <span className="text-muted-foreground ml-auto shrink-0 font-sans text-xs">
+                                        {envTag(file.name, file.environment)}
+                                      </span>
                                     )}
                                   </ContextMenuTrigger>
                                   <ContextMenuContent className="min-w-44">
@@ -315,61 +307,13 @@ export function AppSidebar({
                                       Rename
                                     </ContextMenuItem>
                                     <ContextMenuSeparator />
-                                    <ContextMenuGroup>
-                                      <ContextMenuLabel>
-                                        Environment
-                                      </ContextMenuLabel>
-                                      {ENVIRONMENTS.map((env) => (
-                                        <ContextMenuItem
-                                          key={env}
-                                          onClick={() =>
-                                            onSetEnvironment(file, env)
-                                          }
-                                        >
-                                          <span
-                                            className={cn(
-                                              "size-1.5 rounded-full",
-                                              envMeta(env).dot,
-                                            )}
-                                            aria-hidden="true"
-                                          />
-                                          {envMeta(env).label}
-                                          {file.environment === env && (
-                                            <Check className="ml-auto size-4" />
-                                          )}
-                                        </ContextMenuItem>
-                                      ))}
-                                      <ContextMenuItem
-                                        onClick={() =>
-                                          act(() => onCustomEnvironment(file))
-                                        }
-                                      >
-                                        <span
-                                          className="bg-env-custom size-1.5 rounded-full"
-                                          aria-hidden="true"
-                                        />
-                                        {file.environment &&
-                                        !isPresetEnvironment(file.environment)
-                                          ? file.environment
-                                          : "Custom"}
-                                        {file.environment &&
-                                          !isPresetEnvironment(
-                                            file.environment,
-                                          ) && (
-                                            <Check className="ml-auto size-4" />
-                                          )}
-                                      </ContextMenuItem>
-                                      {file.environment && (
-                                        <ContextMenuItem
-                                          onClick={() =>
-                                            onSetEnvironment(file, null)
-                                          }
-                                        >
-                                          <X />
-                                          Clear label
-                                        </ContextMenuItem>
-                                      )}
-                                    </ContextMenuGroup>
+                                    <EnvironmentItems
+                                      file={file}
+                                      onSet={(env) => onSetEnvironment(file, env)}
+                                      onCustom={() =>
+                                        act(() => onCustomEnvironment(file))
+                                      }
+                                    />
                                     <ContextMenuSeparator />
                                     <ContextMenuItem
                                       variant="destructive"
@@ -419,6 +363,50 @@ export function AppSidebar({
         {footer}
       </SidebarFooter>
     </Sidebar>
+  );
+}
+
+// The file menu's environment choices. Auto is the default: the name decides
+// (.env.local is development), and the menu says what it decided. An explicit
+// choice overrides the name, for files like a plain .env or a name that
+// doesn't match its role.
+function EnvironmentItems({
+  file,
+  onSet,
+  onCustom,
+}: {
+  file: EnvFileNode;
+  onSet: (env: Environment | null) => void;
+  onCustom: () => void;
+}) {
+  const envMeta = useEnvMeta();
+  const inferred = environmentFromName(file.name);
+  const custom =
+    file.environment && !isPresetEnvironment(file.environment)
+      ? file.environment
+      : null;
+  return (
+    <ContextMenuGroup>
+      <ContextMenuLabel>Environment</ContextMenuLabel>
+      <ContextMenuItem onClick={() => onSet(null)}>
+        Auto
+        <span className="text-muted-foreground text-xs">
+          {inferred ? `from name: ${envMeta(inferred).label}` : "none"}
+        </span>
+        {!file.environment && <Check className="ml-auto size-4" />}
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      {ENVIRONMENTS.map((env) => (
+        <ContextMenuItem key={env} onClick={() => onSet(env)}>
+          {envMeta(env).label}
+          {file.environment === env && <Check className="ml-auto size-4" />}
+        </ContextMenuItem>
+      ))}
+      <ContextMenuItem onClick={onCustom}>
+        {custom ?? "Custom..."}
+        {custom && <Check className="ml-auto size-4" />}
+      </ContextMenuItem>
+    </ContextMenuGroup>
   );
 }
 

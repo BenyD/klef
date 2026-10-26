@@ -10,7 +10,8 @@ import {
 import { toast } from "sonner";
 import { cn } from "../lib/utils.ts";
 import { isMacPlatform } from "../lib/auto-lock.ts";
-import { useEnvMeta } from "../lib/env-meta.ts";
+import { useEnvMeta, useEnvTag } from "../lib/env-meta.ts";
+import { effectiveEnvironment } from "../../shared/env-from-name.ts";
 import {
   filterKeyGroups,
   groupKeys,
@@ -88,7 +89,10 @@ export function KeySearchDialog({
             project: p.name,
             workspaceId: w.id,
             workspace: w.name,
-            environment: f.environment,
+            // What the file stands for: its label, else its name. The
+            // environment filter and the "missing in" gaps both go by this,
+            // so .env.production counts as production unlabelled.
+            environment: effectiveEnvironment(f.name, f.environment),
             keys,
           });
         }
@@ -230,10 +234,6 @@ export function KeySearchDialog({
                     onClick={() => setEnvironment(environment === env ? null : env)}
                     className={chip}
                   >
-                    <span
-                      className={cn("size-1.5 rounded-full", envMeta(env).dot)}
-                      aria-hidden="true"
-                    />
                     {envMeta(env).label}
                   </button>
                 ))}
@@ -402,7 +402,9 @@ function FileChip({
   missing?: boolean;
   onOpen: (fileId: string) => void;
 }) {
-  const envMeta = useEnvMeta();
+  // file.environment is already the effective one; a tag only shows when
+  // that isn't what the name says (a plain .env marked production).
+  const tag = useEnvTag()(file.fileName, file.environment);
   return (
     <span
       role="button"
@@ -422,16 +424,8 @@ function FileChip({
           : "text-muted-foreground hover:text-foreground",
       )}
     >
-      {/* Fixed dot slot, so labels line up whether or not a file has an
-          environment. */}
-      <span
-        className={cn(
-          "size-1.5 shrink-0 rounded-full",
-          file.environment ? envMeta(file.environment).dot : "bg-transparent",
-        )}
-        aria-hidden="true"
-      />
       {file.fileName}
+      {tag && <span className="font-sans">{tag}</span>}
       {missing && <span className="sr-only"> (missing)</span>}
     </span>
   );
