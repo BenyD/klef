@@ -35,9 +35,9 @@ describe("agentSocketPath", () => {
     );
   });
 
-  it("falls back into the config directory when there is no runtime dir", () => {
+  it("falls back to its own directory under the config dir when there is no runtime dir", () => {
     expect(agentSocketPath({ KLEF_CONFIG_DIR: "/tmp/x" }, HOME)).toBe(
-      path.join("/tmp/x", "agent.sock"),
+      path.join("/tmp/x", "run", "agent.sock"),
     );
   });
 

@@ -34,7 +34,8 @@ that could exfiltrate keys from the browser.
   the file is written `0600` and the CLI will tell you if it is tracked by git,
   but after that it is an ordinary file on your machine.
 - Anything a process running as you can do while the CLI is unlocked, which is
-  the same trade `ssh-agent` makes.
+  the same trade `ssh-agent` makes. After `klef unlock`, any process running
+  as your user can ask the unlock agent to decrypt or encrypt until it locks.
 
 ## Access tokens and the CLI
 
@@ -66,12 +67,41 @@ added later is browser-only until someone deliberately opens it.
   that spawned the CLI cannot supply or observe it, and there is no flag to
   leak into `ps` or shell history. If it ends up on a stream whose echo it
   cannot disable, it refuses to prompt rather than printing what you type.
-- **It cannot run unattended.** Every decrypt needs a human at a terminal. That
-  is what makes it safe to hand to a coding agent: the agent orchestrates, a
-  person unlocks.
+- **It cannot run unattended.** Every decrypt needs a human to have typed the
+  passphrase at a terminal: either for this command, or into `klef unlock`
+  within the last 15 idle minutes. That is what makes it safe to hand to a
+  coding agent: the agent orchestrates, a person unlocks.
 - **`pull` and `push` stay inside the working directory.** Absolute paths and
   `../` escapes are refused, so an agent that can be talked into running either
   cannot choose where plaintext lands or which file gets uploaded.
+
+## The unlock agent
+
+`klef unlock` asks for the passphrase once and starts a background process
+that holds the data key so later `pull` and `push` runs do not prompt. It is
+built like `ssh-agent`:
+
+- **The key lives in that process's memory only**, as a non-extractable
+  `CryptoKey`. It is never written to disk, to the OS keychain, or to an
+  environment variable.
+- **The socket offers operations, not the key.** It answers "encrypt this" and
+  "decrypt that" and has no request that returns key material.
+- **The passphrase stays in the process that read it.** `klef unlock` derives
+  the key-encryption key and hands that to the agent over a private IPC
+  channel, never through argv or the environment.
+- **Only your user can reach it.** The socket is mode `0600` inside a directory
+  that must be owned by you and closed to everyone else (`$XDG_RUNTIME_DIR`, or
+  `~/.config/klef/run` where that is unset, as on macOS); the CLI refuses to
+  start or talk to an agent in a directory that fails that check. Node exposes
+  no peer-credential API, so this directory check stands in for a same-uid
+  check on the connection.
+- **It locks itself** after 15 minutes without an encrypt or decrypt (the web
+  vault's default), on `klef lock`, and when it is signalled to stop. A status
+  check does not count as use.
+
+What it does not change: while it is unlocked, any process running as you can
+use it, which is the trade every agent of this kind makes. `klef lock` ends that
+window early.
 
 ## Signing in to the CLI
 
@@ -92,7 +122,8 @@ reading the database, including the operator. Collection is single use.
 
 - Encryption keys exist only in browser memory during an unlocked session.
 - No key material, passphrase, or plaintext is ever sent to the server or logged.
-- Locking clears keys from memory.
+- Locking clears keys from memory, in the browser and in the CLI's unlock
+  agent alike.
 - Key material is imported as non-extractable `CryptoKey` objects where the flow
   allows.
 - Access tokens are stored as SHA-256 hashes; the token itself is shown once.

@@ -7,6 +7,10 @@ import { apiBaseUrl } from "../paths.ts";
 import { readProjectConfig } from "../project-file.ts";
 import { CONFIG_FILENAME } from "../project-config.ts";
 import { hasFlag, type ParsedArgs } from "../args.ts";
+import { homedir } from "node:os";
+import { agentSocketPath } from "../paths.ts";
+import { agentStatus } from "../agent-client.ts";
+import { describeTimeLeft, type AgentStatus } from "../agent-protocol.ts";
 
 const SOURCE_LABEL = {
   keychain: "OS keychain",
@@ -40,6 +44,17 @@ export async function status(
 
   const config = await readProjectConfig(cwd);
 
+  // Locked or not is a question for the local agent alone; it needs neither
+  // the network nor the passphrase. A socket directory that fails its safety
+  // check is reported rather than thrown, so status still says everything else.
+  let agent: AgentStatus | null = null;
+  let agentProblem: string | null = null;
+  try {
+    agent = await agentStatus(agentSocketPath(env, homedir()));
+  } catch (err) {
+    agentProblem = err instanceof Error ? err.message : String(err);
+  }
+
   // Structured first: a caller that asked for JSON gets JSON and nothing else
   // on stdout, so the output stays parseable without stripping prose.
   if (hasFlag(args, "json")) {
@@ -52,6 +67,9 @@ export async function status(
           tokenSource: stored?.source ?? null,
           email,
           linked: config ?? null,
+          unlocked: agent !== null,
+          lockInSeconds: agent ? Math.floor(agent.msLeft / 1000) : null,
+          agentProblem,
         },
         null,
         2,
@@ -77,6 +95,14 @@ export async function status(
     console.log(
       `Linked:    ${config.workspace} / ${config.project} / ${config.file}${label}`,
     );
+  }
+
+  if (agent) {
+    console.log(`Vault:     unlocked (locks in ${describeTimeLeft(agent.msLeft)} without use)`);
+  } else if (agentProblem) {
+    console.log(`Vault:     locked (${agentProblem})`);
+  } else {
+    console.log(`Vault:     locked (pull and push will ask for the passphrase; \`${command("unlock")}\` to ask once)`);
   }
 
   return 0;
