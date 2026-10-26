@@ -1,0 +1,70 @@
+---
+title: Workspaces, projects and files
+description: How a Klef vault is organised, and which parts are encrypted.
+---
+
+A vault has three levels:
+
+- **Workspaces** group projects, for example "Personal" and "Client work". Each workspace has its own address, `klef.sh/<workspace-slug>`.
+- **Projects** usually match one repository. A project can have a tech stack and an icon.
+- **Files** are the env files themselves: `.env.local`, `.env.production`, `apps/mobile/.env`, or anything else.
+
+You get a first workspace, named after you, when you create your vault.
+
+## Names are plaintext, contents are encrypted
+
+Workspace, project and file names are stored in plaintext, so the server can list them and the app can show them before you unlock. The **contents** of each file are encrypted on your device before upload. Pick names that do not themselves contain secrets.
+
+## Working with them in the app
+
+| Task | Where |
+| --- | --- |
+| New workspace | Workspace switcher in the sidebar. Give it a name and, optionally, an icon. |
+| Rename a workspace, change its icon | Settings, Workspace, General |
+| Delete a workspace | Settings, Workspace, Danger zone. You type its name to confirm. Your only workspace cannot be deleted. |
+| New project | Sidebar. Name, optional tech stack, optional icon. |
+| Edit or move a project | The project's menu in the sidebar. Moving needs a second workspace. |
+| New file | The project's menu. Pick a name and an environment. |
+| Rename or delete a file | The file's menu in the sidebar. Deleting a file removes all of its versions. |
+
+New workspaces, projects and files can also be made from the command palette (<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd>).
+
+### Workspace addresses
+
+A workspace's slug is made from its name: lowercase letters, digits and dashes, with accents and apostrophes stripped. A few names are reserved because they are pages on klef.sh (such as `docs`, `security` and `app`), and two workspaces cannot share a slug.
+
+### Project icons
+
+Paste a website address (its favicon is used), a `github.com/<owner>` address (the owner's avatar), or an image URL, or upload an image.
+
+### Suggested file names
+
+A project's tech stack decides the names Klef suggests for new files. Most stacks get `.env.local` for development and `.env.production` for production; Vite, SvelteKit and Astro suggest `.env.staging` for a preview environment, Rails uses `.env.development`, and Laravel always uses `.env`. You can type any name you like.
+
+## Editing a file
+
+Open a file to edit it as text (the code view) or, for dotenv files, as a table of keys. Paste a whole updated file into either one.
+
+- **Save** with the button or <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>S</kbd>. With "Review changes before saving" on (Settings, Preferences, Editor), you see a line-level diff first. The diff is computed in your browser from decrypted text.
+- **Trailing whitespace** on a value line gets a warning and a "Clean up" button.
+- **Copy** copies the file, and **Export** downloads it under its own name.
+- **Find a key** (in the command palette, <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd>) searches key names across the vault.
+- **Compare environments** shows which keys each environment of a project has, and which values differ, all decrypted in the browser.
+
+Klef stores the text exactly as you saved it, byte for byte: comments, ordering, blank lines and multiline values included. The table view and the diff are for display only.
+
+## Versions
+
+Every save creates a new, immutable version. Open **Version history** to see them, compare any version with the current one or with another version, and **Load** an old version into the editor. Loading makes it your draft; save it to restore it. Nothing is lost, because the restore is a new version too.
+
+## Keyboard shortcuts
+
+| Keys | Does |
+| --- | --- |
+| <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd> | Command palette |
+| <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>S</kbd> | Save a version |
+| <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> | Lock the vault |
+| <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>B</kbd> | Show or hide the sidebar |
+| <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>9</kbd> | Jump to an open file tab |
+| <kbd>Alt</kbd>+<kbd>]</kbd> / <kbd>Alt</kbd>+<kbd>[</kbd> | Next or previous tab |
+| <kbd>Alt</kbd>+<kbd>W</kbd> | Close the current tab |

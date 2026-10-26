@@ -1,0 +1,18 @@
+{
+  "pages": [
+    "---Start here---",
+    "index",
+    "quickstart",
+    "---Concepts---",
+    "...concepts",
+    "---Guides---",
+    "...guides",
+    "---CLI reference---",
+    "...cli",
+    "---Reference---",
+    "security",
+    "faq",
+    "troubleshooting",
+    "changelog"
+  ]
+}
