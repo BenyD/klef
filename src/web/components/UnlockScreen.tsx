@@ -115,7 +115,7 @@ export function UnlockScreen() {
     <AuthShell>
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold tracking-tight">
+          <CardTitle className="text-lg font-semibold">
             Unlock your vault
           </CardTitle>
           <CardDescription>
