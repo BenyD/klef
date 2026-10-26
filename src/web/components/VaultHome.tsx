@@ -8,10 +8,12 @@ import {
   type ReactNode,
 } from "react";
 import { useNavigate, useParams } from "react-router";
+import { useTheme } from "next-themes";
 import {
   Boxes,
   Bug,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsUpDown,
@@ -24,6 +26,8 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  SunMoon,
+  Timer,
   Trash2,
   Upload,
   X,
@@ -49,6 +53,18 @@ import {
 } from "../lib/auto-lock.ts";
 import { usePaletteShortcut } from "../lib/command-palette.ts";
 import { recordRecentFile } from "../lib/recent-files.ts";
+import {
+  ambiguousTabs,
+  closeTabs,
+  cycleTab,
+  moveTab,
+  openTab,
+  othersOf,
+  restoreTabs,
+  rightOf,
+  serializeTabs,
+  tabForDigit,
+} from "../lib/file-tabs.ts";
 import { useTree } from "../use-tree.ts";
 import { useVault } from "../vault-context.ts";
 import * as api from "../structure-api.ts";
@@ -82,7 +98,6 @@ import { LockShortcutKeys } from "./LockShortcutKeys.tsx";
 import { envMeta, useEnvMeta } from "../lib/env-meta.ts";
 import { FilePane } from "./FilePane.tsx";
 import { SettingsDialog, type SettingsTab } from "./SettingsDialog.tsx";
-import { ThemeToggle } from "./ThemeToggle.tsx";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -109,7 +124,12 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu.tsx";
 import {
@@ -122,6 +142,13 @@ import {
 } from "./ui/empty.tsx";
 import { Input } from "./ui/input.tsx";
 import { Kbd, KbdGroup } from "./ui/kbd.tsx";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "./ui/context-menu.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip.tsx";
 import { Label } from "./ui/label.tsx";
 import { Skeleton } from "./ui/skeleton.tsx";
@@ -340,6 +367,44 @@ export function VaultHome({
     });
   }, [projects]);
 
+  // Open tabs survive a reload, per workspace and per device: ids only, the
+  // names come back from the tree. Restoring happens once per workspace,
+  // after its tree has loaded; saving only starts after that, so switching
+  // workspaces never writes one workspace's tabs under another's key.
+  const restoredFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (loading || !workspace || restoredFor.current === workspace.id) return;
+    restoredFor.current = workspace.id;
+    const ws = workspace;
+    const restored = restoreTabs<SelectedFile>(
+      readStored(tabsKey(ws.id)),
+      (id) => {
+        for (const p of ws.projects) {
+          const f = p.files.find((x) => x.id === id);
+          if (f) {
+            return {
+              id: f.id,
+              name: f.name,
+              project: p.name,
+              workspace: ws.name,
+              environment: f.environment,
+            };
+          }
+        }
+        return null;
+      },
+    );
+    setOpenFiles(restored.tabs);
+    setSelected(restored.tabs.find((t) => t.id === restored.activeId) ?? null);
+  }, [loading, workspace]);
+  useEffect(() => {
+    if (!workspace || restoredFor.current !== workspace.id) return;
+    writeStored(
+      tabsKey(workspace.id),
+      serializeTabs({ tabs: openFiles, activeId: selected?.id ?? null }),
+    );
+  }, [workspace, openFiles, selected]);
+
   const run = async (op: Promise<unknown>) => {
     await op;
     await reload();
@@ -350,9 +415,8 @@ export function VaultHome({
       () => {
         const ws = workspaces.find((w) => w.id === id);
         if (ws) navigate(`/${workspaceSlug(ws.name, ws.id)}`);
-        // Tabs are per-workspace; drafts belong to the vault being left.
-        setSelected(null);
-        setOpenFiles([]);
+        // Tabs are per-workspace: the restore effect swaps in the new
+        // workspace's saved tabs. Drafts belong to the vault being left.
         setDirtyIds(new Set());
       },
       { verb: "Switching workspaces", confirmLabel: "Switch and discard" },
@@ -361,36 +425,73 @@ export function VaultHome({
 
   // Open (or focus) a tab for the file and make it active.
   function openFileTab(entry: SelectedFile) {
-    setOpenFiles((prev) =>
-      prev.some((f) => f.id === entry.id) ? prev : [...prev, entry],
-    );
+    setOpenFiles((prev) => openTab({ tabs: prev, activeId: null }, entry).tabs);
     setSelected(entry);
   }
 
-  function closeFileTabNow(id: string) {
-    const index = openFiles.findIndex((f) => f.id === id);
-    const next = openFiles.filter((f) => f.id !== id);
-    setOpenFiles(next);
+  function closeTabsNow(ids: readonly string[]) {
+    const next = closeTabs(
+      { tabs: openFiles, activeId: selected?.id ?? null },
+      ids,
+    );
+    setOpenFiles(next.tabs);
     setDirtyIds((prev) => {
-      if (!prev.has(id)) return prev;
+      if (!ids.some((id) => prev.has(id))) return prev;
       const copy = new Set(prev);
-      copy.delete(id);
+      for (const id of ids) copy.delete(id);
       return copy;
     });
-    if (selected?.id === id) {
-      setSelected(next[Math.min(index, next.length - 1)] ?? null);
-    }
+    setSelected(next.tabs.find((t) => t.id === next.activeId) ?? null);
   }
 
-  function closeFileTab(id: string) {
-    if (!dirtyIds.has(id)) return closeFileTabNow(id);
-    const name = openFiles.find((f) => f.id === id)?.name ?? "This file";
+  // Close one or several tabs (close others, close to the right); any with
+  // unsaved edits go through the one discard confirmation.
+  function closeFileTabs(ids: readonly string[]) {
+    const dirty = ids.filter((id) => dirtyIds.has(id));
+    if (dirty.length === 0) return closeTabsNow(ids);
+    const name = openFiles.find((f) => f.id === dirty[0])?.name ?? "This file";
     setPendingDiscard({
-      description: `"${name}" has unsaved edits. Closing discards them.`,
+      description:
+        dirty.length === 1
+          ? `"${name}" has unsaved edits. Closing discards them.`
+          : `${dirty.length} files have unsaved edits. Closing discards them.`,
       confirmLabel: "Close and discard",
-      run: () => closeFileTabNow(id),
+      run: () => closeTabsNow(ids),
     });
   }
+
+  // Tab keys use Alt (Option): the browser keeps Cmd/Ctrl+1-9, Cmd/Ctrl+W and
+  // Ctrl+Tab for its own tabs and never hands them to the page. e.code, not
+  // e.key, because Option+1 on a Mac types "¡".
+  const tabKeys = useRef<(e: KeyboardEvent) => void>(() => {});
+  tabKeys.current = (e: KeyboardEvent) => {
+    if (!e.altKey || e.metaKey || e.ctrlKey || openFiles.length === 0) return;
+    const state = { tabs: openFiles, activeId: selected?.id ?? null };
+    // e.key as a fallback for layouts and tools that leave e.code empty.
+    const digit = /^Digit([1-9])$/.exec(e.code)?.[1] ?? /^[1-9]$/.exec(e.key)?.[0];
+    let target: string | null = null;
+    if (digit) {
+      target = tabForDigit(openFiles, Number(digit));
+    } else if (e.code === "BracketRight" || e.key === "]") {
+      target = cycleTab(state, 1);
+    } else if (e.code === "BracketLeft" || e.key === "[") {
+      target = cycleTab(state, -1);
+    } else if ((e.code === "KeyW" || e.key.toLowerCase() === "w") && selected) {
+      e.preventDefault();
+      closeFileTabs([selected.id]);
+      return;
+    } else {
+      return;
+    }
+    e.preventDefault();
+    const tab = openFiles.find((f) => f.id === target);
+    if (tab) setSelected(tab);
+  };
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => tabKeys.current(e);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   // The browser's own "leave site?" prompt is the only guard available for
   // closing the tab or navigating away with unsaved edits.
@@ -609,7 +710,7 @@ export function VaultHome({
 
   return (
     <SidebarProvider
-      defaultOpen={readSidebarOpen()}
+      defaultOpen
       className="klef-screen h-svh overflow-hidden"
     >
       <AppSidebar
@@ -630,6 +731,7 @@ export function VaultHome({
               email={email}
               image={image}
               onOpenSettings={setSettingsTab}
+              onLock={requestLock}
               beforeSignOut={(proceed) =>
                 guardDirty(proceed, {
                   verb: "Signing out",
@@ -637,8 +739,7 @@ export function VaultHome({
                 })
               }
             />
-            <LockMenu lock={requestLock} />
-            <ThemeToggle size="icon-sm" />
+            <LockButton lock={requestLock} />
           </>
         }
         projects={projects}
@@ -835,7 +936,10 @@ export function VaultHome({
             activeId={selected.id}
             dirtyIds={dirtyIds}
             onSelect={setSelected}
-            onClose={closeFileTab}
+            onClose={closeFileTabs}
+            onReorder={(from, to) =>
+              setOpenFiles((prev) => moveTab(prev, from, to))
+            }
           />
         )}
 
@@ -1058,12 +1162,6 @@ export function VaultHome({
   );
 }
 
-// The sidebar remembers whether it was open (shadcn's sidebar writes this
-// cookie on every toggle); first visits start open.
-function readSidebarOpen(): boolean {
-  return !document.cookie.split("; ").includes("sidebar_state=false");
-}
-
 function SidebarShortcutKeys() {
   const mac = isMacPlatform();
   return (
@@ -1080,6 +1178,26 @@ function Crumb({ className }: { className?: string }) {
       className={cn("text-muted-foreground/60 size-3.5 shrink-0", className)}
       aria-hidden="true"
     />
+  );
+}
+
+// The workspace's own mark: its uploaded icon, or its initial on a solid
+// tile, so the switcher reads as "this workspace" rather than a generic cube.
+function WorkspaceTile({ workspace }: { workspace: WorkspaceNode | null }) {
+  if (workspace?.icon) {
+    return (
+      <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md border">
+        <WorkspaceIcon workspace={workspace} className="size-full rounded-none" />
+      </span>
+    );
+  }
+  return (
+    <span
+      className="bg-foreground text-background flex size-7 shrink-0 items-center justify-center rounded-md text-sm font-semibold"
+      aria-hidden="true"
+    >
+      {(workspace?.name.trim().charAt(0) || "W").toUpperCase()}
+    </span>
   );
 }
 
@@ -1104,14 +1222,21 @@ function WorkspaceSwitcher({
         render={
           <button
             type="button"
-            className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-1.5 text-left text-sm font-medium outline-none transition-interactive focus-visible:ring-2"
+            className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-1.5 text-left outline-none transition-interactive focus-visible:ring-2"
           />
         }
       >
-        <span className="bg-background flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] border">
-          <WorkspaceIcon workspace={workspace} className="size-3.5" />
+        <WorkspaceTile workspace={workspace} />
+        <span className="flex min-w-0 flex-col leading-tight">
+          <span className="truncate text-sm font-semibold">
+            {workspace?.name ?? "Workspace"}
+          </span>
+          <span className="text-muted-foreground truncate text-xs tabular-nums">
+            {workspace
+              ? `${workspace.projects.length} ${workspace.projects.length === 1 ? "project" : "projects"}`
+              : "Loading..."}
+          </span>
         </span>
-        <span className="truncate">{workspace?.name ?? "Workspace"}</span>
         <ChevronsUpDown className="text-muted-foreground ml-auto size-3.5 shrink-0" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-(--anchor-width) sm:min-w-60">
@@ -1139,23 +1264,31 @@ function WorkspaceSwitcher({
   );
 }
 
+// The sidebar's account menu: who you are, then everything about this
+// session in one place (settings, theme, locking, signing out), each with
+// its shortcut. Replaces a row of unlabelled icon buttons.
 function UserMenu({
   name,
   email,
   image,
   onOpenSettings,
+  onLock,
   beforeSignOut,
 }: {
   name: string;
   email: string;
   image?: string | null;
   onOpenSettings: (tab: SettingsTab) => void;
+  onLock: () => void;
   /** Owner-provided gate (e.g. the dirty-draft guard) around signing out. */
   beforeSignOut: (proceed: () => void) => void;
 }) {
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
+  const autoLockMinutes = useAutoLockMinutes();
   const displayName = name.trim() || email;
   const initial = displayName.charAt(0).toUpperCase();
+  const mac = isMacPlatform();
 
   async function onSignOut() {
     await clearDek();
@@ -1174,45 +1307,89 @@ function UserMenu({
           <button
             type="button"
             aria-label="Account menu"
-            className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none transition-interactive focus-visible:ring-2"
+            className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-left outline-none transition-interactive focus-visible:ring-2"
           />
         }
       >
-        <Avatar className="size-5">
+        <Avatar className="size-6">
           {image && (
             <AvatarImage src={image} alt="" referrerPolicy="no-referrer" />
           )}
-          <AvatarFallback className="text-[10px]">{initial}</AvatarFallback>
+          <AvatarFallback className="text-xs">{initial}</AvatarFallback>
         </Avatar>
-        <span className="truncate">{displayName}</span>
+        <span className="flex min-w-0 flex-col leading-tight">
+          <span className="truncate text-sm font-medium">{displayName}</span>
+          <span className="text-muted-foreground truncate text-xs">{email}</span>
+        </span>
+        <ChevronsUpDown className="text-muted-foreground ml-auto size-3.5 shrink-0" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent side="top" align="start" className="min-w-56">
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <Avatar className="size-8">
-            {image && (
-              <AvatarImage src={image} alt="" referrerPolicy="no-referrer" />
-            )}
-            <AvatarFallback className="text-xs">{initial}</AvatarFallback>
-          </Avatar>
-          <div className="flex min-w-0 flex-col">
-            <span className="truncate text-sm font-medium">{displayName}</span>
-            <span className="text-muted-foreground truncate text-xs">
-              {email}
-            </span>
-          </div>
-        </div>
+      <DropdownMenuContent side="top" align="start" className="min-w-60">
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => onOpenSettings("profile")}>
+            <Settings />
+            Settings
+          </DropdownMenuItem>
+          {/* Security surfaces the vault-critical pages (passphrase,
+              recovery key, passkeys) without a second hop through Profile. */}
+          <DropdownMenuItem onClick={() => onOpenSettings("security")}>
+            <ShieldCheck />
+            Security
+          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <SunMoon />
+              Theme
+              <span className="text-muted-foreground ml-auto pl-4 text-xs capitalize">
+                {theme ?? "system"}
+              </span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="min-w-36">
+              <DropdownMenuRadioGroup
+                value={theme ?? "system"}
+                onValueChange={(v) => setTheme(String(v))}
+              >
+                <DropdownMenuRadioItem value="system">System</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="light">Light</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="dark">Dark</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        {/* Both jump into the same dialog, landing on different tabs:
-            Security surfaces the vault-critical pages (passphrase, recovery
-            key, passkeys) without a second hop through Profile. */}
-        <DropdownMenuItem onClick={() => onOpenSettings("profile")}>
-          <Settings />
-          Settings
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onOpenSettings("security")}>
-          <ShieldCheck />
-          Security
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={onLock}>
+            <Lock />
+            Lock now
+            <span className="ml-auto pl-4">
+              <LockShortcutKeys />
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Timer />
+              Auto-lock
+              <span className="text-muted-foreground ml-auto pl-4 text-xs">
+                {AUTO_LOCK_OPTIONS.find((o) => o.minutes === autoLockMinutes)
+                  ?.label ?? ""}
+              </span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="min-w-40">
+              <DropdownMenuRadioGroup
+                value={String(autoLockMinutes)}
+                onValueChange={(v) => setAutoLockMinutes(Number(v))}
+              >
+                {AUTO_LOCK_OPTIONS.map((option) => (
+                  <DropdownMenuRadioItem
+                    key={option.minutes}
+                    value={String(option.minutes)}
+                  >
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           render={
@@ -1226,62 +1403,42 @@ function UserMenu({
           <Bug />
           Report a bug
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onClick={requestSignOut}>
           <LogOut />
           Sign out
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <p className="text-muted-foreground px-2 py-1 text-xs">
+          Search everything with {mac ? "⌘" : "Ctrl+"}K
+        </p>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-// Lock button + auto-lock timing in one menu: "Lock now" acts immediately,
-// the options below persist the inactivity timeout (same setting as in
-// Settings → Account).
-function LockMenu({ lock }: { lock: () => void }) {
-  const autoLockMinutes = useAutoLockMinutes();
+// Locking is the one session action worth a permanent button: outlined so
+// it reads as a control, with its shortcut a hover away.
+function LockButton({ lock }: { lock: () => void }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Tooltip>
+      <TooltipTrigger
         render={
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon-sm"
-            aria-label="Lock options"
-            className="text-muted-foreground"
+            aria-label="Lock vault"
+            onClick={lock}
+            className="text-muted-foreground hover:text-foreground shrink-0"
           >
             <Lock />
           </Button>
         }
       />
-      <DropdownMenuContent side="top" align="end" className="min-w-52">
-        <DropdownMenuItem onClick={lock}>
-          <Lock />
-          Lock now
-          <span className="ml-auto">
-            <LockShortcutKeys />
-          </span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="text-muted-foreground text-xs">
-            Auto-lock
-          </DropdownMenuLabel>
-          {AUTO_LOCK_OPTIONS.map((option) => (
-            <DropdownMenuItem
-              key={option.minutes}
-              onClick={() => setAutoLockMinutes(option.minutes)}
-            >
-              {option.label}
-              {option.minutes === autoLockMinutes && (
-                <Check className="ml-auto size-4" />
-              )}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <TooltipContent className="flex items-center gap-2">
+        Lock vault
+        <LockShortcutKeys />
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -1317,103 +1474,269 @@ function NextStep({
   );
 }
 
-// IDE-style strip of open files: env dot + name per tab, active tab marked
-// with a top bar, dirty tabs show a dot that becomes ✕ on hover (VS Code
-// language). Horizontal scroll instead of collapsing when crowded.
+// Open tabs persist per workspace, on this device only.
+const tabsKey = (workspaceId: string) => `klef.open-tabs.${workspaceId}`;
+
+function readStored(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Private mode or blocked storage: tabs just won't survive a reload.
+  }
+}
+
+function TabShortcut({ keys }: { keys: string[] }) {
+  return (
+    <KbdGroup className="ml-auto pl-4 max-sm:hidden">
+      {keys.map((k) => (
+        <Kbd key={k}>{k}</Kbd>
+      ))}
+    </KbdGroup>
+  );
+}
+
+// The open-file strip. Tabs are quiet pills on the canvas tint; the active one
+// is raised onto the panel surface. Every tab reserves the same leading slot
+// (environment dot) and trailing slot (unsaved dot that becomes a close
+// button on hover), so names line up whatever the tab carries. Middle-click
+// closes, drag reorders, right-click offers bulk closes, and the overflow
+// menu lists everything when the strip scrolls.
 function FileTabs({
   files,
   activeId,
   dirtyIds,
   onSelect,
   onClose,
+  onReorder,
 }: {
   files: SelectedFile[];
   activeId: string | null;
   dirtyIds: ReadonlySet<string>;
   onSelect: (file: SelectedFile) => void;
-  onClose: (id: string) => void;
+  onClose: (ids: readonly string[]) => void;
+  onReorder: (from: number, to: number) => void;
 }) {
-  // Same file name open from two projects would render identical tabs; those
-  // get their project as a dim suffix (VS Code's folder-suffix pattern).
-  const nameCounts = new Map<string, number>();
-  for (const f of files) {
-    nameCounts.set(f.name, (nameCounts.get(f.name) ?? 0) + 1);
-  }
+  const ambiguous = ambiguousTabs(files);
+  const refs = useRef(new Map<string, HTMLDivElement>());
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [dropAt, setDropAt] = useState<number | null>(null);
+  const opt = isMacPlatform() ? "⌥" : "Alt";
+
+  // Keep the active tab in view when it changes (keyboard, palette, sidebar).
+  useEffect(() => {
+    if (!activeId) return;
+    refs.current
+      .get(activeId)
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeId]);
+
   return (
-    <div
-      role="tablist"
-      aria-label="Open files"
-      className="bg-sidebar/60 flex h-9 shrink-0 items-center overflow-x-auto border-b"
-    >
-      {files.map((f) => {
-        const active = f.id === activeId;
-        const dirty = dirtyIds.has(f.id);
-        return (
-          <div
-            key={f.id}
-            className={cn(
-              "group/tab relative flex h-full max-w-52 shrink-0 items-center border-r",
-              active
-                ? "bg-background after:bg-background after:absolute after:inset-x-0 after:-bottom-px after:h-px"
-                : "hover:bg-background/50",
-            )}
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => onSelect(f)}
-              className={cn(
-                "flex h-full min-w-0 items-center gap-1.5 pr-1 pl-3 font-mono text-xs outline-none",
-                active
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
+    <div className="bg-sidebar/50 flex h-10 shrink-0 items-center border-b">
+      <div
+        role="tablist"
+        aria-label="Open files"
+        className="no-scrollbar flex h-full min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-1.5"
+      >
+        {files.map((f, i) => {
+          const active = f.id === activeId;
+          const dirty = dirtyIds.has(f.id);
+          return (
+            <ContextMenu key={f.id}>
+              <ContextMenuTrigger
+                render={
+                  <div
+                    ref={(el) => {
+                      if (el) refs.current.set(f.id, el);
+                      else refs.current.delete(f.id);
+                    }}
+                    draggable
+                    onDragStart={(e) => {
+                      setDragFrom(i);
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    onDragOver={(e) => {
+                      if (dragFrom === null) return;
+                      e.preventDefault();
+                      setDropAt(i);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (dragFrom !== null) onReorder(dragFrom, i);
+                      setDragFrom(null);
+                      setDropAt(null);
+                    }}
+                    onDragEnd={() => {
+                      setDragFrom(null);
+                      setDropAt(null);
+                    }}
+                    // Middle-click closes, as in every tabbed app.
+                    onAuxClick={(e) => {
+                      if (e.button === 1) {
+                        e.preventDefault();
+                        onClose([f.id]);
+                      }
+                    }}
+                    className={cn(
+                      "group/tab relative flex h-7 max-w-56 shrink-0 items-center rounded-md transition-interactive",
+                      active
+                        ? "bg-background text-foreground shadow-raised ring-1 ring-border"
+                        : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                      dragFrom === i && "opacity-50",
+                      dropAt === i &&
+                        dragFrom !== null &&
+                        dragFrom !== i &&
+                        "ring-ring/60 ring-1",
+                    )}
+                  />
+                }
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  title={`${f.project} / ${f.name}`}
+                  onClick={() => onSelect(f)}
+                  className="focus-visible:ring-ring/50 flex h-full min-w-0 items-center gap-1.5 rounded-md pr-1 pl-2 font-mono text-xs outline-none focus-visible:ring-2"
+                >
+                  <span
+                    className={cn(
+                      "size-1.5 shrink-0 rounded-full",
+                      f.environment ? envMeta(f.environment).dot : "bg-transparent",
+                    )}
+                    aria-hidden="true"
+                  />
+                  <span className="truncate">{f.name}</span>
+                  {ambiguous.has(f.id) && (
+                    <span className="text-muted-foreground truncate font-sans">
+                      {f.project}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  aria-label={dirty ? `Close ${f.name} (unsaved)` : `Close ${f.name}`}
+                  onClick={() => onClose([f.id])}
+                  className={cn(
+                    "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring/50 mr-1 flex size-5 shrink-0 items-center justify-center rounded outline-none transition-interactive focus-visible:ring-2",
+                    // Revealed on hover, focus and for the active tab; always
+                    // there on touch, where nothing hovers.
+                    !active &&
+                      !dirty &&
+                      "opacity-0 group-hover/tab:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100",
+                  )}
+                >
+                  {dirty ? (
+                    <>
+                      <span
+                        className="bg-foreground/70 size-2 rounded-full group-hover/tab:hidden"
+                        aria-hidden="true"
+                      />
+                      <X className="hidden size-3.5 group-hover/tab:block" />
+                    </>
+                  ) : (
+                    <X className="size-3.5" />
+                  )}
+                </button>
+              </ContextMenuTrigger>
+              <ContextMenuContent className="min-w-56">
+                <ContextMenuItem onClick={() => onClose([f.id])}>
+                  Close
+                  <TabShortcut keys={[opt, "W"]} />
+                </ContextMenuItem>
+                <ContextMenuItem
+                  disabled={files.length < 2}
+                  onClick={() => onClose(othersOf(files, f.id))}
+                >
+                  Close others
+                </ContextMenuItem>
+                <ContextMenuItem
+                  disabled={i === files.length - 1}
+                  onClick={() => onClose(rightOf(files, f.id))}
+                >
+                  Close to the right
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => onClose(files.map((t) => t.id))}>
+                  Close all
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
+          );
+        })}
+      </div>
+
+      {/* Every open tab in one list, for when the strip scrolls. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="All open files"
+              className="text-muted-foreground mx-1.5"
             >
-              {f.environment && (
+              <ChevronDown />
+            </Button>
+          }
+        />
+        <DropdownMenuContent align="end" className="min-w-64">
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="flex items-center">
+              Open files
+              <span className="ml-auto font-normal">
+                {opt} 1-9 to jump, {opt} [ ] to cycle
+              </span>
+            </DropdownMenuLabel>
+            {files.map((f, i) => (
+              <DropdownMenuItem
+                key={f.id}
+                className="font-mono text-xs"
+                onClick={() => onSelect(f)}
+              >
                 <span
                   className={cn(
                     "size-1.5 shrink-0 rounded-full",
-                    envMeta(f.environment).dot,
+                    f.environment ? envMeta(f.environment).dot : "bg-transparent",
                   )}
                   aria-hidden="true"
                 />
-              )}
-              <span className="truncate">{f.name}</span>
-              {(nameCounts.get(f.name) ?? 0) > 1 && (
-                <span className="text-muted-foreground truncate font-sans text-xs">
+                <span className="truncate">{f.name}</span>
+                <span className="text-muted-foreground truncate font-sans">
                   {f.project}
                 </span>
-              )}
-            </button>
-            <button
-              type="button"
-              aria-label={`Close ${f.name}`}
-              onClick={() => onClose(f.id)}
-              className={cn(
-                "text-muted-foreground hover:bg-muted hover:text-foreground mr-1.5 flex size-5 shrink-0 items-center justify-center rounded",
-                // Hover-revealed on pointers that can hover; always present on
-                // touch, where there is no hover to reveal it.
-                !active &&
-                  !dirty &&
-                  "opacity-0 group-hover/tab:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100",
-              )}
-            >
-              {dirty ? (
-                <>
+                {dirtyIds.has(f.id) && (
                   <span
-                    className="bg-foreground/70 size-2 rounded-full group-hover/tab:hidden"
-                    aria-hidden="true"
+                    className="bg-foreground/70 size-1.5 shrink-0 rounded-full"
+                    aria-label="Unsaved"
                   />
-                  <X className="hidden size-3.5 group-hover/tab:block" />
-                </>
-              ) : (
-                <X className="size-3.5" />
-              )}
-            </button>
-          </div>
-        );
-      })}
+                )}
+                <span className="ml-auto flex items-center gap-2">
+                  {f.id === activeId && <Check className="size-4" />}
+                  {/* Mirrors tabForDigit: 1-8 by position, 9 is the last tab. */}
+                  {(i < 8 || i === files.length - 1) && (
+                    <TabShortcut
+                      keys={[opt, i === files.length - 1 && i >= 8 ? "9" : String(i + 1)]}
+                    />
+                  )}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => onClose(files.map((t) => t.id))}>
+            <X />
+            Close all
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
