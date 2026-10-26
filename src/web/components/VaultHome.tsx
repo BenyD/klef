@@ -1220,7 +1220,7 @@ function WorkspaceSwitcher({
         render={
           <button
             type="button"
-            className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-1.5 text-left outline-none transition-interactive focus-visible:ring-2"
+            className="hover:bg-sidebar-hover aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-1.5 text-left outline-none transition-interactive focus-visible:ring-2"
           />
         }
       >
@@ -1305,19 +1305,21 @@ function UserMenu({
           <button
             type="button"
             aria-label="Account menu"
-            className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-left outline-none transition-interactive focus-visible:ring-2"
+            className="hover:bg-sidebar-hover aria-expanded:bg-sidebar-accent focus-visible:ring-sidebar-ring flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-left outline-none transition-interactive focus-visible:ring-2"
           />
         }
       >
-        <Avatar className="size-6">
+        {/* One 32px axis: avatar, the two 16px lines beside it, and the
+            lock button next door all share the height. */}
+        <Avatar className="size-8 shrink-0">
           {image && (
             <AvatarImage src={image} alt="" referrerPolicy="no-referrer" />
           )}
           <AvatarFallback className="text-xs">{initial}</AvatarFallback>
         </Avatar>
-        <span className="flex min-w-0 flex-col leading-tight">
-          <span className="truncate text-sm font-medium">{displayName}</span>
-          <span className="text-muted-foreground truncate text-xs">{email}</span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-sm/4 font-medium">{displayName}</span>
+          <span className="text-muted-foreground truncate text-xs/4">{email}</span>
         </span>
         <ChevronsUpDown className="text-muted-foreground ml-auto size-3.5 shrink-0" />
       </DropdownMenuTrigger>
@@ -1423,10 +1425,11 @@ function LockButton({ lock }: { lock: () => void }) {
         render={
           <Button
             variant="outline"
-            size="icon-sm"
+            size="icon"
             aria-label="Lock vault"
             onClick={lock}
-            className="text-muted-foreground hover:text-foreground shrink-0"
+            // The account trigger's height, so the footer is one row.
+            className="text-muted-foreground hover:text-foreground size-10 shrink-0"
           >
             <Lock />
           </Button>
@@ -1586,7 +1589,7 @@ function FileTabs({
                       "group/tab relative flex h-7 max-w-56 shrink-0 items-center rounded-md transition-interactive",
                       active
                         ? "bg-background text-foreground shadow-raised ring-1 ring-border"
-                        : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
                       dragFrom === i && "opacity-50",
                       dropAt === i &&
                         dragFrom !== null &&

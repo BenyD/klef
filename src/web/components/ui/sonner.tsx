@@ -13,7 +13,7 @@ import {
    on the container; the chip derives its tint from it. */
 function ToastChip({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-sm border border-(--toast-accent)/25 bg-(--toast-accent)/8 px-1.5 py-0.5 font-mono text-[10px]/4 font-medium tracking-[0.12em] text-(--toast-accent) uppercase">
+    <span className="inline-flex items-center gap-1 rounded-sm border border-(--toast-accent)/25 bg-(--toast-accent)/8 px-1.5 py-0.5 font-mono text-xs/4 font-medium tracking-wider text-(--toast-accent) uppercase">
       {icon}
       {label}
     </span>
@@ -59,9 +59,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
              put the loading chip back in flow like the other type chips. */
           loader: "relative! top-auto! left-auto! w-full transform-none!",
           actionButton:
-            "mt-0.5 inline-flex h-7 shrink-0 items-center justify-center rounded-md bg-primary px-2.5 text-[0.8rem] font-medium whitespace-nowrap text-primary-foreground transition-interactive outline-none select-none hover:bg-primary/80 focus-visible:ring-2 focus-visible:ring-ring/30 active:translate-y-px",
+            "mt-0.5 inline-flex h-7 shrink-0 items-center justify-center rounded-md bg-primary px-2.5 text-sm font-medium whitespace-nowrap text-primary-foreground transition-interactive outline-none select-none hover:bg-primary/80 focus-visible:ring-2 focus-visible:ring-ring/30 active:translate-y-px",
           cancelButton:
-            "mt-0.5 inline-flex h-7 shrink-0 items-center justify-center rounded-md border border-border bg-background px-2.5 text-[0.8rem] font-medium whitespace-nowrap transition-interactive outline-none select-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 active:translate-y-px dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+            "mt-0.5 inline-flex h-7 shrink-0 items-center justify-center rounded-md border border-border bg-background px-2.5 text-sm font-medium whitespace-nowrap transition-interactive outline-none select-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 active:translate-y-px dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
           closeButton:
             "absolute top-2 right-2 rounded-sm border-0! bg-transparent! p-1 text-muted-foreground! opacity-0 transition-opacity outline-none group-hover/toast:opacity-100 hover:text-foreground! focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/30",
           success: "[--toast-accent:var(--success)]",

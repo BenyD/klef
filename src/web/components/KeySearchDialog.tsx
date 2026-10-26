@@ -350,7 +350,7 @@ export function KeySearchDialog({
 
 // A filter toggle: quiet until pressed, then filled.
 const chip =
-  "text-muted-foreground hover:bg-muted hover:text-foreground aria-pressed:bg-muted aria-pressed:text-foreground focus-visible:ring-ring/50 inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs outline-none transition-interactive focus-visible:ring-2";
+  "text-muted-foreground hover:bg-muted hover:text-foreground aria-pressed:bg-accent aria-pressed:text-foreground focus-visible:ring-ring/50 inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs outline-none transition-interactive focus-visible:ring-2";
 
 // One project under a key: its name, then a chip per file that sets the key
 // and a dashed chip per file that doesn't. Enter opens the first file that
