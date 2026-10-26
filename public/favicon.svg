@@ -1,10 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- Klef mark: the masked value. One brand tile for both color schemes:
-       bright ember with the ink asterisk. Six even spokes, radius 9.5. -->
-  <rect width="32" height="32" rx="7" fill="#fb923c" />
-  <g fill="none" stroke="#1c1917" stroke-width="3" stroke-linecap="round">
-    <path d="M16 6.5v19" />
-    <path d="M7.77 11.25 24.23 20.75" />
-    <path d="M24.23 11.25 7.77 20.75" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Klef mark: the woven asterisk. Three loops knot into an asterisk, the
+       way a hidden value is drawn, each passing over the one before. Ink on
+       the ember tile, for both colour schemes. Geometry matches
+       src/web/components/KlefMark.tsx. -->
+  <rect width="100" height="100" rx="22" fill="#f88a3d" />
+  <defs>
+    <mask id="m0" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><rect width="100" height="100" fill="#fff"/><rect x="38" y="12" width="24" height="76" rx="12" fill="none" stroke="#000" stroke-width="18" transform="rotate(60 50 50)"/><rect x="38" y="12" width="24" height="76" rx="12" fill="none" stroke="#000" stroke-width="18" transform="rotate(120 50 50)"/></mask>
+    <mask id="m1" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><rect width="100" height="100" fill="#fff"/><rect x="38" y="12" width="24" height="76" rx="12" fill="none" stroke="#000" stroke-width="18" transform="rotate(120 50 50)"/></mask>
+  </defs>
+  <g transform="translate(10 10) scale(0.8)" fill="none" stroke="#17181b" stroke-width="9">
+    <g mask="url(#m0)"><rect x="38" y="12" width="24" height="76" rx="12" transform="rotate(0 50 50)"/></g>
+    <g mask="url(#m1)"><rect x="38" y="12" width="24" height="76" rx="12" transform="rotate(60 50 50)"/></g>
+    <g><rect x="38" y="12" width="24" height="76" rx="12" transform="rotate(120 50 50)"/></g>
   </g>
 </svg>

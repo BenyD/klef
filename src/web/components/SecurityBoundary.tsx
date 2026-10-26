@@ -1,9 +1,9 @@
 // Where encryption happens, drawn as two zones and the line between them,
-// on a white panel the caller puts in a card. Shared by the landing page and
+// Shared by the landing page and
 // /security, so the two cannot disagree.
 export function SecurityBoundary() {
   return (
-    <div className="m-panel m-boundary">
+    <div className="m-boundary">
       <div>
         <p className="m-zone-label">Your device</p>
         <ol className="m-chain">

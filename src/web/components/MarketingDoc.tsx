@@ -45,8 +45,7 @@ function useScrollSpy(ids: string[]) {
 }
 
 // Document-style marketing page: sticky table of contents on the left
-// (desktop), an "On this page" disclosure on phones, and the prose on a
-// white panel in a card, like every section of the landing page.
+// (desktop), an "On this page" disclosure on phones, and the prose beside it.
 export function MarketingDoc({
   kicker,
   title,
@@ -84,7 +83,7 @@ export function MarketingDoc({
                 On this page
                 <ChevronDown size={16} className="marketing-doc-toc-chevron" />
               </button>
-              <span className="marketing-doc-toc-label">On this page</span>
+              <span className="marketing-doc-toc-label m-label">On this page</span>
               <nav data-open={tocOpen} onClick={() => setTocOpen(false)}>
                 {sections.map((s) => (
                   <a
@@ -98,9 +97,9 @@ export function MarketingDoc({
               </nav>
             </div>
           </aside>
-          <div className="m-card">
-            <article className="m-panel marketing-page">
-              <p className="m-eyebrow">{kicker}</p>
+          <div>
+            <article className="marketing-page">
+              <p className="m-label">{kicker}</p>
               <h1>{title}</h1>
               <p className="marketing-page-lead">{lead}</p>
               {updated && (
