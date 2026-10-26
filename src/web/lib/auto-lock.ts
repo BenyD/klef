@@ -3,13 +3,16 @@
 // are mounted only while the vault is unlocked (VaultHome).
 
 import { useEffect, useSyncExternalStore } from "react";
-import { AUTO_LOCK_DEFAULT_MINUTES } from "../../shared/lock-policy.ts";
+import {
+  AUTO_LOCK_DEFAULT_MINUTES,
+  REMEMBER_DEVICE_MINUTES,
+} from "../../shared/lock-policy.ts";
 
 const STORAGE_KEY = "klef:auto-lock-minutes";
 const CHANGE_EVENT = "klef:auto-lock-changed";
 
 // Shared with the CLI's unlock agent, so both lock on the same schedule.
-export { AUTO_LOCK_DEFAULT_MINUTES };
+export { AUTO_LOCK_DEFAULT_MINUTES, REMEMBER_DEVICE_MINUTES };
 
 export const AUTO_LOCK_OPTIONS = [
   { minutes: 5, label: "After 5 minutes" },
@@ -17,6 +20,9 @@ export const AUTO_LOCK_OPTIONS = [
   { minutes: 15, label: "After 15 minutes" },
   { minutes: 30, label: "After 30 minutes" },
   { minutes: 60, label: "After 1 hour" },
+  { minutes: 8 * 60, label: "After 8 hours" },
+  { minutes: 24 * 60, label: "After 1 day" },
+  { minutes: REMEMBER_DEVICE_MINUTES, label: "After 7 days" },
   { minutes: 0, label: "Never" },
 ] as const;
 
@@ -40,6 +46,35 @@ export function setAutoLockMinutes(minutes: number): void {
     // localStorage may be unavailable; the in-page event still updates state.
   }
   window.dispatchEvent(new Event(CHANGE_EVENT));
+}
+
+// The setting is also how long a reopened tab may restore the key without the
+// passphrase (see dek-store.ts), so "Keep unlocked on this device" is just a
+// long setting. A day or more, or never, counts as remembering this device.
+const REMEMBERS_DEVICE_FROM_MINUTES = 24 * 60;
+
+export function remembersDevice(minutes = getAutoLockMinutes()): boolean {
+  return minutes === 0 || minutes >= REMEMBERS_DEVICE_FROM_MINUTES;
+}
+
+/**
+ * Apply the unlock screen's "Keep unlocked on this device" box. Ticking it
+ * opts in to the 7-day window unless a remembering setting is already chosen;
+ * clearing it is the revoke, back to the default. Leaves an unrelated choice
+ * (say, 30 minutes) alone when the box matches it.
+ */
+export function applyRememberDevice(remember: boolean): void {
+  if (remember === remembersDevice()) return;
+  setAutoLockMinutes(remember ? REMEMBER_DEVICE_MINUTES : AUTO_LOCK_DEFAULT_MINUTES);
+}
+
+/**
+ * How old a remembered key may be when a tab opens and still be restored. The
+ * same clock as the idle lock, so closing the browser never buys a longer
+ * unlocked window than staying idle would.
+ */
+export function rememberedKeyMaxAgeMs(minutes = getAutoLockMinutes()): number {
+  return minutes > 0 ? minutes * 60_000 : Infinity;
 }
 
 function subscribe(onChange: () => void) {

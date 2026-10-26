@@ -14,7 +14,7 @@ Commands:
   pull               Write the vault's copy of the env file to disk
   push               Send this directory's env file up as a new version
   unlock             Ask for the passphrase once; pull and push reuse it
-  lock               Forget the key now instead of after 15 idle minutes
+  lock               Forget the key now instead of when it times out
   help               Show this
 
 Options:
@@ -24,6 +24,7 @@ Options:
   -y, --yes          Skip the confirmation on push
   --json             Machine-readable output (list, status)
   --paste            Sign in by pasting a token, for machines with no browser
+  --for <time>       How long unlock lasts without use: 30m, 8h, 7d (default 15m)
   -h, --help         Show this
   -v, --version      Print the version
 
@@ -37,5 +38,5 @@ many lines changed, and nothing goes to stdout either way.
 The master passphrase is read from the terminal only, never from a flag or a
 pipe, so the process that spawned klef cannot supply or observe it. After
 \`klef unlock\`, a background agent holds the key in memory (never on disk) and
-locks after 15 minutes without use.
+locks after 15 minutes without use, or as long as \`--for\` says, up to 7 days.
 `;
