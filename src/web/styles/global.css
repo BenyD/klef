@@ -54,16 +54,12 @@
   --success: oklch(0.55 0.13 158);
   --warning: oklch(0.56 0.12 75);
   --info: oklch(0.55 0.15 250);
-  /* Env-label dots and diff colors as tokens so they can be tuned per theme
-     without touching call sites. */
-  --env-development: oklch(0.6 0.15 245);
-  --env-preview: oklch(0.66 0.15 70);
-  --env-production: oklch(0.6 0.2 18);
-  --env-custom: oklch(0.58 0.18 295);
+  /* Diff colours as tokens so they can be tuned per theme without touching
+     call sites. Environments have no colour: see lib/env-meta.ts. */
   --diff-add: oklch(0.53 0.12 158);
   --diff-remove: oklch(0.57 0.2 22);
   /* Env syntax: keys cool, quoted values warm, `export` violet. Apart from
-     the diff and env-dot hues so nothing collides. */
+     the diff hues so nothing collides. */
   --syntax-key: oklch(0.5 0.13 245);
   --syntax-string: oklch(0.52 0.12 70);
   --syntax-keyword: oklch(0.5 0.17 295);
@@ -120,10 +116,6 @@
   --success: oklch(0.74 0.13 158);
   --warning: oklch(0.8 0.13 85);
   --info: oklch(0.74 0.12 245);
-  --env-development: oklch(0.72 0.13 245);
-  --env-preview: oklch(0.8 0.14 85);
-  --env-production: oklch(0.7 0.17 18);
-  --env-custom: oklch(0.72 0.14 295);
   --diff-add: oklch(0.74 0.14 158);
   --diff-remove: oklch(0.7 0.17 22);
   --syntax-key: oklch(0.78 0.11 240);
@@ -183,10 +175,6 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
-  --color-env-development: var(--env-development);
-  --color-env-preview: var(--env-preview);
-  --color-env-production: var(--env-production);
-  --color-env-custom: var(--env-custom);
   --color-diff-add: var(--diff-add);
   --color-diff-remove: var(--diff-remove);
   --color-scrim: var(--scrim);

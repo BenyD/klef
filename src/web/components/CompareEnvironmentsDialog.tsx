@@ -17,6 +17,7 @@ import {
 } from "../lib/env-drift.ts";
 import { detectFormat } from "../lib/config-format.ts";
 import { useEnvMeta } from "../lib/env-meta.ts";
+import { effectiveEnvironment } from "../../shared/env-from-name.ts";
 import { useVault } from "../vault-context.ts";
 import type { ProjectNode } from "../../shared/api-types.ts";
 import {
@@ -47,6 +48,7 @@ export function CompareEnvironmentsDialog({
 }) {
   const { dek } = useVault();
   const envMeta = useEnvMeta();
+  const fileNames = new Map(project?.files.map((f) => [f.id, f.name]) ?? []);
   const [files, setFiles] = useState<DriftFile[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,8 +58,9 @@ export function CompareEnvironmentsDialog({
     setFiles(null);
     setError(null);
 
-    // Only dotenv files take part; label each column by its environment, or
-    // its filename when unlabeled.
+    // Only dotenv files take part; label each column by the environment the
+    // file stands for (its label, else what its name says), or its filename
+    // when neither says anything.
     const dotenv = project.files.filter(
       (f) => detectFormat(f.name) === "dotenv",
     );
@@ -67,7 +70,7 @@ export function CompareEnvironmentsDialog({
         const text = version ? await decryptBlob(dek, version.blob) : "";
         return {
           id: f.id,
-          label: f.environment ?? f.name,
+          label: effectiveEnvironment(f.name, f.environment) ?? f.name,
           text,
         } satisfies DriftFile;
       }),
@@ -155,7 +158,11 @@ export function CompareEnvironmentsDialog({
 
               <div className="max-h-[60vh] overflow-auto rounded-lg border">
                 <table className="w-full border-separate border-spacing-0 text-sm">
-                  <DriftHead columns={report.columns} envMeta={envMeta} />
+                  <DriftHead
+                    columns={report.columns}
+                    envMeta={envMeta}
+                    fileNames={fileNames}
+                  />
                   <tbody className="[&>tr:last-child>td]:border-b-0">
                     {report.rows.map((row) => (
                       <tr key={row.key} className="hover:bg-muted">
@@ -208,7 +215,11 @@ export function CompareEnvironmentsDialog({
 
                   <div className="max-h-[60vh] overflow-auto rounded-lg border">
                     <table className="w-full border-separate border-spacing-0 text-sm">
-                      <DriftHead columns={report.columns} envMeta={envMeta} />
+                      <DriftHead
+                    columns={report.columns}
+                    envMeta={envMeta}
+                    fileNames={fileNames}
+                  />
                       <tbody className="[&>tr:last-child>td]:border-b-0">
                         {report.diff.map((row) => (
                           <tr key={row.key} className="hover:bg-muted">
@@ -261,9 +272,12 @@ export function CompareEnvironmentsDialog({
 function DriftHead({
   columns,
   envMeta,
+  fileNames,
 }: {
   columns: DriftColumn[];
-  envMeta: (environment: string) => { label: string; dot: string };
+  envMeta: (environment: string) => { label: string };
+  /** File id to name: the second line, since two files can share an environment. */
+  fileNames: ReadonlyMap<string, string>;
 }) {
   return (
     <thead>
@@ -272,15 +286,19 @@ function DriftHead({
           Key
         </th>
         {columns.map((col) => {
-          const meta = envMeta(col.label);
+          const name = fileNames.get(col.id);
           return (
             <th
               key={col.id}
               className="bg-background sticky top-0 z-10 border-b px-3 py-2 text-center font-medium whitespace-nowrap"
             >
-              <span className="inline-flex items-center gap-1.5">
-                <span className={cn("size-1.5 rounded-full", meta.dot)} />
-                {meta.label}
+              <span className="flex flex-col items-center">
+                {envMeta(col.label).label}
+                {name && name !== col.label && (
+                  <span className="text-muted-foreground font-mono text-xs font-normal">
+                    {name}
+                  </span>
+                )}
               </span>
             </th>
           );

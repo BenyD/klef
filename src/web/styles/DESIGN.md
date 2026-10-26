@@ -33,9 +33,15 @@ dark mode. Cards and popovers step up from there.
 | `--brand`                   | Ember as text/icon where the fill can't hold contrast |
 | `--muted-foreground`        | Every piece of secondary text                  |
 | `--success` `--warning` `--info` `--destructive` | State, never decoration    |
-| `--env-*`                   | Environment identity dots                      |
 | `--diff-add` `--diff-remove`| Diff gutters and rows                          |
 | `--syntax-*`                | Env editor highlighting (keys, quoted values, `export`) |
+
+**Environments are text, never colour.** A file's name usually says its
+environment (`.env.local` is development, `.env.production` production; see
+`src/shared/env-from-name.ts`), so nothing is shown for it. A quiet text
+label appears only when it adds something: an environment set on a name that
+doesn't imply one, or one that contradicts the name. A dot in a tab means
+unsaved changes, nothing else, and red stays for errors.
 
 **One primary per view.** If two buttons on screen are ember, one of them is
 wrong. Everything else is `outline`, `secondary` or `ghost`.
@@ -65,7 +71,6 @@ Checked in both themes against the surface each pair actually sits on
 | `diff-add` / `background`              | 5.0   | 8.6   |
 | `syntax-key` / `background`            | 5.9   | 9.5   |
 | `ring` / `background` (UI)             | 5.0   | 8.3   |
-| `env-preview` dot / `background` (UI)  | 3.2   | 9.9   |
 
 `--border` and `--input` sit near 1.3-1.5:1 on purpose: they are hairlines,
 not the only cue. Every input also has a visible label or placeholder and an
