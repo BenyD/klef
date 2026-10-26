@@ -239,12 +239,12 @@ export function AppSidebar({
                           className="group/project"
                         >
                           <span className="relative flex size-4 shrink-0 items-center justify-center">
-                            <span className="flex group-hover/project:opacity-0">
+                            <span className="flex group-hover/project:opacity-0 group-focus-visible/project:opacity-0">
                               <ProjectIcon project={project} size="sm" />
                             </span>
                             <ChevronRight
                               className={cn(
-                                "text-muted-foreground absolute opacity-0 transition-[rotate] duration-(--duration-fast) group-hover/project:opacity-100",
+                                "text-muted-foreground absolute opacity-0 transition-[rotate] duration-(--duration-fast) group-hover/project:opacity-100 group-focus-visible/project:opacity-100",
                                 open && "rotate-90",
                               )}
                             />
