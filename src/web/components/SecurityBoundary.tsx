@@ -1,9 +1,10 @@
-// Where encryption happens, drawn as two zones and the line between them.
-// Shared by the landing page and /security, so the two cannot disagree.
+// Where encryption happens, drawn as two zones and the line between them,
+// on a white panel the caller puts in a card. Shared by the landing page and
+// /security, so the two cannot disagree.
 export function SecurityBoundary() {
   return (
-    <div className="m-boundary">
-      <div className="m-zone">
+    <div className="m-panel m-boundary">
+      <div>
         <p className="m-zone-label">Your device</p>
         <ol className="m-chain">
           <li>
@@ -25,7 +26,7 @@ export function SecurityBoundary() {
         <span>Only ciphertext crosses this line</span>
       </div>
 
-      <div className="m-zone m-zone-server">
+      <div>
         <p className="m-zone-label">Klef server</p>
         <ul className="m-chain">
           <li>

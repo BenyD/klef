@@ -5,39 +5,11 @@ import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 // Every line is what the CLI prints (src/cli/commands, src/cli/output.ts),
 // down to the wording. None shows a value, because the CLI never prints one:
 // that is the claim the page makes, so an invented line with a secret in it
-// would undercut it. SSR-safe: the first tab renders on the server and the
-// rest is plain React state.
+// would undercut it. SSR-safe: the first command renders on the server and
+// the rest is plain React state.
 
-export function Terminal({
-  title,
-  compact,
-  className,
-  children,
-}: {
-  title?: ReactNode;
-  compact?: boolean;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <figure
-      className={["m-term", compact && "m-term-compact", className]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      {title && (
-        <figcaption className="m-term-bar">
-          <span className="m-term-dots" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
-          <span className="m-term-title">{title}</span>
-        </figcaption>
-      )}
-      <pre className="m-term-body">{children}</pre>
-    </figure>
-  );
+export function Transcript({ children }: { children: ReactNode }) {
+  return <pre className="m-term-body">{children}</pre>;
 }
 
 export function Cmd({ children }: { children: ReactNode }) {
@@ -68,19 +40,36 @@ export function Yes() {
   return <span className="t-fg">y</span>;
 }
 
-interface Demo {
-  id: string;
-  label: string;
-  /** Where the command runs, shown in the title bar. */
-  cwd: string;
+interface Command {
+  verb: string;
+  does: string;
   lines: ReactNode;
 }
 
-const DEMOS: Demo[] = [
+const COMMANDS: Command[] = [
   {
-    id: "sync",
-    label: "sync",
-    cwd: "~/Developer/lensdrop",
+    verb: "setup",
+    does: "Sign in, link, teach your agents, pull",
+    lines: (
+      <>
+        <Cmd>npx @klefsh/cli setup</Cmd>
+        <Out>Step 1 of 4: signed in as you@example.com.</Out>
+        <Out>Step 2 of 4: linked to personal / lensdrop (2 files).</Out>
+        <Out>Step 3 of 4: instructions for Claude Code and Cursor.</Out>
+        <Out>  Create  ./.claude/skills/klef/SKILL.md</Out>
+        <Out>  Create  ./.cursor/rules/klef.mdc</Out>
+        <Out>
+          Write 2 files? [y/N] <Yes />
+        </Out>
+        <Out>Step 4 of 4: pull .env.local, .env.production.</Out>
+        <Out tone="ok">Wrote 14 variables to .env.local</Out>
+        <Out tone="ok">Wrote 9 variables to .env.production</Out>
+      </>
+    ),
+  },
+  {
+    verb: "sync",
+    does: "Push or pull, whichever side changed",
     lines: (
       <>
         <Cmd>klef sync</Cmd>
@@ -96,38 +85,18 @@ const DEMOS: Demo[] = [
     ),
   },
   {
-    id: "setup",
-    label: "setup",
-    cwd: "~/Developer/lensdrop",
+    verb: "pull",
+    does: "Write the vault's copy to disk, mode 0600",
     lines: (
       <>
-        <Cmd>npx @klefsh/cli setup</Cmd>
-        <Out>Step 1 of 4: signed in as you@example.com.</Out>
-        <Out>
-          Step 2 of 4: linked to personal / lensdrop (2 files). Wrote .klef.json, which is safe to
-          commit.
-        </Out>
-        <Out>Step 3 of 4: instructions for Claude Code and Cursor.</Out>
-        <Out>  Create  ./.claude/skills/klef/SKILL.md</Out>
-        <Out>  Create  ./.cursor/rules/klef.mdc</Out>
-        <Out>
-          Write 2 files? [y/N] <Yes />
-        </Out>
-        <Out>Step 4 of 4: pull .env.local, .env.production.</Out>
-        <Out>Master passphrase: </Out>
-        <Out>
-          Unlocked. Locks after 15 minutes without use, or on `npx @klefsh/cli lock`.
-        </Out>
+        <Cmd>klef pull</Cmd>
         <Out tone="ok">Wrote 14 variables to .env.local</Out>
-        <Out tone="ok">Wrote 9 variables to .env.production</Out>
-        <Out tone="ok">Done. New Claude Code and Cursor sessions in this repo already know how to use Klef.</Out>
       </>
     ),
   },
   {
-    id: "restore",
-    label: "restore",
-    cwd: "~ (a new Mac)",
+    verb: "restore",
+    does: "Every linked checkout on a new Mac",
     lines: (
       <>
         <Cmd>klef restore ~/Developer</Cmd>
@@ -145,43 +114,51 @@ const DEMOS: Demo[] = [
     ),
   },
   {
-    id: "audit",
-    label: "audit",
-    cwd: "~/Developer/lensdrop",
+    verb: "audit",
+    does: "Key names on Vercel, GitHub, Cloudflare",
     lines: (
       <>
-        <Cmd>klef audit</Cmd>
+        <Cmd>klef audit vercel</Cmd>
         <Out tone="fg">Vercel Production  (.env.production)</Out>
         <Out>  only on Vercel: OLD_FLAG</Out>
         <Out>  only in .env.production: SENTRY_DSN</Out>
         <Out>  in both: 12</Out>
-        <Out />
-        <Out tone="fg">GitHub repository secrets  (.env.production)</Out>
-        <Out>  only on GitHub: DEPLOY_HOOK</Out>
-        <Out>  in both: 4</Out>
+      </>
+    ),
+  },
+  {
+    verb: "unlock",
+    does: "One passphrase for the next commands",
+    lines: (
+      <>
+        <Cmd>klef unlock</Cmd>
+        <Out>Master passphrase: </Out>
+        <Out>Unlocked. Locks after 15 minutes without use, or on `klef lock`.</Out>
       </>
     ),
   },
 ];
 
-const PANEL_ID = "m-demo-panel";
+const PANEL_ID = "m-cmd-panel";
 
 /**
- * The hero's product shot: one terminal, a tab per command. role="tab"
- * promises arrow keys, so they are implemented, with a roving tabindex so the
- * strip is one stop in the tab order.
+ * The CLI section's card: the verbs as a vertical tab list, the chosen one's
+ * output beside it. role="tab" promises arrow keys, so they are implemented,
+ * with a roving tabindex so the list is one stop in the tab order.
  */
-export function TerminalDemo() {
-  const [active, setActive] = useState(0);
+export function CommandTable() {
+  const [active, setActive] = useState(1);
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
-  const demo = DEMOS[active] as Demo;
+  const command = COMMANDS[active] as Command;
 
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    const last = DEMOS.length - 1;
+    const last = COMMANDS.length - 1;
     let next: number | null = null;
-    if (event.key === "ArrowRight") next = active === last ? 0 : active + 1;
-    else if (event.key === "ArrowLeft") next = active === 0 ? last : active - 1;
-    else if (event.key === "Home") next = 0;
+    if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+      next = active === last ? 0 : active + 1;
+    } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+      next = active === 0 ? last : active - 1;
+    } else if (event.key === "Home") next = 0;
     else if (event.key === "End") next = last;
     if (next === null) return;
     event.preventDefault();
@@ -190,50 +167,43 @@ export function TerminalDemo() {
   }
 
   return (
-    <div className="m-demo">
-      <div className="m-demo-bar">
-        <span className="m-term-dots" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </span>
-        <div className="m-demo-tabs" role="tablist" aria-label="CLI examples">
-          {DEMOS.map((d, i) => (
-            <button
-              key={d.id}
-              type="button"
-              role="tab"
-              id={`m-demo-tab-${d.id}`}
-              aria-selected={i === active}
-              aria-controls={PANEL_ID}
-              tabIndex={i === active ? 0 : -1}
-              ref={(el) => {
-                tabs.current[i] = el;
-              }}
-              className="m-demo-tab"
-              onClick={() => setActive(i)}
-              onKeyDown={onKeyDown}
-            >
-              klef {d.label}
-            </button>
-          ))}
-        </div>
-        <span className="m-demo-cwd">{demo.cwd}</span>
+    <div className="m-cmds">
+      <div className="m-cmd-list" role="tablist" aria-label="Commands" aria-orientation="vertical">
+        {COMMANDS.map((c, i) => (
+          <button
+            key={c.verb}
+            type="button"
+            role="tab"
+            id={`m-cmd-${c.verb}`}
+            aria-selected={i === active}
+            aria-controls={PANEL_ID}
+            tabIndex={i === active ? 0 : -1}
+            ref={(el) => {
+              tabs.current[i] = el;
+            }}
+            className="m-cmd"
+            onClick={() => setActive(i)}
+            onKeyDown={onKeyDown}
+          >
+            <span className="m-cmd-verb">{c.verb}</span>
+            <span className="m-cmd-does">{c.does}</span>
+          </button>
+        ))}
       </div>
       <div
         role="tabpanel"
         id={PANEL_ID}
-        aria-labelledby={`m-demo-tab-${demo.id}`}
-        className="m-demo-panel"
+        aria-labelledby={`m-cmd-${command.verb}`}
+        className="m-panel m-cmd-out"
       >
-        {/* Keyed, so switching tabs replays the entrance on the new lines. */}
-        <pre key={demo.id} className="m-term-body m-demo-body">
-          {demo.lines}
+        {/* Keyed, so switching replays the entrance on the new lines. */}
+        <pre key={command.verb} className="m-term-body">
+          {command.lines}
         </pre>
-      </div>
-      <div className="m-demo-foot">
-        <span className="m-demo-dot" aria-hidden="true" />
-        Values printed: 0
+        <p className="m-zero">
+          <span className="m-dot" aria-hidden="true" />
+          Values printed: 0
+        </p>
       </div>
     </div>
   );
