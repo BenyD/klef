@@ -741,8 +741,9 @@ export function VaultHome({
             <button
               type="button"
               onClick={() => setSelected(null)}
+              aria-current={selected ? undefined : "page"}
               className={cn(
-                "hover:bg-muted text-muted-foreground hover:text-foreground flex h-7 min-w-0 items-center gap-1.5 rounded-md px-1.5 transition-interactive",
+                "hover:bg-muted text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 flex h-7 min-w-0 items-center gap-1.5 rounded-md px-1.5 outline-none transition-interactive focus-visible:ring-2",
                 !selected && "text-foreground font-medium",
                 selected && "max-sm:hidden",
               )}
@@ -756,7 +757,7 @@ export function VaultHome({
                 <button
                   type="button"
                   onClick={() => showProject(currentProject)}
-                  className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-7 min-w-0 items-center gap-1.5 rounded-md px-1.5 transition-interactive max-sm:hidden"
+                  className="hover:bg-muted text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 flex h-7 min-w-0 items-center gap-1.5 rounded-md px-1.5 outline-none transition-interactive focus-visible:ring-2 max-sm:hidden"
                 >
                   <ProjectIcon project={currentProject} size="sm" />
                   <span className="max-w-40 truncate">
@@ -770,6 +771,7 @@ export function VaultHome({
                       <Button
                         variant="ghost"
                         size="sm"
+                        aria-current="page"
                         className="min-w-0 gap-1.5 px-1.5"
                       />
                     }
