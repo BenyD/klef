@@ -415,7 +415,7 @@ export function AppSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="flex-row items-center gap-1">
+      <SidebarFooter className="flex-row items-center gap-2">
         {footer}
       </SidebarFooter>
     </Sidebar>
