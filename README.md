@@ -41,7 +41,8 @@ There is a CLI, but it changes none of that: it holds an access token that
 reaches ciphertext and plaintext names only, and derives your key locally from
 a passphrase read straight from the terminal. It cannot be run unattended by
 design: `klef unlock` lets one passphrase cover a run of commands, held in
-memory by a short-lived agent that locks after 15 idle minutes.
+memory by a short-lived agent that locks after 15 idle minutes (or
+`--for 8h`, up to 7 days).
 
 ```bash
 npx @klefsh/cli login   # paste a token from Settings -> Security -> Developer

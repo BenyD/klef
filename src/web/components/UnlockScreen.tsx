@@ -2,9 +2,11 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Fingerprint } from "lucide-react";
 import { VaultWriteError } from "../vault-api.ts";
 import { PasskeyPrfError } from "../lib/passkey-prf.ts";
+import { applyRememberDevice, remembersDevice } from "../lib/auto-lock.ts";
 import { useVault } from "../vault-context.ts";
 import { AuthShell } from "./AuthShell.tsx";
 import { Button } from "./ui/button.tsx";
+import { Checkbox } from "./ui/checkbox.tsx";
 import {
   Card,
   CardContent,
@@ -14,6 +16,7 @@ import {
 } from "./ui/card.tsx";
 import { Field, FieldError, FieldGroup, FieldLabel } from "./ui/field.tsx";
 import { Input } from "./ui/input.tsx";
+import { Label } from "./ui/label.tsx";
 import { PasswordInput } from "./ui/password-input.tsx";
 import { StrengthMeter } from "./StrengthMeter.tsx";
 
@@ -30,6 +33,9 @@ export function UnlockScreen() {
   const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
+  // Opt-in, per device: starts from what this browser already chose, and
+  // takes effect only once an unlock succeeds. Clearing it is the revoke.
+  const [remember, setRemember] = useState(() => remembersDevice());
 
   // Passkey unlock is the least-effort path, so ask for it on arrival
   // instead of waiting for a click. Once per visit: a dismissed prompt
@@ -48,6 +54,7 @@ export function UnlockScreen() {
     setPasskeyBusy(true);
     try {
       await unlockWithPasskey();
+      applyRememberDevice(remember);
       // On success the vault status flips and this screen unmounts.
     } catch (err) {
       // A dismissed prompt is not an error worth messaging.
@@ -80,6 +87,7 @@ export function UnlockScreen() {
     try {
       if (mode === "passphrase") await unlock(value);
       else await recoverAndReset(value, newPassphrase);
+      applyRememberDevice(remember);
       // On success the vault status flips to "unlocked" and this screen unmounts.
     } catch (err) {
       // A write failure means the recovery key was RIGHT; don't blame it.
@@ -177,6 +185,23 @@ export function UnlockScreen() {
                   </Field>
                 </>
               )}
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="remember-device"
+                  className="mt-0.5"
+                  checked={remember}
+                  onCheckedChange={(checked) => setRemember(checked === true)}
+                />
+                <div className="grid gap-0.5">
+                  <Label htmlFor="remember-device" className="font-normal">
+                    Keep unlocked on this device
+                  </Label>
+                  <p className="text-muted-foreground text-xs">
+                    Skips the passphrase here for 7 days of inactivity. Use
+                    only on a device you trust. Lock anytime to end it.
+                  </p>
+                </div>
+              </div>
               <Button
                 type="submit"
                 className="w-full"

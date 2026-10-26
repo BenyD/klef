@@ -249,7 +249,7 @@ describe("push --all", () => {
 describe("unlock, then push and pull", () => {
   it("asks once at unlock, then not at all", async () => {
     const prompt = counting();
-    expect(await unlock(env, prompt, startInProcess)).toBe(0);
+    expect(await unlock(parseArgs(["unlock"]), env, prompt, startInProcess)).toBe(0);
     expect(prompt.calls).toBe(1);
     expect((await agentStatus(env.KLEF_AGENT_SOCK!))?.msLeft).toBeGreaterThan(0);
 
@@ -264,7 +264,7 @@ describe("unlock, then push and pull", () => {
   });
 
   it("keeps -y and the confirmation exactly as without the agent", async () => {
-    await unlock(env, counting(), startInProcess);
+    await unlock(parseArgs(["unlock"]), env, counting(), startInProcess);
     await writeLocal();
     const questions: string[] = [];
     const ask = (q: string) => {
@@ -276,13 +276,13 @@ describe("unlock, then push and pull", () => {
   });
 
   it("does not prompt again when already unlocked", async () => {
-    await unlock(env, counting(), startInProcess);
-    expect(await unlock(env, never, startInProcess)).toBe(0);
+    await unlock(parseArgs(["unlock"]), env, counting(), startInProcess);
+    expect(await unlock(parseArgs(["unlock"]), env, never, startInProcess)).toBe(0);
     expect(output.at(-1)).toMatch(/^Already unlocked\. Locks in \d+ min without use\.$/);
   });
 
   it("prompts again after lock", async () => {
-    await unlock(env, counting(), startInProcess);
+    await unlock(parseArgs(["unlock"]), env, counting(), startInProcess);
     expect(await lock(env)).toBe(0);
     await agent!.locked;
     agent = null;
@@ -294,8 +294,23 @@ describe("unlock, then push and pull", () => {
     expect(output).toContain("Locked.");
   });
 
+  it("--for holds the key longer than the 15-minute default", async () => {
+    expect(await unlock(parseArgs(["unlock", "--for", "8h"]), env, counting(), startInProcess)).toBe(0);
+    expect(output.at(-1)).toMatch(/^Unlocked\. Locks after 8 hours without use/);
+    const status = await agentStatus(env.KLEF_AGENT_SOCK!);
+    expect(status?.idleMinutes).toBe(8 * 60);
+    expect(status?.msLeft).toBeGreaterThan(7 * 60 * 60_000);
+  });
+
+  it("refuses a bad --for before asking for the passphrase", async () => {
+    for (const bad of ["forever", "0m", "8 weeks", "8d", "-1h"]) {
+      expect(await unlock(parseArgs(["unlock", `--for=${bad}`]), env, never, startInProcess)).toBe(1);
+    }
+    expect(await agentStatus(env.KLEF_AGENT_SOCK!)).toBeNull();
+  });
+
   it("refuses a wrong passphrase without starting anything", async () => {
-    await expect(unlock(env, counting("wrong"), startInProcess)).rejects.toThrow();
+    await expect(unlock(parseArgs(["unlock"]), env, counting("wrong"), startInProcess)).rejects.toThrow();
     expect(await agentStatus(env.KLEF_AGENT_SOCK!)).toBeNull();
   });
 });
