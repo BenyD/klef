@@ -19,9 +19,12 @@ jobs:
       # Reads the pnpm version from package.json's `packageManager` field.
       - uses: pnpm/action-setup@v6.1.0
 
+      # check-latest: the runner's cached 22.x can lag, and Astro (the docs
+      # build) needs a recent 22 patch.
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+          check-latest: true
           cache: pnpm
 
       - name: Install dependencies
