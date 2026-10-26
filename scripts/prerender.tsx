@@ -19,7 +19,7 @@ import { Terms } from "../src/web/components/Terms.tsx";
 import { Privacy } from "../src/web/components/Privacy.tsx";
 import { Why } from "../src/web/components/Why.tsx";
 
-const DEFAULT_TITLE = "Klef - Zero-knowledge .env sync";
+const DEFAULT_TITLE = "Klef - End-to-end encrypted .env sync";
 
 const ROUTES = [
   { path: "/", file: "index.html", title: DEFAULT_TITLE, Page: Landing },

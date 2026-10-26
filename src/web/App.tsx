@@ -24,7 +24,7 @@ import { TooltipProvider } from "./components/ui/tooltip.tsx";
 import { Toaster } from "./components/ui/sonner.tsx";
 
 const TITLES: Record<string, string> = {
-  "/": "Klef - Zero-knowledge .env sync",
+  "/": "Klef - End-to-end encrypted .env sync",
   "/security": "Security - Klef",
   "/terms": "Terms - Klef",
   "/privacy": "Privacy - Klef",

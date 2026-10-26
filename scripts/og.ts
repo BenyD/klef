@@ -12,13 +12,14 @@ import { cipherGrid } from "./og-cipher.ts";
 const WIDTH = 1200;
 const HEIGHT = 630;
 
-// Brand tokens from src/web/styles/global.css (dark) and favicon.svg.
-const BG = "#1c1917"; // stone-900
-const CARD = "#292524"; // stone-800
-const FOREGROUND = "#fafaf9"; // stone-50
-const KEY = "#d6d3d1"; // stone-300
-const FAINT = "#57534e"; // stone-600
-const EMBER = "#fb923c";
+// Brand tokens from src/web/styles/global.css (dark), converted from oklch
+// to hex because satori and resvg take sRGB.
+const BG = "#0b0c0e"; // --sidebar, oklch(0.155 0.004 264): the dark marketing page
+const CARD = "#161719"; // --card, oklch(0.205 0.004 264)
+const FOREGROUND = "#eff0f2"; // --foreground, oklch(0.955 0.003 264)
+const KEY = "#9b9ea5"; // --muted-foreground, oklch(0.7 0.01 264)
+const FAINT = "#53555a"; // oklch(0.45 0.008 264)
+const EMBER = "#f99549"; // --primary, oklch(0.76 0.15 55)
 
 const root = path.resolve(import.meta.dirname, "..");
 const font = (pkg: string, file: string) =>
@@ -42,8 +43,8 @@ function cipherLayer(): Node {
           {
             color:
               token.kind === "env"
-                ? `rgba(251, 146, 60, ${0.08 + token.shade * 0.08})`
-                : `rgba(250, 250, 249, ${0.03 + token.shade * 0.04})`,
+                ? `rgba(249, 149, 73, ${0.08 + token.shade * 0.08})`
+                : `rgba(239, 240, 242, ${0.03 + token.shade * 0.04})`,
           },
           token.text,
         ),
@@ -101,7 +102,7 @@ async function build(): Promise<Node> {
         left: 0,
         width: WIDTH,
         height: HEIGHT,
-        backgroundImage: `radial-gradient(circle at 50% 46%, ${BG} 30%, rgba(28, 25, 23, 0.55) 62%, rgba(28, 25, 23, 0) 100%)`,
+        backgroundImage: `radial-gradient(circle at 50% 46%, ${BG} 30%, rgba(11, 12, 14, 0.55) 62%, rgba(11, 12, 14, 0) 100%)`,
       }),
       h(
         "div",
@@ -139,7 +140,7 @@ async function build(): Promise<Node> {
               lineHeight: 1.2,
               marginTop: 30,
             },
-            "Sync your .env files without trusting the server",
+            "Your .env files, encrypted and in sync",
           ),
           h(
             "div",
@@ -148,7 +149,7 @@ async function build(): Promise<Node> {
               alignItems: "center",
               marginTop: 44,
               backgroundColor: CARD,
-              border: "1px solid rgba(250, 250, 249, 0.09)",
+              border: "1px solid rgba(239, 240, 242, 0.09)",
               borderRadius: 12,
               padding: "16px 26px",
               fontFamily: "JetBrains Mono",

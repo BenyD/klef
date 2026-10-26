@@ -26,10 +26,16 @@ export function Why() {
             in sync, readable by no one else.
           </p>
           <p>
-            So Klef encrypts everything in the browser before it uploads. The
+            So Klef encrypts everything on your device before it uploads. The
             server stores ciphertext and cannot decrypt it. That is not a
             policy promise, it is{" "}
             <Link to="/security">how the thing is built</Link>.
+          </p>
+          <p>
+            These days most of my code is written with Claude Code and
+            Cursor, so the CLI is built to be handed to an agent: it syncs
+            the files, never prints a value, and leaves the passphrase to
+            me.
           </p>
           <p>
             Klef is{" "}
