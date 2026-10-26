@@ -1,0 +1,47 @@
+---
+title: Environments
+description: How Klef works out a file's environment from its name, and when to set one yourself.
+sidebar:
+  order: 2
+---
+
+Most env files already say which environment they are for. `.env.local` is development and `.env.production` is production, so Klef reads the environment from the name and does not ask you to label it.
+
+## Names Klef recognises
+
+The end of the file name decides. The longest match wins, so `.env.production.local` reads as production, not as `.env.local`. A prefix is fine: `mobile.env.local` reads like `.env.local`.
+
+| Name ends with | Environment |
+| --- | --- |
+| `.env.development.local` | development |
+| `.env.production.local` | production |
+| `.env.development` | development |
+| `.env.production` | production |
+| `.env.preview` | preview |
+| `.env.staging` | staging |
+| `.env.local` | development |
+| `.dev.vars` | development |
+| `.prod.vars` | production |
+
+Anything else, such as `.env` or `secrets.env`, implies no environment.
+
+## Setting one explicitly
+
+You can still set an environment on a file. That matters in two cases:
+
+- **The name implies nothing.** A plain `.env` that holds production values should be marked production.
+- **The name says one thing and the file is another.** A `.env.local` that you really use for production.
+
+The environment set on a file always wins over its name.
+
+## When the app shows a label
+
+The app shows an environment label next to a file only when it adds something: when one is set on a name that implies none, or when it contradicts the name. A `.env.production` marked production shows nothing, because the name already says it. Environments are text, never colour.
+
+You can rename the built-in labels for your own display in Settings, Preferences, Environment labels. That changes how they read on this device only.
+
+## Where environments are used
+
+- **Compare environments** in the app lines up the files of one project by environment.
+- **`klef audit`** uses them to decide which local file to compare with which platform environment. A repo that keeps production in a plain `.env` marked production is audited against that file. See [Auditing Vercel, GitHub and Cloudflare](/docs/guides/audit/).
+- **`klef sync`** gives a file it creates in the vault the environment its name implies.

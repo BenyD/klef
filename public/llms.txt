@@ -38,6 +38,12 @@ Key facts:
 - [Privacy](https://klef.sh/privacy): what is stored and what never is
 - [About](https://klef.sh/about): why Klef exists, from the person who built it
 
+## Docs
+
+- [Docs](https://klef.sh/docs/): quickstart, concepts, guides, CLI and security model
+- [Docs index for agents](https://klef.sh/docs/llms.txt): every docs page as Markdown
+- [All docs in one file](https://klef.sh/docs/llms-full.txt)
+
 ## Source
 
 - [GitHub repository](https://github.com/BenyD/klef): full source code, AGPL-3.0
