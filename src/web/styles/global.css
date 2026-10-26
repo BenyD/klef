@@ -38,9 +38,11 @@
   --primary-foreground: oklch(0.2 0.02 50);
   --secondary: oklch(0.965 0.002 264);
   --secondary-foreground: oklch(0.21 0.006 264);
-  --muted: oklch(0.96 0.002 264);
-  --muted-foreground: oklch(0.5 0.011 264);
-  --accent: oklch(0.955 0.003 264);
+  /* Three quiet steps off the surface, each clearly apart: hover (muted),
+     active and selected (accent), pressed fills stay on accent. */
+  --muted: oklch(0.962 0.002 264);
+  --muted-foreground: oklch(0.49 0.011 264);
+  --accent: oklch(0.932 0.004 264);
   --accent-foreground: oklch(0.21 0.006 264);
   --destructive: oklch(0.56 0.2 25);
   --border: oklch(0.915 0.004 264);
@@ -74,7 +76,8 @@
   --sidebar-foreground: oklch(0.21 0.006 264);
   --sidebar-primary: oklch(0.74 0.16 52);
   --sidebar-primary-foreground: oklch(0.2 0.02 50);
-  --sidebar-accent: oklch(0.93 0.004 264);
+  --sidebar-hover: oklch(0.948 0.003 264);
+  --sidebar-accent: oklch(0.918 0.005 264);
   --sidebar-accent-foreground: oklch(0.21 0.006 264);
   --sidebar-border: oklch(0.915 0.004 264);
   --sidebar-ring: oklch(0.56 0.18 42);
@@ -105,9 +108,9 @@
   --primary-foreground: oklch(0.2 0.02 50);
   --secondary: oklch(0.25 0.005 264);
   --secondary-foreground: oklch(0.955 0.003 264);
-  --muted: oklch(0.245 0.005 264);
-  --muted-foreground: oklch(0.7 0.01 264);
-  --accent: oklch(0.26 0.006 264);
+  --muted: oklch(0.235 0.005 264);
+  --muted-foreground: oklch(0.71 0.01 264);
+  --accent: oklch(0.275 0.006 264);
   --accent-foreground: oklch(0.955 0.003 264);
   --destructive: oklch(0.7 0.17 22);
   --border: oklch(1 0 0 / 8%);
@@ -135,7 +138,8 @@
   --sidebar-foreground: oklch(0.955 0.003 264);
   --sidebar-primary: oklch(0.76 0.15 55);
   --sidebar-primary-foreground: oklch(0.2 0.02 50);
-  --sidebar-accent: oklch(1 0 0 / 7%);
+  --sidebar-hover: oklch(1 0 0 / 5%);
+  --sidebar-accent: oklch(1 0 0 / 10%);
   --sidebar-accent-foreground: oklch(0.955 0.003 264);
   --sidebar-border: oklch(1 0 0 / 7%);
   --sidebar-ring: oklch(0.76 0.15 55);
@@ -232,6 +236,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-hover: var(--sidebar-hover);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
