@@ -9,7 +9,7 @@
     "klef": "src/cli/index.ts"
   },
   "engines": {
-    "node": ">=22.18"
+    "node": ">=22.22"
   },
   "scripts": {
     "dev": "vite",
@@ -70,7 +70,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^6.1.0",
-    "astro": "7.4.2",
+    "astro": "7.4.1",
     "auth": "1.7.6",
     "better-sqlite3": "^12.11.1",
     "happy-dom": "^20.11.6",
