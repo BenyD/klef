@@ -26,6 +26,7 @@ diverged it is marked inline.
 | Multi-file sync | `files` in `.klef.json` (`src/cli/project-config.ts`), `push --all`, `pull --all` |
 | Two-way sync | `sync`, `diff`, `restore`; `src/cli/sync-plan.ts` decides, `project-sync.ts` carries it out, `sync-state.ts` remembers |
 | Default files | `link` records `.env.local` and `.env.production` (`src/cli/default-files.ts`) |
+| Deploy targets | `push --to vercel\|github\|cloudflare`, `status --targets`, `import --from vercel` (`src/cli/deploy-targets.ts`, `commands/deploy.ts`, `commands/import.ts`) |
 | Published package | `@klefsh/cli`, one bundled file, zero required dependencies |
 | Browser sign-in | `db/migrations/0013_device_authorizations.sql`, `src/api/device.ts`, `/cli` |
 | Agent prompts | Landing page, and per-file from the app's toolbar |
@@ -261,6 +262,9 @@ klef push [--file <name>|--all]  # read .env, encrypt, upload as new version
 klef sync [--dry-run]            # pull or push each listed file, whichever side changed
 klef diff [--file <name>|--all]  # local vs stored, by key, writing nothing
 klef restore [dir]               # pull every linked checkout under dir (new machine)
+klef push --to <target>          # values to Vercel, GitHub Actions or Cloudflare, via their CLIs
+klef status --targets            # name drift per target; value verdicts on Vercel
+klef import --from vercel        # one-time copy of a Vercel environment into the vault
 klef unlock                      # TTY passphrase prompt → starts klef-agent
 klef lock                        # stop the agent, forgetting the key
 ```

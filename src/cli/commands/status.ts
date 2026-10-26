@@ -11,6 +11,7 @@ import { homedir } from "node:os";
 import { agentSocketPath } from "../paths.ts";
 import { agentStatus } from "../agent-client.ts";
 import { describeTimeLeft, type AgentStatus } from "../agent-protocol.ts";
+import { targetStatus } from "./deploy.ts";
 
 const SOURCE_LABEL = {
   keychain: "OS keychain",
@@ -25,7 +26,12 @@ export async function status(
   args: ParsedArgs,
   env: NodeJS.ProcessEnv,
   cwd: string,
+  prompt?: (question: string) => Promise<string>,
 ): Promise<number> {
+  // Drift against Vercel, GitHub and Cloudflare needs the vault unlocked,
+  // which plain status never does, so it is its own report.
+  if (hasFlag(args, "targets")) return targetStatus(args, env, cwd, prompt);
+
   const base = apiBaseUrl(env);
   const stored = await loadToken(env);
 

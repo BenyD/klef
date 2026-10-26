@@ -39,8 +39,10 @@ const ALLOWED_EXTERNALS = new Set(["@napi-rs/keyring"]);
  * app's dependency tree.
  */
 function assertNoStrayImports(code: string): void {
+  // The lookbehind keeps a string that merely says "import" (the CLI has a
+  // command by that name) from reading as an import statement.
   const specifiers = [
-    ...code.matchAll(/(?:from|import)\s*\(?\s*["']([^"']+)["']/g),
+    ...code.matchAll(/(?<![\w$."'])(?:from|import)\s*\(?\s*["']([^"']+)["']/g),
   ].map((m) => m[1]!);
 
   const stray = [
