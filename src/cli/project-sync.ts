@@ -119,7 +119,7 @@ export async function applySync(
       }
       const saved = await ctx.api.saveVersion(fileId, await ctx.cipher.encrypt(file.local!.text));
       synced.push({ file: file.destination, versionId: saved.id });
-      lines.push(`Pushed ${summary} to ${fileName} (version ${saved.id.slice(0, 8)}).`);
+      lines.push(`Pushed ${summary} to ${fileName} (version ${saved.id.slice(0, 8)})`);
     }
   }
 

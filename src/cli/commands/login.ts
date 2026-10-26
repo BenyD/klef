@@ -7,6 +7,7 @@ import { promptSecret } from "../prompt.ts";
 import { command } from "../invocation.ts";
 import { beginDeviceLogin, openBrowser } from "../device-login.ts";
 import { hasFlag, type ParsedArgs } from "../args.ts";
+import { cmd, done, emit, note, say, style } from "../ui.ts";
 
 /**
  * Sign in.
@@ -29,35 +30,33 @@ export async function login(
 async function browserLogin(base: string, env: NodeJS.ProcessEnv): Promise<number> {
   const login = await beginDeviceLogin(base);
 
-  console.log(`\n  Your code:  ${login.userCode}\n`);
-  console.log(`Opening ${login.verificationUri} to approve it.`);
-  console.log("Check the code on the page matches the one above before you approve.\n");
-  openBrowser(`${login.verificationUri}?code=${encodeURIComponent(login.userCode)}`);
-  console.log("Waiting for approval...");
+  // The code and the waiting go to stderr: they are for the person approving,
+  // and stdout stays the result (or, with --json, one object).
+  const url = `${login.verificationUri}?code=${encodeURIComponent(login.userCode)}`;
+  console.error(`\n  Your code:  ${login.userCode}\n`);
+  console.error(`Opening ${login.verificationUri} to approve it.`);
+  console.error("Check the code on the page matches the one above before you approve.");
+  console.error(`If no browser opens, visit ${url}`);
+  openBrowser(url);
+  console.error("\nWaiting for approval...");
 
-  const token = await login.collect();
+  return finish(base, await login.collect(), env);
+}
 
+async function pasteLogin(base: string, env: NodeJS.ProcessEnv): Promise<number> {
+  console.error(`Create an access token at ${base}: Settings, Security, Developer.`);
+  console.error("Then paste it here. It won't be shown as you type.\n");
+  return finish(base, validateToken(await promptSecret("Access token: ")), env);
+}
+
+async function finish(base: string, token: string, env: NodeJS.ProcessEnv): Promise<number> {
   // Confirm before storing, so a token that cannot be used never gets saved.
   const { user } = await new KlefApi(base, token).whoami();
   const source = await saveToken(token, env);
   const where = source === "keychain" ? "your OS keychain" : "a private file (0600)";
-
-  console.log(`\nSigned in as ${user.email}. Token stored in ${where}.`);
-  console.log(`Next: run \`${command("link")}\` inside a repo to connect it to a file.`);
-  return 0;
-}
-
-async function pasteLogin(base: string, env: NodeJS.ProcessEnv): Promise<number> {
-  console.log(`Create an access token at ${base} -> Settings -> Security -> Developer.`);
-  console.log("Then paste it here. It won't be shown as you type.\n");
-
-  const token = validateToken(await promptSecret("Access token: "));
-
-  const { user } = await new KlefApi(base, token).whoami();
-  const source = await saveToken(token, env);
-  const where = source === "keychain" ? "your OS keychain" : "a private file (0600)";
-
-  console.log(`\nSigned in as ${user.email}. Token stored in ${where}.`);
-  console.log(`Next: run \`${command("link")}\` inside a repo to connect it to a file.`);
+  done(`Signed in as ${user.email}`);
+  say(style.dim(`  Token stored in ${where}. It reaches ciphertext and names only.`));
+  note(`Next: ${cmd(command("setup"), true)} inside a repo, or ${cmd(command("link"), true)} to connect it by hand.`);
+  emit({ email: user.email, tokenStore: source });
   return 0;
 }

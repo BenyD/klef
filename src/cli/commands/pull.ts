@@ -4,10 +4,10 @@ import { command } from "../invocation.ts";
 import path from "node:path";
 import { requireApi } from "../session.ts";
 import type { CurrentVersion } from "../api.ts";
-import { readProjectConfig } from "../project-file.ts";
-import { CONFIG_FILENAME, type ProjectConfig } from "../project-config.ts";
+import type { ProjectConfig } from "../project-config.ts";
 import { resolveTarget } from "../resolve.ts";
-import { openVault } from "../vault-key.ts";
+import { requireConfig, requireVault, unlockedVault } from "../common.ts";
+import { CliError, done, emit } from "../ui.ts";
 import { syncTargets } from "../targets.ts";
 import { countVariables, describeWrite } from "../output.ts";
 import { flagValue, hasFlag, type ParsedArgs } from "../args.ts";
@@ -44,11 +44,7 @@ export async function pull(
   cwd: string,
   prompt?: (question: string) => Promise<string>,
 ): Promise<number> {
-  const config = await readProjectConfig(cwd);
-  if (!config) {
-    console.error(`No ${CONFIG_FILENAME} here. Run \`${command("link")}\` first.`);
-    return 1;
-  }
+  const config = await requireConfig(cwd);
 
   const targets = syncTargets(config, {
     all: hasFlag(args, "all"),
@@ -72,23 +68,22 @@ export async function pull(
 
   for (const { resolved } of planned) {
     if (!resolved.currentVersionId) {
-      console.error(`"${resolved.fileName}" has no saved version yet, so there is nothing to pull.`);
-      return 1;
+      throw new CliError("not_found", `${resolved.fileName} has no saved version yet, so there is nothing to pull.`, {
+        hint: "Push it first, or save it in the web app.",
+        next: [command(`push --file ${resolved.fileName}`)],
+      });
     }
   }
 
-  const vault = await api.vault();
-  if (!vault.exists || !vault.keyMaterial) {
-    console.error("This account has no vault yet. Set one up in the web app first.");
-    return 1;
-  }
+  const keyMaterial = await requireVault(api);
 
   const versions: CurrentVersion[] = [];
   for (const { resolved } of planned) {
     const { version } = await api.currentVersion(resolved.fileId);
     if (!version) {
-      console.error("The current version disappeared between listing and fetching it.");
-      return 1;
+      throw new CliError("server", "The current version disappeared between listing and fetching it.", {
+        hint: "Something saved at the same moment. Run it again.",
+      });
     }
     versions.push(version);
   }
@@ -96,25 +91,24 @@ export async function pull(
   // Everything above this line handled ciphertext only. The unlock is local,
   // either in this process or in the unlock agent, and the key is
   // non-extractable in both.
-  const cipher = await openVault(vault.keyMaterial, env, prompt);
+  const cipher = await unlockedVault(keyMaterial, env, prompt);
   const plaintexts = [];
   for (const version of versions) plaintexts.push(await cipher.decrypt(version.blob));
 
+  const written: { file: string; path: string; variables: number; version: string }[] = [];
   for (const [i, { resolved, destination }] of planned.entries()) {
     const plaintext = plaintexts[i]!;
     await writeEnvFile(destination, plaintext);
-
-    console.log(
-      describeWrite({
-        path: path.relative(cwd, destination) || resolved.fileName,
-        variableCount: countVariables(plaintext),
-      }),
-    );
+    const shown = path.relative(cwd, destination) || resolved.fileName;
+    const variables = countVariables(plaintext);
+    written.push({ file: resolved.fileName, path: shown, variables, version: versions[i]!.id });
+    done(describeWrite({ path: shown, variableCount: variables }));
   }
   // What `sync` measures "edited since" against.
   await recordSynced(
     env,
     planned.map(({ destination }, i) => ({ file: destination, versionId: versions[i]!.id })),
   );
+  emit({ files: written });
   return 0;
 }

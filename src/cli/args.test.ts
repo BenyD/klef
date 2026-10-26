@@ -58,3 +58,30 @@ describe("parseArgs", () => {
     expect(flagValue(parseArgs(["pull", "--file"]), "file")).toBeNull();
   });
 });
+
+describe("short flags", () => {
+  it("map to the long names commands check", () => {
+    const args = parseArgs(["push", "-y", "-q"]);
+    expect(hasFlag(args, "yes")).toBe(true);
+    expect(hasFlag(args, "quiet")).toBe(true);
+  });
+
+  it("bundle, and give a trailing value flag its value", () => {
+    const args = parseArgs(["-qyC", "apps/web", "sync"]);
+    expect(args.command).toBe("sync");
+    expect(hasFlag(args, "quiet")).toBe(true);
+    expect(hasFlag(args, "yes")).toBe(true);
+    expect(flagValue(args, "cwd")).toBe("apps/web");
+  });
+
+  it("are accepted before the command as well as after", () => {
+    const args = parseArgs(["--json", "-n", "sync"]);
+    expect(args.command).toBe("sync");
+    expect(hasFlag(args, "json")).toBe(true);
+    expect(hasFlag(args, "dry-run")).toBe(true);
+  });
+
+  it("keep an unknown letter as itself, so it can be reported", () => {
+    expect([...parseArgs(["pull", "-x"]).flags.keys()]).toEqual(["x"]);
+  });
+});

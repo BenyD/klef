@@ -14,7 +14,17 @@ export interface ParsedArgs {
 }
 
 /** Flags that take a value, so `--file .env` consumes the next argument. */
-const VALUE_FLAGS = new Set(["file", "path", "project", "workspace", "environment", "for"]);
+const VALUE_FLAGS = new Set(["file", "path", "project", "workspace", "environment", "for", "cwd"]);
+
+/** Short flags, as the long names commands check for. */
+const SHORT: Record<string, string> = {
+  h: "help",
+  v: "version",
+  q: "quiet",
+  y: "yes",
+  n: "dry-run",
+  C: "cwd",
+};
 
 export function parseArgs(argv: readonly string[]): ParsedArgs {
   const positionals: string[] = [];
@@ -47,9 +57,19 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       continue;
     }
 
-    // Short flags are only ever booleans here (-h, -v).
+    // Short flags: `-y`, bundled `-qy`, and `-C <dir>` (a value flag, so last).
     if (arg.startsWith("-") && arg.length > 1) {
-      flags.set(arg.slice(1), true);
+      const letters = [...arg.slice(1)];
+      for (const [k, letter] of letters.entries()) {
+        const name = SHORT[letter] ?? letter;
+        const next = argv[i + 1];
+        if (VALUE_FLAGS.has(name) && k === letters.length - 1 && next !== undefined && !next.startsWith("-")) {
+          flags.set(name, next);
+          i++;
+        } else {
+          flags.set(name, true);
+        }
+      }
       continue;
     }
 

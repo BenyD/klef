@@ -13,14 +13,15 @@
 // you read and the code that handles your keys.
 
 import { command } from "./invocation.ts";
+import { CliError, type NextStep } from "./ui.ts";
 import type { VaultTree } from "../shared/api-types.ts";
 import type { EncryptedBlob, VaultKeyMaterial } from "../shared/types.ts";
 
-export class ApiError extends Error {
+export class ApiError extends CliError {
   readonly status: number;
 
-  constructor(message: string, status: number) {
-    super(message);
+  constructor(message: string, status: number, options: { hint?: string; next?: (string | NextStep)[] } = {}) {
+    super(status === 0 ? "network" : status === 401 ? "token_rejected" : "server", message, options);
     this.status = status;
   }
 }
@@ -28,7 +29,10 @@ export class ApiError extends Error {
 /** A 401 means the token is gone, expired, or revoked — always actionable. */
 export class UnauthorizedError extends ApiError {
   constructor() {
-    super(`Your access token was rejected. Run \`${command("login")}\` with a new one.`, 401);
+    super("Your access token was rejected.", 401, {
+      hint: "It may have expired or been revoked. Sign in again.",
+      next: [command("login")],
+    });
   }
 }
 

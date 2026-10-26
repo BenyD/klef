@@ -7,14 +7,15 @@
 // opaque ciphertext. The server is not involved in, and cannot observe, any of
 // it — which is why adding a CLI doesn't weaken the zero-knowledge contract.
 
+import { CliError } from "./ui.ts";
 import { unlockWithPassphrase } from "../shared/crypto.ts";
 import type { VaultKeyMaterial } from "../shared/types.ts";
 import { promptSecret } from "./prompt.ts";
 
 export class VaultLockedError extends Error {}
-export class WrongPassphraseError extends Error {
+export class WrongPassphraseError extends CliError {
   constructor() {
-    super("That passphrase didn't unlock the vault.");
+    super("wrong_passphrase", "That passphrase didn't unlock the vault.");
   }
 }
 

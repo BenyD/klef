@@ -109,6 +109,8 @@ describe("the redaction backstop is actually wired", () => {
   it("is used by the CLI's top-level error handler", async () => {
     const { readFile } = await import("node:fs/promises");
     const entry = await readFile(new URL("./index.ts", import.meta.url), "utf8");
-    expect(entry).toContain("redactAssignments(");
+    const ui = await readFile(new URL("./ui.ts", import.meta.url), "utf8");
+    expect(entry).toContain("reportError(err)");
+    expect(ui.slice(ui.indexOf("export function reportError"))).toContain("redactAssignments(failure.message)");
   });
 });

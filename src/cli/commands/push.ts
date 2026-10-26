@@ -4,10 +4,10 @@ import { command } from "../invocation.ts";
 import { readFile } from "node:fs/promises";
 import { diffLines, diffStats, finalNewlineNote, isUnchanged } from "../../shared/diff.ts";
 import { requireApi } from "../session.ts";
-import { readProjectConfig } from "../project-file.ts";
-import { CONFIG_FILENAME } from "../project-config.ts";
 import { resolveTarget, type ResolvedTarget } from "../resolve.ts";
-import { openVault } from "../vault-key.ts";
+import { confirmOrFail, requireConfig, requireVault, unlockedVault } from "../common.ts";
+import { CliError, done, emit, say, style } from "../ui.ts";
+import path from "node:path";
 import { syncTargets, type SyncTarget } from "../targets.ts";
 import { countVariables, describePush } from "../output.ts";
 import { confirm } from "../prompt.ts";
@@ -36,11 +36,7 @@ export async function push(
   prompt?: (question: string) => Promise<string>,
   ask: (question: string) => Promise<boolean> = confirm,
 ): Promise<number> {
-  const config = await readProjectConfig(cwd);
-  if (!config) {
-    console.error(`No ${CONFIG_FILENAME} here. Run \`${command("link")}\` first.`);
-    return 1;
-  }
+  const config = await requireConfig(cwd);
 
   const targets = syncTargets(config, {
     all: hasFlag(args, "all"),
@@ -59,15 +55,16 @@ export async function push(
     try {
       plaintext = await readFile(source, "utf8");
     } catch {
-      console.error(`Can't read ${shown} here. Nothing to push.`);
-      return 1;
+      throw new CliError("not_found", `Can't read ${shown} here. Nothing pushed.`, {
+        hint: "Pull it first, or check the path in .klef.json.",
+        next: [command(`pull --file ${target.file}`)],
+      });
     }
 
     // An empty file is almost always a mistake rather than an intention, and
     // it would become the current version of everything that file holds.
     if (plaintext.trim() === "") {
-      console.error(`${shown} is empty. Refusing to push it over a saved version.`);
-      return 1;
+      throw new CliError("usage", `${shown} is empty. Nothing pushed: an empty file would replace the saved one.`);
     }
     local.push({ target, source, plaintext });
   }
@@ -78,15 +75,11 @@ export async function push(
     resolveTarget(tree, pullTarget(config, target.file)),
   );
 
-  const vault = await api.vault();
-  if (!vault.exists || !vault.keyMaterial) {
-    console.error("This account has no vault yet. Set one up in the web app first.");
-    return 1;
-  }
+  const cipher = await unlockedVault(await requireVault(api), env, prompt);
 
-  const cipher = await openVault(vault.keyMaterial, env, prompt);
-
-  const pending: { resolved: ResolvedTarget; source: string; plaintext: string; summary: string }[] = [];
+  type Stats = { variables: number; added: number; removed: number };
+  const pending: { resolved: ResolvedTarget; source: string; plaintext: string; summary: string; stats: Stats }[] = [];
+  const results: Record<string, unknown>[] = [];
   // What `sync` measures "edited since" against: every file that now matches
   // the vault, whether it was pushed or already the same.
   const synced: { file: string; versionId: string }[] = [];
@@ -95,48 +88,50 @@ export async function push(
     const { version } = await api.currentVersion(resolved.fileId);
     const stored = version ? await cipher.decrypt(version.blob) : "";
 
+    const shown = path.relative(cwd, source);
     if (version && isUnchanged(stored, plaintext)) {
-      console.log(`${resolved.fileName} is already up to date. Nothing to push.`);
+      done(`${resolved.fileName} is already up to date`);
       synced.push({ file: source, versionId: version.id });
+      results.push({ file: resolved.fileName, path: shown, action: "unchanged", variables: countVariables(plaintext), added: 0, removed: 0, version: version.id });
       continue;
     }
 
-    const stats = diffStats(diffLines(stored, plaintext));
-    const summary = describePush({
-      variableCount: countVariables(plaintext),
-      added: stats.added,
-      removed: stats.removed,
-    });
+    const diff = diffStats(diffLines(stored, plaintext));
+    const stats = { variables: countVariables(plaintext), ...diff };
+    const summary = describePush({ variableCount: stats.variables, added: diff.added, removed: diff.removed });
 
-    console.log(
+    say(
       version
-        ? `About to replace ${resolved.workspaceName} / ${resolved.projectName} / ${resolved.fileName}: ${summary}`
-        : `About to create the first version of ${resolved.fileName}: ${summary}`,
+        ? `Push ${style.bold(resolved.fileName)} to ${resolved.workspaceName} / ${resolved.projectName}: ${summary}`
+        : `Push ${style.bold(resolved.fileName)} as its first version: ${summary}`,
     );
-    const note = finalNewlineNote(stored, plaintext);
-    if (note) console.log(`  ${note}`);
-    if (version) console.log("  The version it replaces is kept and can be restored.");
-    pending.push({ resolved, source, plaintext, summary });
+    const newline = finalNewlineNote(stored, plaintext);
+    if (newline) say(`  ${newline}`);
+    if (version) say(style.dim("  The version it replaces is kept and can be restored."));
+    pending.push({ resolved, source, plaintext, summary, stats });
   }
 
   if (pending.length === 0) {
     await recordSynced(env, synced);
+    emit({ files: results });
     return 0;
   }
 
   // One question for the whole batch: the summaries above are the thing being
   // confirmed, and asking per file would turn --all back into a chore.
   const question = pending.length === 1 ? "Push?" : `Push ${pending.length} files?`;
-  if (!hasFlag(args, "yes", "y") && !(await ask(question))) {
-    console.log("Nothing pushed.");
+  if (!(await confirmOrFail(question, "push", args, ask))) {
+    say("Nothing pushed.");
     return 1;
   }
 
-  for (const { resolved, source, plaintext, summary } of pending) {
+  for (const { resolved, source, plaintext, summary, stats } of pending) {
     const saved = await api.saveVersion(resolved.fileId, await cipher.encrypt(plaintext));
     synced.push({ file: source, versionId: saved.id });
-    console.log(`Pushed ${summary} to ${resolved.fileName} (version ${saved.id.slice(0, 8)}).`);
+    results.push({ file: resolved.fileName, path: path.relative(cwd, source), action: "pushed", ...stats, version: saved.id });
+    done(`Pushed ${summary} to ${resolved.fileName} (version ${saved.id.slice(0, 8)})`);
   }
   await recordSynced(env, synced);
+  emit({ files: results });
   return 0;
 }
