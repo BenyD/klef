@@ -29,7 +29,7 @@ only ever stores ciphertext; your keys never leave the browser.
 
 ## Who it's for
 
-Klef is deliberately **not** an Infisical/Doppler/Vault competitor. No daemon,
+Klef is deliberately **not** an Infisical/Doppler/Vault competitor. No always-on daemon,
 no file watcher, no team RBAC, and no server-side secret access for machines —
 just a dead-simple, truly zero-knowledge vault for the `.env` files you'd
 otherwise sync through AirDrop, Slack DMs, or a gist. If you need
@@ -40,13 +40,33 @@ minimal answer.
 There is a CLI, but it changes none of that: it holds an access token that
 reaches ciphertext and plaintext names only, and derives your key locally from
 a passphrase read straight from the terminal. It cannot be run unattended by
-design.
+design: `klef unlock` lets one passphrase cover a run of commands, held in
+memory by a short-lived agent that locks after 15 idle minutes.
 
 ```bash
 npx @klefsh/cli login   # paste a token from Settings -> Security -> Developer
 npx @klefsh/cli list    # see what is in your vault (--json for scripts)
 npx @klefsh/cli link    # connect this directory to a file in your vault
 npx @klefsh/cli pull    # write it to disk (mode 0600), reporting only a count
+npx @klefsh/cli unlock  # one passphrase for the next pulls and pushes
+npx @klefsh/cli push --all  # every file listed in .klef.json, one confirmation
+```
+
+A repo with several env files lists them in `.klef.json`, each with the path
+it lives at locally:
+
+```json
+{
+  "workspace": "personal",
+  "project": "lensdrop",
+  "file": ".env.local",
+  "environment": null,
+  "files": [
+    { "file": ".env.local" },
+    { "file": ".env.production" },
+    { "file": "mobile.env.local", "path": "apps/mobile/.env.local" }
+  ]
+}
 ```
 
 `pnpm build:cli` produces `@klefsh/cli` in `dist/cli` (one file, no required

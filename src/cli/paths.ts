@@ -17,16 +17,19 @@ export function configDir(env: NodeJS.ProcessEnv, homedir: string): string {
 }
 
 /**
- * Where the unlock agent listens. Kept out of the config directory: this is a
- * runtime socket, and XDG_RUNTIME_DIR is already tmpfs, user-owned, and cleared
- * on logout — exactly the lifetime an in-memory key should have.
+ * Where the unlock agent listens. XDG_RUNTIME_DIR is preferred: tmpfs,
+ * user-owned, mode 0700, and cleared on logout, which is exactly the lifetime
+ * an in-memory key should have. macOS has no equivalent set, so the fallback is
+ * a `run` directory of klef's own under the config directory, created 0700 and
+ * checked before use (socket-dir.ts). A dedicated directory rather than the
+ * config directory itself, whose mode klef does not always control.
  */
 export function agentSocketPath(env: NodeJS.ProcessEnv, homedir: string): string {
   if (env.KLEF_AGENT_SOCK) return env.KLEF_AGENT_SOCK;
   const runtime = env.XDG_RUNTIME_DIR;
   return runtime
     ? path.join(runtime, "klef-agent.sock")
-    : path.join(configDir(env, homedir), "agent.sock");
+    : path.join(configDir(env, homedir), "run", "agent.sock");
 }
 
 export function credentialsFile(env: NodeJS.ProcessEnv, homedir: string): string {

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  allFiles,
   ConfigError,
+  localPathFor,
   parseProjectConfig,
   serializeProjectConfig,
 } from "./project-config.ts";
@@ -71,5 +73,94 @@ describe("serializeProjectConfig", () => {
     const out = serializeProjectConfig(parseProjectConfig(JSON.stringify(VALID)));
     expect(out.endsWith("}\n")).toBe(true);
     expect(out).toContain("\n  ");
+  });
+});
+
+describe("files", () => {
+  const WITH_FILES = {
+    ...VALID,
+    file: ".env.local",
+    files: [
+      { file: ".env.local" },
+      { file: ".env.production", path: ".env.production" },
+      { file: "mobile.env.local", path: "apps/mobile/.env.local" },
+    ],
+  };
+
+  it("is optional, and absent from a config that does not list any", () => {
+    expect(parseProjectConfig(JSON.stringify(VALID))).not.toHaveProperty("files");
+  });
+
+  it("reads entries, defaulting each path to the vault name", () => {
+    expect(parseProjectConfig(JSON.stringify(WITH_FILES)).files).toEqual([
+      { file: ".env.local", path: ".env.local" },
+      { file: ".env.production", path: ".env.production" },
+      { file: "mobile.env.local", path: "apps/mobile/.env.local" },
+    ]);
+  });
+
+  it("round-trips through serialize", () => {
+    const config = parseProjectConfig(JSON.stringify(WITH_FILES));
+    expect(parseProjectConfig(serializeProjectConfig(config))).toEqual(config);
+  });
+
+  it("rejects a non-array, an empty list, and non-object entries", () => {
+    for (const files of [{}, "x", [], ["x"], [null], [[]]]) {
+      const raw = JSON.stringify({ ...VALID, files });
+      expect(() => parseProjectConfig(raw)).toThrow(ConfigError);
+    }
+  });
+
+  it("names the entry with a missing or blank field", () => {
+    const missing = JSON.stringify({ ...VALID, files: [{ file: ".env" }, { path: "x" }] });
+    expect(() => parseProjectConfig(missing)).toThrow(/files\[1\]\.file/);
+    const blank = JSON.stringify({ ...VALID, files: [{ file: ".env", path: " " }] });
+    expect(() => parseProjectConfig(blank)).toThrow(/files\[0\]\.path/);
+  });
+
+  it("rejects the same vault file twice, ignoring case", () => {
+    const raw = JSON.stringify({
+      ...VALID,
+      files: [{ file: ".env" }, { file: ".ENV", path: "other/.env" }],
+    });
+    expect(() => parseProjectConfig(raw)).toThrow(/twice/);
+  });
+
+  it("rejects two vault files written to one path", () => {
+    const raw = JSON.stringify({
+      ...VALID,
+      files: [{ file: ".env.a", path: ".env" }, { file: ".env.b", path: ".env" }],
+    });
+    expect(() => parseProjectConfig(raw)).toThrow(/path ".env"/);
+  });
+});
+
+describe("allFiles", () => {
+  it("is the linked file alone when there is no list", () => {
+    expect(allFiles(parseProjectConfig(JSON.stringify(VALID)))).toEqual([
+      { file: ".env", path: ".env" },
+    ]);
+  });
+
+  it("is the list when there is one", () => {
+    const config = parseProjectConfig(
+      JSON.stringify({ ...VALID, files: [{ file: "a.env", path: "apps/a/.env" }] }),
+    );
+    expect(allFiles(config)).toEqual([{ file: "a.env", path: "apps/a/.env" }]);
+  });
+});
+
+describe("localPathFor", () => {
+  const config = parseProjectConfig(
+    JSON.stringify({ ...VALID, files: [{ file: "mobile.env.local", path: "apps/mobile/.env.local" }] }),
+  );
+
+  it("uses the files entry, matching names case-insensitively", () => {
+    expect(localPathFor(config, "Mobile.env.local")).toBe("apps/mobile/.env.local");
+  });
+
+  it("is null for a file with no entry, leaving the default to the caller", () => {
+    expect(localPathFor(config, ".env.production")).toBeNull();
+    expect(localPathFor(parseProjectConfig(JSON.stringify(VALID)), ".env")).toBeNull();
   });
 });

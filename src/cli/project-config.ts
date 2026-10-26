@@ -13,6 +13,20 @@ export interface ProjectConfig {
   file: string;
   /** Optional label; null when the file has none. */
   environment: string | null;
+  /**
+   * Every env file this repo syncs, for `push --all` / `pull --all`. Optional:
+   * a config without it syncs the linked file alone. `path` is where the file
+   * lives locally, relative to the repo, and defaults to the vault name, so a
+   * vault file called "mobile.env.local" can live at apps/mobile/.env.local.
+   */
+  files?: FileEntry[];
+}
+
+export interface FileEntry {
+  /** The env file's name in the vault. */
+  file: string;
+  /** Where it lives in the working tree, relative to `.klef.json`. */
+  path: string;
 }
 
 export class ConfigError extends Error {}
@@ -42,7 +56,7 @@ export function parseProjectConfig(raw: string): ProjectConfig {
     throw new ConfigError(`${CONFIG_FILENAME}: "environment" must be a string or null`);
   }
 
-  return {
+  const config: ProjectConfig = {
     workspace: requireName(obj.workspace, "workspace"),
     project: requireName(obj.project, "project"),
     file: requireName(obj.file, "file"),
@@ -50,6 +64,70 @@ export function parseProjectConfig(raw: string): ProjectConfig {
       ? environment.trim()
       : null,
   };
+  if (obj.files !== undefined) config.files = parseFiles(obj.files);
+  return config;
+}
+
+/**
+ * Validate the `files` list. Paths are only checked for shape here; whether
+ * one escapes the working directory is decided by resolveWritePath at the
+ * moment it is used, against the real cwd, so there is one rule and one place
+ * that enforces it.
+ */
+function parseFiles(value: unknown): FileEntry[] {
+  if (!Array.isArray(value)) {
+    throw new ConfigError(`${CONFIG_FILENAME}: "files" must be an array`);
+  }
+
+  const entries = value.map((item, i): FileEntry => {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) {
+      throw new ConfigError(`${CONFIG_FILENAME}: "files[${i}]" must be an object`);
+    }
+    const entry = item as Record<string, unknown>;
+    const file = requireName(entry.file, `files[${i}].file`);
+    const local = entry.path === undefined ? file : requireName(entry.path, `files[${i}].path`);
+    return { file, path: local };
+  });
+
+  if (entries.length === 0) {
+    throw new ConfigError(`${CONFIG_FILENAME}: "files" is empty; list a file or remove it`);
+  }
+
+  // Two entries for one vault file, or two vault files written to one path,
+  // would make --all depend on the order it happened to run in.
+  const seenFiles = new Set<string>();
+  const seenPaths = new Set<string>();
+  for (const { file, path: local } of entries) {
+    const fileKey = file.toLowerCase();
+    if (seenFiles.has(fileKey)) {
+      throw new ConfigError(`${CONFIG_FILENAME}: "${file}" is listed in "files" twice`);
+    }
+    if (seenPaths.has(local)) {
+      throw new ConfigError(`${CONFIG_FILENAME}: two entries in "files" use the path "${local}"`);
+    }
+    seenFiles.add(fileKey);
+    seenPaths.add(local);
+  }
+
+  return entries;
+}
+
+/**
+ * The files `--all` covers: the `files` list when there is one, otherwise the
+ * linked file at its own name.
+ */
+export function allFiles(config: ProjectConfig): FileEntry[] {
+  return config.files ?? [{ file: config.file, path: config.file }];
+}
+
+/**
+ * Where a vault file lives locally according to its `files` entry, matching
+ * names case-insensitively as the vault does. Null when it has no entry, which
+ * leaves the default to the caller.
+ */
+export function localPathFor(config: ProjectConfig, file: string): string | null {
+  const wanted = file.toLowerCase();
+  return config.files?.find((entry) => entry.file.toLowerCase() === wanted)?.path ?? null;
 }
 
 /** Trailing newline so the file is well-formed for humans and diffs. */

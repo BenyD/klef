@@ -339,7 +339,20 @@ export async function unlockWithPassphrase(
   kdfParams: KdfParams,
   wrappedDek: WrappedKey,
 ): Promise<CryptoKey> {
-  const kek = await deriveKek(passphrase, kdfParams);
+  return unlockWithKekBytes(await deriveKekBytes(passphrase, kdfParams), wrappedDek);
+}
+
+/**
+ * The second half of a passphrase unlock, for when the KEK was derived in
+ * another process. The CLI's unlock agent uses it: the prompting process runs
+ * Argon2id and hands over the KEK, so the passphrase itself never leaves the
+ * process that read it.
+ */
+export async function unlockWithKekBytes(
+  kekBytes: Bytes,
+  wrappedDek: WrappedKey,
+): Promise<CryptoKey> {
+  const kek = await importAesKey(kekBytes);
   const dekBytes = await unwrapKeyBytes(kek, wrappedDek);
   return importAesKey(dekBytes);
 }

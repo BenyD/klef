@@ -4,7 +4,8 @@ How a CLI and, later, an MCP server reach the vault without weakening the
 zero-knowledge contract.
 
 **Status:** phases 1 to 3 shipped, plus browser sign-in, which was not in the
-original plan. `klef diff`, the unlock agent, and the MCP server are not built.
+original plan, and the unlock agent from §6 with `push --all` / `pull --all`.
+`klef diff` and the MCP server are not built.
 See [What shipped](#what-shipped) for the current state and
 [What is left](#what-is-left) for the rest.
 
@@ -20,23 +21,27 @@ diverged it is marked inline.
 |---|---|
 | Access tokens | `db/migrations/0012_access_tokens.sql`, `src/api/access-token.ts`, `src/api/tokens.ts` |
 | Token management UI | Settings → Security → Developer |
-| CLI | `src/cli/` — `login`, `logout`, `status`, `link`, `pull`, `push` |
+| CLI | `src/cli/` — `login`, `logout`, `status`, `link`, `pull`, `push`, `unlock`, `lock` |
+| Unlock agent | `src/cli/agent.ts`, `agent-client.ts`, `agent-spawn.ts`, `socket-dir.ts`, `vault-key.ts` |
+| Multi-file sync | `files` in `.klef.json` (`src/cli/project-config.ts`), `push --all`, `pull --all` |
 | Published package | `@klefsh/cli`, one bundled file, zero required dependencies |
 | Browser sign-in | `db/migrations/0013_device_authorizations.sql`, `src/api/device.ts`, `/cli` |
 | Agent prompts | Landing page, and per-file from the app's toolbar |
 
 Each has been run against production, not only tested: a token authenticating,
 a file pulled and decrypted locally, a version pushed byte-for-byte, and a
-login approved in a browser.
+login approved in a browser. The unlock agent and `--all` are the exception
+so far: covered by tests that spawn a real agent and run push and pull through
+it, but not yet run by hand against production.
 
 ## What is left
 
 - **`klef diff`** — compare local against stored without writing either.
-- **The unlock agent** — §6 below. Without it `pull` asks for the passphrase
-  every time, so pulling two files means two Argon2id unlocks.
 - **The MCP server** — §9 below, the piece this document was written for.
-- **`pull --all`** — one passphrase for every file in a project, which is the
-  cheap version of what the agent solves properly.
+- **The unlock agent on Windows** — named pipes with an ACL. `klef unlock`
+  refuses there today, and `pull` / `push` prompt as before.
+- **A configurable agent timeout** — it uses the web vault's default, 15
+  minutes, and does not yet follow a changed setting (§12).
 
 ## What the build taught that the design did not
 
@@ -52,6 +57,21 @@ login approved in a browser.
   what the server holds quietly stopped being true. The CLI now sends an ECDH
   public key and the server seals to it. Two weaker designs were tried and
   are recorded in `src/shared/device-seal.ts`.
+- **The agent cannot be handed the key; it has to unwrap it itself.** The DEK
+  is a non-extractable `CryptoKey`, which no process can serialise, so a
+  parent that unlocks and then forks has nothing to pass on. `klef unlock`
+  derives the KEK (the slow Argon2id step) and sends those bytes to the
+  detached child over the IPC channel `spawn()` opens, never argv or env; the
+  child unwraps the DEK and reports back. The passphrase never leaves the
+  process that read it.
+- **Node has no peer-credential API.** There is no `SO_PEERCRED` or
+  `getpeereid` binding, so the same-uid check below is made on the path
+  instead: the socket is `0600` in a directory that must be owned by this user
+  and mode `0700`, checked by the agent before it listens and by the client
+  before it connects.
+- **macOS has no `XDG_RUNTIME_DIR`.** The fallback is `~/.config/klef/run/`,
+  a directory klef creates owner-only, rather than the config directory itself,
+  whose mode it does not always control.
 - **Three of four bugs were found by running it, not by testing it.** `--file`
   silently ignored on `pull`, `pull` able to write outside the working
   directory, and the echo above. All had passing tests around them.
@@ -179,7 +199,10 @@ Concretely:
 
 - Unix socket at `$XDG_RUNTIME_DIR/klef-agent.sock`, mode `0600`; peer
   credentials checked (`SO_PEERCRED` / `getpeereid`) so only the same uid can
-  connect. Named pipe with an equivalent ACL on Windows.
+  connect. Named pipe with an equivalent ACL on Windows. *(Shipped with the
+  check on the directory instead of the peer, since Node exposes neither call;
+  `~/.config/klef/run/agent.sock` where `XDG_RUNTIME_DIR` is unset; Windows not
+  yet. See "What the build taught" above.)*
 - Reuse [`AUTO_LOCK_DEFAULT_MINUTES`](../src/web/lib/auto-lock.ts) (15) so CLI
   and web share one lock policy and one constant.
 - `klef lock` / `klef unlock` / `klef status`, mirroring the web vault's verbs.
@@ -232,16 +255,23 @@ klef logout                      # forget the stored token on this machine
 klef status [--json]             # sign-in state, linked project
 klef list [--json]               # what is in the vault; read-only, names only
 klef link                        # bind cwd to a workspace/project (.klef.json, committed)
-klef pull [--file <name>]        # write .env from vault
-klef push [--file <name>]        # read .env, encrypt, upload as new version
+klef pull [--file <name>|--all]  # write .env from vault
+klef push [--file <name>|--all]  # read .env, encrypt, upload as new version
+klef unlock                      # TTY passphrase prompt → starts klef-agent
+klef lock                        # stop the agent, forgetting the key
 ```
+
+`status` also reports whether the vault is unlocked and how long until the
+agent locks (`unlocked`, `lockInSeconds` with `--json`). `pull` and `push` use
+the agent when it holds this vault's key and prompt on the terminal when it
+does not; `--all` covers every file in `.klef.json`'s `files` list and, without
+an agent, still prompts only once. `push --all` shows every file's summary and
+asks one confirmation; `-y` skips it, as for a single file.
 
 Not built yet — designed here, tracked in §11:
 
 ```
-klef unlock                      # TTY passphrase prompt → starts klef-agent
 klef diff                        # local vs stored, summary only
-klef lock
 ```
 
 The split matters in a document aimed at agents: a command list read as the
@@ -267,6 +297,21 @@ genuinely needs to eyeball a value, that is what the web app is for.
 
 ```json
 { "workspace": "personal", "project": "klef", "file": ".env", "environment": "development" }
+```
+
+With more than one file, an optional `files` list names each one and where it
+lives locally (`path` defaults to the vault name and goes through the same
+stay-in-this-directory check as `--path`):
+
+```json
+{
+  "workspace": "personal", "project": "lensdrop", "file": ".env.local", "environment": null,
+  "files": [
+    { "file": ".env.local" },
+    { "file": ".env.production" },
+    { "file": "mobile.env.local", "path": "apps/mobile/.env.local" }
+  ]
+}
 ```
 
 Written files get mode `0600`.
@@ -326,7 +371,8 @@ browser flow does not have:
 1. ~~**PAT auth**~~ — shipped.
 2. ~~**CLI: `login` / `link` / `pull`**~~ — shipped, though without the unlock
    agent, which was folded into this phase in the plan and turned out to be
-   separable.
+   separable. ~~**Unlock agent**~~ — shipped later on its own, with
+   `unlock` / `lock`, lock state in `status`, and `push --all` / `pull --all`.
 3. **CLI: `push` / `diff`** — `push` shipped; `diff` is not built.
 4. **MCP server** — not built. Still the right place for it: the dangerous
    decisions are all behind it now.
