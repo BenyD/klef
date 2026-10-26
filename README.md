@@ -65,14 +65,52 @@ The individual commands:
 ```bash
 npx @klefsh/cli login   # approve this machine in the browser
 npx @klefsh/cli list    # see what is in your vault (--json for scripts)
-npx @klefsh/cli link    # connect this directory to a file in your vault
+npx @klefsh/cli link    # connect this directory to a project in your vault
 npx @klefsh/cli pull    # write it to disk (mode 0600), reporting only a count
 npx @klefsh/cli unlock  # one passphrase for the next pulls and pushes
+npx @klefsh/cli sync    # pull or push each file, whichever side changed
+npx @klefsh/cli diff --all  # which keys differ, never their values
 npx @klefsh/cli push --all  # every file listed in .klef.json, one confirmation
 ```
 
-A repo with several env files lists them in `.klef.json`, each with the path
-it lives at locally:
+`link` records `.env.local` and `.env.production` when the project has them
+(in the vault or in the directory), so `sync`, `pull --all` and `push --all`
+cover both from then on. `sync` decides per file: a file edited here since it
+last matched is pushed, a file changed in the vault since then is pulled over
+the untouched local copy, and a file changed on both sides, or one this
+machine has never synced, stops the whole run with a key-level diff and the
+two commands that settle it. A file the vault does not have yet is created.
+
+`klef audit` lists which key names Vercel, GitHub Actions and Cloudflare
+Workers hold that your local files lack, and the reverse, so you (or an agent)
+can ask "OLD_FLAG is on Vercel Production but not in `.env.production`; still
+needed?". It is read-only and prints names only, through your own `vercel`,
+`gh` and `wrangler` sign-ins; `--json` for agents. Klef never writes to those
+platforms.
+
+```bash
+npx @klefsh/cli audit           # every platform set up in this directory
+npx @klefsh/cli audit vercel --json
+```
+
+### A new or reset Mac
+
+Clone your repos (their `.klef.json` is committed), then:
+
+```bash
+npm install -g @klefsh/cli
+klef login              # approve in the browser
+klef unlock             # the passphrase, once
+klef restore ~/Developer
+```
+
+`restore` finds every linked checkout under the directory, lists them for you
+to confirm, and pulls their files. It only ever pulls: a checkout with a local
+file that differs from the vault is left alone and named, for `klef sync` to
+settle there.
+
+A repo with other env files, or files that live elsewhere, lists them in
+`.klef.json`, each with the path it lives at locally:
 
 ```json
 {
@@ -111,7 +149,8 @@ that each `npx` package is published, but they cannot see which subcommands the
 published version has, so this ordering is the only thing enforcing it.
 
 `pull` never prints a value. There is no `--print` and no `klef get`, which is
-what makes it safe to hand to a coding agent. See
+what makes it safe to hand to a coding agent. `diff` and `sync` name keys,
+never values. See
 [`docs/AGENT_ACCESS.md`](./docs/AGENT_ACCESS.md).
 
 ## How it works (threat model in brief)
