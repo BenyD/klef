@@ -48,13 +48,12 @@ export function AgentPrompts() {
   }
 
   return (
-    <section className="marketing-section marketing-agent" id="agents">
-      <h2>Hand it to your agent</h2>
-      <p className="marketing-section-lead">
-        Paste one into Claude Code or Cursor once per repo. Connect my agent
-        installs Klef instructions in the repo, so every later session already
-        knows how to sync without printing a secret. Or skip the agent and run
-        npx @klefsh/cli setup yourself.
+    <div className="marketing-agent">
+      <h3 className="marketing-agent-title">Or start from a prompt</h3>
+      <p className="marketing-agent-lead">
+        Paste one into Claude Code or Cursor. Connect my agent runs setup for
+        you and hands the passphrase steps back to you. Prefer your own
+        terminal? Run <code>npx @klefsh/cli setup</code>.
       </p>
 
       <div className="marketing-agent-card">
@@ -97,7 +96,7 @@ export function AgentPrompts() {
           <pre className="marketing-agent-prompt">{promptText(active)}</pre>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 

@@ -6,29 +6,39 @@ import { useThemeSwitch } from "../lib/use-theme-switch.ts";
 import "../styles/marketing.css";
 
 // Shared chrome for the public marketing pages (landing, security, terms,
-// privacy): nav + footer around page-specific content.
+// privacy, about): nav + footer around page-specific content.
 export function MarketingLayout({ children }: { children: ReactNode }) {
   return (
     <div className="marketing">
-      <nav className="marketing-nav">
+      <nav className="marketing-nav" aria-label="Main">
         <Link to="/" className="marketing-brand">
           <span className="marketing-brand-mark">
             <KlefMark className="size-3.5" />
           </span>
           Klef
         </Link>
+        {/* Plain anchors, not router links: from /security they load the
+            landing page and land on the section, which a Link with a hash
+            would not scroll to. */}
+        <div className="marketing-nav-sections">
+          <a href="/#how-it-works">How it works</a>
+          <a href="/#agents">Agents</a>
+          <Link to="/security">Security</Link>
+        </div>
         <div className="marketing-nav-links">
           <ThemeButton />
           <a
             href="https://github.com/BenyD/klef"
             target="_blank"
             rel="noreferrer"
-            className="m-btn m-btn-outline m-btn-sm"
+            className="m-btn m-btn-ghost m-btn-sm m-btn-icon"
+            aria-label="Klef on GitHub"
           >
             <GitHubIcon />
-            GitHub
           </a>
-          <Link to="/auth" className="m-btn m-btn-primary m-btn-sm">
+          {/* Outline, not ember: the page's own call to action is the one
+              primary in view (DESIGN.md, "One primary per view"). */}
+          <Link to="/auth" className="m-btn m-btn-outline m-btn-sm">
             Sign in
           </Link>
         </div>
@@ -51,7 +61,8 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
             </a>
             .
           </span>
-          <nav className="marketing-footer-links">
+          <nav className="marketing-footer-links" aria-label="Footer">
+            <Link to="/about">About</Link>
             <Link to="/security">Security</Link>
             <Link to="/terms">Terms</Link>
             <Link to="/privacy">Privacy</Link>

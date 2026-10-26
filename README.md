@@ -8,7 +8,7 @@ only ever stores ciphertext; your keys never leave the browser.
 ([AGPL-3.0](./LICENSE)), and built to be
 [self-hosted](#self-hosting) on your own Cloudflare account.
 
-![Klef — sync your .env files without trusting the server](./public/og.png)
+![Klef: your .env files, encrypted and in sync](./public/og.png)
 
 ## What it does
 
