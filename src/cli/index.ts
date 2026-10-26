@@ -59,7 +59,7 @@ async function main(): Promise<number> {
     case "restore":
       return restore(args, env, cwd);
     case "unlock":
-      return unlock(env);
+      return unlock(args, env);
     case "lock":
       return lock(env);
     case AGENT_COMMAND:

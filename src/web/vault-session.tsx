@@ -33,20 +33,13 @@ import {
 import { getPrfSecret } from "./lib/passkey-prf.ts";
 import { WrongPassphraseError } from "./vault-context.ts";
 import { clearDek, loadDek, saveDek, touchDek } from "./dek-store.ts";
-import { getAutoLockMinutes } from "./lib/auto-lock.ts";
+import { rememberedKeyMaxAgeMs } from "./lib/auto-lock.ts";
 import { VaultContext, type VaultStatus } from "./vault-context.ts";
 
 // Cross-tab lock propagation: "lock" must mean locked everywhere, so lock()
 // broadcasts and every other tab drops its in-memory DEK. Environments
 // without BroadcastChannel just lose the propagation, not local locking.
 const LOCK_CHANNEL = "klef:vault-lock";
-
-// The persisted DEK ages out on the same clock as auto-lock, so closing the
-// browser doesn't grant a longer unlocked window than staying idle would.
-function dekMaxAgeMs(): number {
-  const minutes = getAutoLockMinutes();
-  return minutes > 0 ? minutes * 60_000 : Infinity;
-}
 
 export function VaultProvider({
   userId,
@@ -81,7 +74,7 @@ export function VaultProvider({
         setPasskeyWraps(res.passkeyWraps ?? []);
         // Skip the unlock prompt if this user's DEK is still remembered from a
         // previous load (persisted non-extractable, never re-derived).
-        const cached = await loadDek(userId, dekMaxAgeMs());
+        const cached = await loadDek(userId, rememberedKeyMaxAgeMs());
         if (cancelled) return;
         if (cached) {
           setDek(cached);
