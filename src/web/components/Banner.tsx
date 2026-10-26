@@ -114,10 +114,9 @@ export function Banner({
       ref={ref}
       role="status"
       className={cn(
-        "relative flex w-full shrink-0 items-center justify-center gap-2 border-b bg-[color-mix(in_oklab,var(--background),var(--banner-accent)_8%)] px-10 py-2 text-sm",
-        /* Hairline diagonal stripes in the accent (Supabase-style) so the
-           strip reads as an announcement, not permanent chrome. */
-        "[background-image:repeating-linear-gradient(45deg,color-mix(in_oklab,var(--banner-accent)_7%,transparent)_0px,color-mix(in_oklab,var(--banner-accent)_7%,transparent)_1px,transparent_1px,transparent_9px)]",
+        /* A faint wash of the accent, nothing more: the icon carries the
+           colour, so the strip reads as a notice without shouting. */
+        "relative flex w-full shrink-0 items-center justify-center gap-2 border-b bg-[color-mix(in_oklab,var(--background),var(--banner-accent)_6%)] px-10 py-1.5 text-sm",
         ACCENTS[variant],
         className,
       )}

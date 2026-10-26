@@ -166,7 +166,7 @@ function TokenRow({
               state === "expired"
                 ? "text-destructive text-xs"
                 : state === "expiring"
-                  ? "text-xs text-amber-600 dark:text-amber-500"
+                  ? "text-xs text-warning"
                   : "text-muted-foreground text-xs"
             }
           >

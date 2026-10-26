@@ -178,7 +178,7 @@ export function EnvTable({ text, onChange, baseline, comparing = false }: Props)
               ) : (
                 <li
                   key={`${line.index}:${line.raw}`}
-                  className="text-muted-foreground/70 px-3 py-1.5 font-mono text-xs whitespace-pre-wrap"
+                  className="text-muted-foreground px-3 py-1.5 font-mono text-xs whitespace-pre-wrap"
                 >
                   {line.raw || "\u{a0}"}
                 </li>

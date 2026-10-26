@@ -1,30 +1,97 @@
 # Klef - design language
 
 The tokens in `global.css` and the rules for reaching for them. See them all
-side by side at `/dev/design` (dev-only route, both themes).
+side by side at `/dev/design` (dev-only route, both themes at once).
 
 The through-line: Klef holds secrets. The interface should feel **quiet,
-exact, and fast** - closer to a terminal that someone cared about than to a
-consumer app. Nothing decorative moves. Nothing is animated that a person does
-a hundred times a day.
+exact, and fast** - dense but calm, closer to a terminal someone cared about
+than to a consumer app. Lines separate things; shadows only say "this
+floats". Nothing decorative moves. Nothing is animated that a person does a
+hundred times a day, and everything a person does a hundred times a day has a
+key.
 
 ## Colour
 
-Warm stone neutrals (Tailwind's stone ramp), one ember accent, and nothing
+A cool grey ramp (hue 264, chroma under 0.01), one ember accent, and nothing
 else carrying meaning. Semantic tokens only - never a raw hex or a Tailwind
 palette colour in a component.
 
+**Two surfaces make the layout.** `--sidebar` is the canvas: navigation, and
+the backdrop of auth and setup screens. `--background` is the content panel
+that sits on it - white in light mode, one step lighter than the canvas in
+dark mode. Cards and popovers step up from there.
+
 | Token                       | For                                            |
 | --------------------------- | ---------------------------------------------- |
-| `--primary`                 | The one bright fill: primary actions, active   |
+| `--sidebar`                 | Canvas: sidebar, auth backdrops                |
+| `--background`              | Content panel                                  |
+| `--card` `--popover`        | Raised surfaces, menus and dialogs             |
+| `--muted`                   | Hover and quiet fills                          |
+| `--primary`                 | The one bright fill: the primary action in view, active marks |
 | `--brand`                   | Ember as text/icon where the fill can't hold contrast |
 | `--muted-foreground`        | Every piece of secondary text                  |
 | `--success` `--warning` `--info` `--destructive` | State, never decoration    |
 | `--env-*`                   | Environment identity dots                      |
 | `--diff-add` `--diff-remove`| Diff gutters and rows                          |
+| `--syntax-*`                | Env editor highlighting (keys, quoted values, `export`) |
+
+**One primary per view.** If two buttons on screen are ember, one of them is
+wrong. Everything else is `outline`, `secondary` or `ghost`.
 
 `::selection` wears a 32% ember tint and inputs take an ember caret - text
 selection is half of what this app is for.
+
+### Contrast
+
+Checked in both themes against the surface each pair actually sits on
+(WCAG 2.1: 4.5:1 for text, 3:1 for UI).
+
+| Pair                                   | Light | Dark  |
+| -------------------------------------- | ----- | ----- |
+| `foreground` / `background`            | 17.7  | 16.4  |
+| `muted-foreground` / `background`      | 6.0   | 7.0   |
+| `muted-foreground` / `sidebar`         | 5.6   | 7.3   |
+| `muted-foreground` / `muted`           | 5.3   | 6.1   |
+| `primary-foreground` / `primary`       | 7.5   | 8.1   |
+| `brand` / `background`                 | 5.5   | 9.0   |
+| `destructive` / `background`           | 5.2   | 6.5   |
+| `success` / `background`               | 4.6   | 8.5   |
+| `warning` / `background`               | 4.8   | 9.9   |
+| `diff-add` / `background`              | 5.0   | 8.6   |
+| `syntax-key` / `background`            | 5.9   | 9.5   |
+| `ring` / `background` (UI)             | 5.0   | 8.3   |
+| `env-preview` dot / `background` (UI)  | 3.2   | 9.9   |
+
+`--border` and `--input` sit near 1.3-1.5:1 on purpose: they are hairlines,
+not the only cue. Every input also has a visible label or placeholder and an
+ember focus ring, and no state is shown by a border colour alone.
+
+## Layout
+
+- **One navigation surface.** The sidebar holds everything you move between:
+  workspace switcher, search, the project tree with its files, settings. The
+  content header only says where you are (breadcrumb) and what you can do
+  here. Never put the same switcher in two places.
+- **Lists before cards.** Projects and files are rows: 32px tall, one line,
+  metadata right-aligned in `muted-foreground`. Cards are for things that are
+  read as a unit (a recovery key, an empty state), not for collections.
+- **Density.** Rows are `h-8`, toolbar controls `h-7`, the content header
+  `h-11`. Page gutters are `px-4` on phones and `px-6` from `sm`.
+- The content panel sits inset on the canvas with a 1px border and
+  `rounded-lg` from `md` up; on phones it runs edge to edge.
+
+## Keyboard
+
+Every frequent action has a key, shown next to it (menu item, tooltip or
+`Kbd`). Shortcuts never animate.
+
+| Keys          | Action                    |
+| ------------- | ------------------------- |
+| `⌘K`          | Command menu              |
+| `⌘⇧F`         | Search keys across files  |
+| `⌘B`          | Toggle the sidebar        |
+| `⌘S`          | Save the open file        |
+| `⌘⇧L`         | Lock the vault            |
 
 ## Motion
 
@@ -63,24 +130,37 @@ Rules:
 
 ## Elevation
 
-Three layers. Higher surfaces cast a **longer, softer** shadow, never a darker
-one. In dark mode each also takes a top-edge highlight, because a cast shadow
-alone can't separate two near-black surfaces.
+Borders separate; shadows only float. Three layers, and in dark mode each
+leads with a top-edge highlight, because a cast shadow alone can't separate
+two near-black surfaces.
 
 | Utility          | For                                                |
 | ---------------- | -------------------------------------------------- |
-| `shadow-raised`  | Cards, tooltips - resting on the page              |
+| `shadow-raised`  | Cards - resting on the page (barely there)         |
 | `shadow-overlay` | Menus, selects, comboboxes, toasts - floating over it |
 | `shadow-modal`   | Dialogs, sheets - the only thing that matters      |
 
-Every floating surface also keeps `ring-1 ring-foreground/10` as its edge.
+Every floating surface also keeps a 1px edge (`ring-1 ring-foreground/10` or
+`border`). Rows and panels on the page get a border and no shadow at all.
 
 ## Type
 
 Inter for the interface, JetBrains Mono for anything the user pasted.
 
+| Utility     | Size / line | For                                       |
+| ----------- | ----------- | ----------------------------------------- |
+| `text-xs`   | 12 / 16     | Metadata, counts, kbd hints               |
+| `text-sm`   | 13 / 20     | The interface: rows, menus, buttons, body |
+| `text-base` | 16 / 24     | Inputs on phones only (stops iOS zoom)    |
+| `text-lg`   | 17 / 24     | Dialog and section titles                 |
+| `text-xl`   | 20 / 28     | Page titles                               |
+
+- Weights: 400 body, 500 for anything you can click or that labels a group,
+  600 only for page titles. Nothing bolder.
 - Headings pull tracking in to `-0.014em` and use `text-wrap: balance`; body
   copy uses `text-wrap: pretty`.
+- Inter runs with `cv01` and `cv08` (flagged 1, serifed I), so `l`, `I` and
+  `1` never collide in a key name.
 - **Ligatures are off** in mono. A value has to read back exactly as typed -
   `!=` is two characters, not a glyph.
 - Numbers that change in place take `tabular-nums`, so a counter never reflows
@@ -90,5 +170,5 @@ Inter for the interface, JetBrains Mono for anything the user pasted.
 ## Radius
 
 `--radius: 0.375rem`, with `sm`/`md`/`lg`/`xl` derived from it. Nested
-surfaces step down: `rounded-xl` container, `rounded-lg` control, `rounded-md`
-row.
+surfaces step down: `rounded-xl` dialog, `rounded-lg` panel and control,
+`rounded-md` row.

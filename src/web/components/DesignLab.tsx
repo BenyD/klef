@@ -59,6 +59,89 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip.tsx";
  * invisible when you only ever see one of them at a time.
  */
 
+// Swatches render inside a .light and a .dark subtree at once, so the two
+// palettes are judged against each other rather than from memory.
+const SURFACES = [
+  { token: "sidebar", fg: "sidebar-foreground", use: "Canvas, navigation" },
+  { token: "background", fg: "foreground", use: "Content panel" },
+  { token: "card", fg: "card-foreground", use: "Cards, raised rows" },
+  { token: "popover", fg: "popover-foreground", use: "Menus, dialogs" },
+  { token: "muted", fg: "muted-foreground", use: "Hover, quiet fills" },
+  { token: "primary", fg: "primary-foreground", use: "The one accent" },
+];
+
+const INKS = [
+  { token: "foreground", use: "Text" },
+  { token: "muted-foreground", use: "Secondary text" },
+  { token: "brand", use: "Accent as text" },
+  { token: "success", use: "Saved, matching" },
+  { token: "warning", use: "Needs a look" },
+  { token: "destructive", use: "Deletes, errors" },
+  { token: "info", use: "Notices" },
+  { token: "syntax-key", use: "Env keys" },
+  { token: "syntax-string", use: "Quoted values" },
+  { token: "diff-add", use: "Added lines" },
+  { token: "diff-remove", use: "Removed lines" },
+];
+
+const DOTS = [
+  "env-development",
+  "env-preview",
+  "env-production",
+  "env-custom",
+] as const;
+
+function Palette({ theme }: { theme: "light" | "dark" }) {
+  return (
+    <div
+      className={`${theme} bg-sidebar text-foreground flex flex-col gap-3 rounded-xl border p-3`}
+    >
+      <span className="text-muted-foreground text-xs font-medium capitalize">
+        {theme}
+      </span>
+      <div className="grid grid-cols-2 gap-1.5">
+        {SURFACES.map((s) => (
+          <div
+            key={s.token}
+            className="flex h-14 flex-col justify-between rounded-md border p-2"
+            style={{
+              background: `var(--${s.token})`,
+              color: `var(--${s.fg})`,
+            }}
+          >
+            <span className="font-mono text-[11px]">--{s.token}</span>
+            <span className="text-[11px] opacity-80">{s.use}</span>
+          </div>
+        ))}
+      </div>
+      <div className="bg-background flex flex-col gap-1 rounded-md border p-2">
+        {INKS.map((ink) => (
+          <div key={ink.token} className="flex items-center gap-2 text-xs">
+            <span
+              className="w-36 shrink-0 font-mono"
+              style={{ color: `var(--${ink.token})` }}
+            >
+              --{ink.token}
+            </span>
+            <span className="text-muted-foreground truncate">{ink.use}</span>
+          </div>
+        ))}
+        <div className="mt-1 flex items-center gap-3 border-t pt-2">
+          {DOTS.map((d) => (
+            <span key={d} className="flex items-center gap-1.5 text-xs">
+              <span
+                className="size-1.5 rounded-full"
+                style={{ background: `var(--${d})` }}
+              />
+              {d.replace("env-", "")}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const CURVES = [
   {
     name: "--ease-out",
@@ -133,6 +216,16 @@ export function DesignLab() {
           Theme
         </Button>
       </header>
+
+      <Section
+        title="Colour"
+        hint="Cool greys and one ember accent. Every text pair here holds 4.5:1 or better; see DESIGN.md for the numbers."
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Palette theme="light" />
+          <Palette theme="dark" />
+        </div>
+      </Section>
 
       <Section
         title="Motion"
@@ -378,7 +471,7 @@ export function DesignLab() {
           <h2 className="text-xl font-semibold">Version history</h2>
           <h3 className="text-base font-medium">Recovery key</h3>
           <p className="max-w-prose text-sm">
-            Body copy sits at 14px with pretty wrapping, so a paragraph never
+            Body copy sits at 13px with pretty wrapping, so a paragraph never
             leaves a single word stranded on its own line.
           </p>
           <p className="text-muted-foreground max-w-prose text-xs">
