@@ -10,7 +10,8 @@
 // - The socket exposes operations (encrypt this, decrypt that), never the key,
 //   and sits in an owner-only directory with mode 0600 (see socket-dir.ts).
 // - It forgets the key after AUTO_LOCK_DEFAULT_MINUTES without a key
-//   operation, the same policy the web vault uses, and on `klef lock`.
+//   operation, the same default the web vault uses (`klef unlock --for`
+//   chooses another, up to MAX_LOCK_MINUTES), and on `klef lock`.
 // - It prints nothing. It runs detached with no terminal, and has nothing to
 //   say that would not be a value.
 

@@ -6,3 +6,9 @@
 // so the CLI bundle can import it without dragging the web app along.
 
 export const AUTO_LOCK_DEFAULT_MINUTES = 15;
+
+// The opt-in "Keep unlocked on this device" window, and the longest a CLI
+// agent may be asked to hold the key. Both are idle times: any use resets
+// them, and locking ends them early.
+export const REMEMBER_DEVICE_MINUTES = 7 * 24 * 60;
+export const MAX_LOCK_MINUTES = REMEMBER_DEVICE_MINUTES;
