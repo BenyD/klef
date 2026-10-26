@@ -38,8 +38,9 @@ const PROMPTS = [
     body: `Help me get this repository's environment files into Klef (https://klef.sh).
 
 You can't do this entirely for me, and that's deliberate. Klef accounts are
-Google or passkey sign-in, and the encryption key comes from a passphrase that
-never leaves my browser, so signing in and pasting the files are mine to do.
+Google, GitHub or passkey sign-in, and the encryption key comes from a
+passphrase that never leaves my browser, so signing in and pasting the files
+are mine to do.
 Your job is to prepare everything, then walk me through it step by step.
 
 1. List every environment file in this repo by path: .env, .env.local,
