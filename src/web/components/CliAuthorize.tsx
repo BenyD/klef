@@ -90,7 +90,7 @@ export function CliAuthorize() {
         <span className="bg-muted flex size-9 items-center justify-center rounded-lg">
           <Terminal className="size-4" />
         </span>
-        <h1 className="text-xl font-semibold tracking-tight">Connect the Klef CLI</h1>
+        <h1 className="text-xl font-semibold">Connect the Klef CLI</h1>
         <p className="text-muted-foreground text-sm">
           A terminal is asking to sign in as you. Approving it creates an access
           token that can read your encrypted files and their names. It cannot

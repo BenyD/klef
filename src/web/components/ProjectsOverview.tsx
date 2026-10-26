@@ -197,7 +197,7 @@ function ProjectGroup({
               <button
                 type="button"
                 onClick={() => onSelectFile(project, file)}
-                className="hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:ring-ring/50 group/row flex h-9 w-full items-center gap-2.5 px-3 text-left outline-none transition-interactive focus-visible:ring-2 focus-visible:ring-inset"
+                className="hover:bg-muted focus-visible:bg-muted focus-visible:ring-ring/50 group/row flex h-9 w-full items-center gap-2.5 px-3 text-left outline-none transition-interactive focus-visible:ring-2 focus-visible:ring-inset"
               >
                 <FileText className="text-muted-foreground size-3.5 shrink-0" />
                 <span className="min-w-0 flex-1 truncate font-mono text-xs">
@@ -233,7 +233,7 @@ function ProjectGroup({
         <button
           type="button"
           onClick={() => onNewFile(project)}
-          className="text-muted-foreground hover:bg-muted/60 hover:text-foreground focus-visible:bg-muted/60 focus-visible:ring-ring/50 flex h-9 w-full items-center gap-2.5 px-3 text-left text-xs outline-none transition-interactive focus-visible:ring-2 focus-visible:ring-inset"
+          className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:ring-ring/50 flex h-9 w-full items-center gap-2.5 px-3 text-left text-xs outline-none transition-interactive focus-visible:ring-2 focus-visible:ring-inset"
         >
           <Plus className="size-3.5 shrink-0" />
           Add the first file
