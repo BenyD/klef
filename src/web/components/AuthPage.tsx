@@ -54,7 +54,7 @@ export function AuthPage() {
   }
 
   return (
-    <div className="relative flex min-h-svh flex-col items-center justify-center gap-8 px-4 py-10">
+    <div className="bg-sidebar relative flex min-h-svh flex-col items-center justify-center gap-6 px-4 py-10">
       <Link
         to="/"
         className={`${buttonVariants({ variant: "ghost", size: "sm" })} text-muted-foreground absolute top-4 left-4`}
@@ -66,14 +66,14 @@ export function AuthPage() {
         <ThemeToggle />
       </div>
       <Link to="/" aria-label="Klef home">
-        <div className="bg-primary text-primary-foreground flex size-11 items-center justify-center rounded-xl">
-          <KlefMark className="size-6" />
+        <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-lg">
+          <KlefMark className="size-5" />
         </div>
       </Link>
 
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold tracking-tight">
+          <CardTitle className="text-lg font-semibold">
             Welcome to Klef
           </CardTitle>
           <CardDescription>Sign in or create your account.</CardDescription>
