@@ -125,7 +125,7 @@ export function ToastLab() {
 
       <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4">
       <div className="flex flex-col items-center gap-1.5 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Toast lab</h1>
+        <h1 className="text-xl font-semibold">Toast lab</h1>
         <p className="text-muted-foreground text-sm">
           Click a style to fire it. Hover a toast for the close button, hover
           the stack to expand it.

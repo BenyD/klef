@@ -158,7 +158,7 @@ export function CompareEnvironmentsDialog({
                   <DriftHead columns={report.columns} envMeta={envMeta} />
                   <tbody className="[&>tr:last-child>td]:border-b-0">
                     {report.rows.map((row) => (
-                      <tr key={row.key} className="hover:bg-muted/30">
+                      <tr key={row.key} className="hover:bg-muted">
                         <td className="border-b px-3 py-1.5 font-mono text-xs">
                           {row.key}
                         </td>
@@ -211,7 +211,7 @@ export function CompareEnvironmentsDialog({
                       <DriftHead columns={report.columns} envMeta={envMeta} />
                       <tbody className="[&>tr:last-child>td]:border-b-0">
                         {report.diff.map((row) => (
-                          <tr key={row.key} className="hover:bg-muted/30">
+                          <tr key={row.key} className="hover:bg-muted">
                             <td className="border-b px-3 py-1.5 font-mono text-xs">
                               {row.key}
                             </td>

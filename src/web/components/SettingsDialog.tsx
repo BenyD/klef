@@ -145,7 +145,7 @@ export function SettingsDialog({
   // Linear-style settings: a quiet nav column on the canvas colour, the
   // section filling the rest. Rows fill when active instead of growing a bar.
   const navItem =
-    "h-7 flex-none justify-start gap-2 px-2 font-normal text-muted-foreground after:hidden hover:bg-sidebar-accent data-active:bg-sidebar-accent! data-active:font-medium data-active:text-foreground sm:w-full";
+    "h-7 flex-none justify-start gap-2 px-2 font-normal text-muted-foreground after:hidden hover:bg-sidebar-hover data-active:bg-sidebar-accent! data-active:font-medium data-active:text-foreground sm:w-full";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl">

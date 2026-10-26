@@ -213,9 +213,13 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
+        {/* 12px between the fixed navigation above and the tree: enough to
+            read as a new section without a rule. */}
+        <SidebarGroup className="pt-3">
           <SidebarGroupLabel>Projects</SidebarGroupLabel>
           <SidebarGroupAction
+            // Centred on the label, which the group's pt-3 moved down.
+            className="top-4"
             aria-label="New project"
             title="New project"
             onClick={() => act(onNewProject)}
@@ -411,7 +415,7 @@ export function AppSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="flex-row items-center gap-1">
+      <SidebarFooter className="flex-row items-center gap-2">
         {footer}
       </SidebarFooter>
     </Sidebar>

@@ -76,7 +76,7 @@ function ErrorScreen({
         <TriangleAlert className="size-5" aria-hidden="true" />
       </div>
       <div className="flex flex-col gap-1.5">
-        <h1 className="text-xl font-semibold tracking-tight">
+        <h1 className="text-xl font-semibold">
           Something went wrong
         </h1>
         <p className="text-muted-foreground text-sm">
@@ -90,7 +90,7 @@ function ErrorScreen({
         <Button onClick={onRetry}>Try again</Button>
       </div>
       {digest && (
-        <p className="text-muted-foreground/70 font-mono text-xs">
+        <p className="text-muted-foreground font-mono text-xs">
           Digest: {digest}
         </p>
       )}
