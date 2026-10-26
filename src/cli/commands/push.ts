@@ -14,6 +14,7 @@ import { confirm } from "../prompt.ts";
 import { pullTarget } from "./pull.ts";
 import { resolveWritePath } from "../write-path.ts";
 import { flagValue, hasFlag, type ParsedArgs } from "../args.ts";
+import { recordSynced } from "../sync-state.ts";
 
 /**
  * Send this directory's env files to the vault as new versions: the linked
@@ -49,7 +50,7 @@ export async function push(
 
   // Read every file before touching the network, so a missing or empty one
   // stops the whole push rather than half of it.
-  const local: { target: SyncTarget; plaintext: string }[] = [];
+  const local: { target: SyncTarget; source: string; plaintext: string }[] = [];
   for (const target of targets) {
     const shown = target.path ?? target.file;
     const source = resolveWritePath(cwd, shown);
@@ -68,7 +69,7 @@ export async function push(
       console.error(`${shown} is empty. Refusing to push it over a saved version.`);
       return 1;
     }
-    local.push({ target, plaintext });
+    local.push({ target, source, plaintext });
   }
 
   const api = await requireApi(env);
@@ -85,14 +86,18 @@ export async function push(
 
   const cipher = await openVault(vault.keyMaterial, env, prompt);
 
-  const pending: { resolved: ResolvedTarget; plaintext: string; summary: string }[] = [];
-  for (const [i, { plaintext }] of local.entries()) {
+  const pending: { resolved: ResolvedTarget; source: string; plaintext: string; summary: string }[] = [];
+  // What `sync` measures "edited since" against: every file that now matches
+  // the vault, whether it was pushed or already the same.
+  const synced: { file: string; versionId: string }[] = [];
+  for (const [i, { source, plaintext }] of local.entries()) {
     const resolved = resolvedAll[i]!;
     const { version } = await api.currentVersion(resolved.fileId);
     const stored = version ? await cipher.decrypt(version.blob) : "";
 
     if (version && isUnchanged(stored, plaintext)) {
       console.log(`${resolved.fileName} is already up to date. Nothing to push.`);
+      synced.push({ file: source, versionId: version.id });
       continue;
     }
 
@@ -111,10 +116,13 @@ export async function push(
     const note = finalNewlineNote(stored, plaintext);
     if (note) console.log(`  ${note}`);
     if (version) console.log("  The version it replaces is kept and can be restored.");
-    pending.push({ resolved, plaintext, summary });
+    pending.push({ resolved, source, plaintext, summary });
   }
 
-  if (pending.length === 0) return 0;
+  if (pending.length === 0) {
+    await recordSynced(env, synced);
+    return 0;
+  }
 
   // One question for the whole batch: the summaries above are the thing being
   // confirmed, and asking per file would turn --all back into a chore.
@@ -124,9 +132,11 @@ export async function push(
     return 1;
   }
 
-  for (const { resolved, plaintext, summary } of pending) {
+  for (const { resolved, source, plaintext, summary } of pending) {
     const saved = await api.saveVersion(resolved.fileId, await cipher.encrypt(plaintext));
+    synced.push({ file: source, versionId: saved.id });
     console.log(`Pushed ${summary} to ${resolved.fileName} (version ${saved.id.slice(0, 8)}).`);
   }
+  await recordSynced(env, synced);
   return 0;
 }

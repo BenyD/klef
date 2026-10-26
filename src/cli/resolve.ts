@@ -6,7 +6,7 @@
 // plaintext in Klef by design, which is what makes a name-keyed config file
 // possible at all — nothing here needs the vault to be unlocked.
 
-import type { VaultTree } from "../shared/api-types.ts";
+import type { ProjectNode, VaultTree, WorkspaceNode } from "../shared/api-types.ts";
 
 export interface ResolvedTarget {
   workspaceId: string;
@@ -32,10 +32,11 @@ function listOf(items: { name: string }[]): string {
   return items.length ? items.map((i) => `"${i.name}"`).join(", ") : "(none)";
 }
 
-export function resolveTarget(
+/** The workspace and project a config names, or an explanation of which is missing. */
+export function resolveProject(
   tree: VaultTree,
-  target: { workspace: string; project: string; file: string },
-): ResolvedTarget {
+  target: { workspace: string; project: string },
+): { workspace: WorkspaceNode; project: ProjectNode } {
   const workspace = findByName(tree.workspaces, target.workspace);
   if (!workspace) {
     throw new ResolveError(
@@ -50,15 +51,17 @@ export function resolveTarget(
         `Available: ${listOf(workspace.projects)}`,
     );
   }
+  return { workspace, project };
+}
 
+/** A file in a project by name, or null when the project has none by that name. */
+export function findFile(
+  tree: VaultTree,
+  target: { workspace: string; project: string; file: string },
+): ResolvedTarget | null {
+  const { workspace, project } = resolveProject(tree, target);
   const file = findByName(project.files, target.file);
-  if (!file) {
-    throw new ResolveError(
-      `No file named "${target.file}" in "${project.name}". ` +
-        `Available: ${listOf(project.files)}`,
-    );
-  }
-
+  if (!file) return null;
   return {
     workspaceId: workspace.id,
     projectId: project.id,
@@ -69,4 +72,19 @@ export function resolveTarget(
     environment: file.environment,
     currentVersionId: file.currentVersionId,
   };
+}
+
+export function resolveTarget(
+  tree: VaultTree,
+  target: { workspace: string; project: string; file: string },
+): ResolvedTarget {
+  const resolved = findFile(tree, target);
+  if (!resolved) {
+    const { project } = resolveProject(tree, target);
+    throw new ResolveError(
+      `No file named "${target.file}" in "${project.name}". ` +
+        `Available: ${listOf(project.files)}`,
+    );
+  }
+  return resolved;
 }
