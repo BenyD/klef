@@ -40,8 +40,8 @@ export function Why() {
             >
               open source
             </a>
-            , self-hostable on your own Cloudflare account, and free while in
-            beta. I use it every day. If it is useful to you too, even
+            , self-hostable on your own Cloudflare account, and free to use. I
+            use it every day. If it is useful to you too, even
             better.
           </p>
           <p className="marketing-why-sig">

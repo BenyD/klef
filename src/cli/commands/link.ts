@@ -8,6 +8,10 @@ import { readProjectConfig, writeProjectConfig } from "../project-file.ts";
 import { resolveTarget } from "../resolve.ts";
 import { formatListing, listFiles } from "../listing.ts";
 import { flagValue, type ParsedArgs } from "../args.ts";
+import { DEFAULT_FILES, defaultFileList, defaultLinkedFile } from "../default-files.ts";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import type { VaultTree } from "../../shared/api-types.ts";
 
 /**
  * Bind this directory to one file in the vault, writing `.klef.json`.
@@ -25,11 +29,14 @@ export async function link(
 
   const workspace = flagValue(args, "workspace") ?? args.positionals[0];
   const project = flagValue(args, "project") ?? args.positionals[1];
-  const file = flagValue(args, "file") ?? args.positionals[2] ?? ".env";
-
   if (!workspace || !project) {
     return listAvailable(tree, cwd);
   }
+
+  const vaultNames = projectFileNames(tree, workspace, project);
+  const localNames = DEFAULT_FILES.filter((name) => existsSync(path.join(cwd, name)));
+  const file =
+    flagValue(args, "file") ?? args.positionals[2] ?? defaultLinkedFile(vaultNames);
 
   const resolved = resolveTarget(tree, { workspace, project, file });
 
@@ -41,7 +48,8 @@ export async function link(
   };
   // Re-linking to another file in the same project keeps the `files` list
   // someone wrote by hand; moving to a different project drops it, since its
-  // names belong to the old one.
+  // names belong to the old one. Without one to keep, the conventional local
+  // and production files are recorded so `sync` covers both from now on.
   const existing = await readProjectConfig(cwd).catch(() => null);
   if (
     existing?.files &&
@@ -49,17 +57,34 @@ export async function link(
     existing.project.toLowerCase() === config.project.toLowerCase()
   ) {
     config.files = existing.files;
+  } else {
+    const files = defaultFileList(resolved.fileName, vaultNames, localNames);
+    if (files) config.files = files;
   }
   const written = await writeProjectConfig(cwd, config);
 
   console.log(
     `Linked to ${resolved.workspaceName} / ${resolved.projectName} / ${resolved.fileName}`,
   );
+  if (config.files) {
+    console.log(`Syncing ${config.files.map((entry) => entry.file).join(", ")}`);
+  }
   console.log(`Wrote ${written}`);
   if (!resolved.currentVersionId) {
     console.log("This file has no saved version yet, so there's nothing to pull.");
   }
   return 0;
+}
+
+/** The file names in a project, or none when the names do not resolve yet. */
+function projectFileNames(tree: VaultTree, workspace: string, project: string): string[] {
+  const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  return (
+    tree.workspaces
+      .find((w) => same(w.name, workspace))
+      ?.projects.find((p) => same(p.name, project))
+      ?.files.map((f) => f.name) ?? []
+  );
 }
 
 async function listAvailable(
