@@ -9,11 +9,10 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { cn } from "../lib/utils.ts";
 import type { EnvFileNode, ProjectNode } from "../../shared/api-types.ts";
 import { FRAMEWORK_LABELS } from "../lib/env-file-names.ts";
 import { getRecentFileIds, sortByRecency } from "../lib/recent-files.ts";
-import { useEnvMeta } from "../lib/env-meta.ts";
+import { useEnvTag } from "../lib/env-meta.ts";
 import { ProjectIcon } from "./ProjectIcon.tsx";
 import { Button } from "./ui/button.tsx";
 import {
@@ -109,7 +108,7 @@ function ProjectGroup({
   onCompareEnvironments: (project: ProjectNode) => void;
   onDeleteProject: (project: ProjectNode) => void;
 }) {
-  const envMeta = useEnvMeta();
+  const envTag = useEnvTag();
   return (
     // The id is the scroll target for "go to project" (palette, breadcrumb).
     <section
@@ -203,26 +202,17 @@ function ProjectGroup({
                 <span className="min-w-0 flex-1 truncate font-mono text-xs">
                   {file.name}
                 </span>
-                {file.currentVersionId === null && (
-                  <span className="text-muted-foreground hidden text-xs sm:inline">
-                    Empty
+                {/* Meta only where it says something: the environment when
+                    the name doesn't, and an empty file. */}
+                {envTag(file.name, file.environment) && (
+                  <span className="text-muted-foreground shrink-0 text-xs">
+                    {envTag(file.name, file.environment)}
                   </span>
                 )}
-                {file.environment ? (
-                  <span className="text-muted-foreground flex w-28 shrink-0 items-center gap-1.5 text-xs">
-                    <span
-                      className={cn(
-                        "size-1.5 shrink-0 rounded-full",
-                        envMeta(file.environment).dot,
-                      )}
-                      aria-hidden="true"
-                    />
-                    <span className="truncate">
-                      {envMeta(file.environment).label}
-                    </span>
+                {file.currentVersionId === null && (
+                  <span className="text-muted-foreground hidden shrink-0 text-xs sm:inline">
+                    Empty
                   </span>
-                ) : (
-                  <span className="w-28 shrink-0" aria-hidden="true" />
                 )}
                 <ChevronRight className="text-muted-foreground size-3.5 shrink-0 opacity-0 transition-[opacity] group-hover/row:opacity-100 group-focus-visible/row:opacity-100" />
               </button>

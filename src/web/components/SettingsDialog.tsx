@@ -1167,15 +1167,7 @@ function EnvLabelField({ env }: { env: PresetEnvironment }) {
   const meta = ENV_META[env];
   return (
     <SettingRow
-      label={
-        <span className="flex items-center gap-2">
-          <span
-            className={`size-1.5 shrink-0 rounded-full ${meta.dot}`}
-            aria-hidden="true"
-          />
-          {meta.label}
-        </span>
-      }
+      label={meta.label}
       htmlFor={`settings-env-label-${env}`}
       control={
         <Input
