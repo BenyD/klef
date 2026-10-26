@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router";
 import { useTheme } from "next-themes";
 import { useSession } from "./auth.ts";
 import { useReturnPath } from "./lib/return-path.ts";
+import { shouldLoadDocs } from "./lib/docs-route.ts";
 import { VaultProvider } from "./vault-session.tsx";
 import { useVault } from "./vault-context.ts";
 import { Landing } from "./components/Landing.tsx";
@@ -150,6 +151,16 @@ function CliRoute() {
   return <CliAuthorize />;
 }
 
+/** /docs is a static site beside the SPA; see lib/docs-route.ts. */
+function DocsRoute() {
+  const loadedUrl = performance.getEntriesByType("navigation")[0]?.name;
+  const leave = shouldLoadDocs(loadedUrl, window.location.href);
+  useEffect(() => {
+    if (leave) window.location.reload();
+  }, [leave]);
+  return leave ? <Splash /> : <NotFound />;
+}
+
 function AuthRoute() {
   const { data: session, isPending } = useSession();
   const from = useReturnPath();
@@ -170,6 +181,7 @@ export function App() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/about" element={<Why />} />
+        <Route path="/docs/*" element={<DocsRoute />} />
         <Route path="/auth" element={<AuthRoute />} />
         <Route path="/app" element={<AppArea />} />
         {/* Approving a `klef login`. Signed-in only, and deliberately not a

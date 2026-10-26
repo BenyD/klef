@@ -1,0 +1,49 @@
+---
+title: Changelog
+description: What has changed in Klef and its CLI, newest first.
+---
+
+Klef's web app deploys continuously from `main`; the CLI is versioned on npm as [`@klefsh/cli`](https://www.npmjs.com/package/@klefsh/cli). Full history is in the [repository](https://github.com/BenyD/klef/pulls?q=is%3Apr+is%3Amerged).
+
+## Unreleased CLI
+
+On `main`, not yet published to npm (the latest published version is 0.5.0):
+
+- `klef setup`: sign in, link, write agent instructions for Claude Code and Cursor, unlock and pull, in one rerunnable command.
+- `klef sync`: push or pull each linked file, whichever side changed, and stop on conflicts.
+- `klef diff`: compare local files with the vault by key name.
+- `klef restore`: pull every linked checkout under a directory on a new machine.
+- `klef audit`: compare key names with Vercel, GitHub Actions and Cloudflare Workers, read-only.
+- `klef unlock` and `klef lock`: one passphrase for a run of commands, held by a background agent; `--for` keeps it for up to 7 days of idle time.
+- `pull --all` and `push --all`: every file listed in `.klef.json`.
+- `link` records `.env.local` and `.env.production` when the project has them.
+
+## October 2026
+
+- Environments worked out from file names, in the app and the CLI. Labels show only when they add something.
+- A redesigned app: one sidebar for navigation, a new dark theme, a command menu with search, and file tabs.
+- Sign-in lasts 30 days. "Keep unlocked for 7 days" is an opt-in on the unlock screen, with longer auto-lock choices (8 hours, 1 day, 7 days).
+- Agent prompts for Claude Code and Cursor in the app and on the landing page.
+- A rebuilt landing page and security page.
+
+## September 2026
+
+- CLI 0.5.0: `klef list --json`, a read-only listing for agents and scripts.
+- A fix for Google sign-in.
+
+## August 2026
+
+- Access tokens for the CLI, in Settings.
+- CLI 0.3.0: the first published `@klefsh/cli`, with `login`, `link` and `pull`.
+- CLI 0.4.0: `klef push`, and browser sign-in for `klef login`, with the token sealed until the CLI collects it.
+
+## July 2026
+
+- Compare environments, including values that differ.
+- Version history with diffs between any two versions.
+- Any config format, not only dotenv.
+- Move projects between workspaces; workspace and project icons from a website.
+- Unlock with a passkey (WebAuthn PRF), with readable default names for passkeys.
+- Sign-in with Google and GitHub only, plus passkeys.
+- Recovery key management and passphrase reset with the recovery key.
+- The ember rebrand.

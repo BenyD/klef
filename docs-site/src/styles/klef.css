@@ -1,0 +1,257 @@
+/* Klef's tokens under Starlight. tokens.css is the file the app uses, so a
+   token change lands here too; everything below maps Starlight's variables
+   onto those tokens rather than picking colours of its own. Theme switching
+   sets `.dark` (for tokens.css) and data-theme (for Starlight) together,
+   see components/ThemeProvider.astro. */
+@import "../../../src/web/styles/tokens.css";
+
+:root {
+	/* Starlight reads a grey ramp from "white" (strongest text) down to
+	   "black" (the page). Built from foreground and background so it flips
+	   with the theme the way Starlight's own ramps do. */
+	--sl-color-white: var(--foreground);
+	--sl-color-gray-1: color-mix(in oklch, var(--foreground) 92%, var(--background));
+	--sl-color-gray-2: color-mix(in oklch, var(--foreground) 82%, var(--background));
+	--sl-color-gray-3: var(--muted-foreground);
+	--sl-color-gray-4: color-mix(in oklch, var(--foreground) 40%, var(--background));
+	--sl-color-gray-5: color-mix(in oklch, var(--foreground) 16%, var(--background));
+	--sl-color-gray-6: color-mix(in oklch, var(--foreground) 7%, var(--background));
+	--sl-color-gray-7: color-mix(in oklch, var(--foreground) 3%, var(--background));
+	--sl-color-black: var(--background);
+
+	/* Ember is the only accent. --brand holds contrast as text on the page;
+	   the bright --primary fill is kept for marks and the current page. */
+	--sl-color-accent-low: color-mix(in oklch, var(--primary) 16%, var(--background));
+	--sl-color-accent: var(--brand);
+	--sl-color-accent-high: var(--brand);
+	--sl-color-text: color-mix(in oklch, var(--foreground) 88%, var(--background));
+	--sl-color-text-accent: var(--brand);
+	--sl-color-text-invert: var(--primary-foreground);
+	--sl-color-bg: var(--background);
+	--sl-color-bg-nav: var(--sidebar);
+	--sl-color-bg-sidebar: var(--sidebar);
+	--sl-color-bg-inline-code: var(--muted);
+	--sl-color-bg-accent: var(--primary);
+	--sl-color-hairline-light: var(--border);
+	--sl-color-hairline: var(--border);
+	--sl-color-hairline-shade: var(--border);
+	--sl-color-backdrop-overlay: var(--scrim);
+
+	/* Asides: state colours from the token set, not Starlight's hues. */
+	--sl-color-blue: var(--info);
+	--sl-color-blue-high: var(--info);
+	--sl-color-blue-low: color-mix(in oklch, var(--info) 12%, var(--background));
+	--sl-color-purple: var(--brand);
+	--sl-color-purple-high: var(--brand);
+	--sl-color-purple-low: color-mix(in oklch, var(--primary) 12%, var(--background));
+	--sl-color-orange: var(--warning);
+	--sl-color-orange-high: var(--warning);
+	--sl-color-orange-low: color-mix(in oklch, var(--warning) 12%, var(--background));
+	--sl-color-red: var(--destructive);
+	--sl-color-red-high: var(--destructive);
+	--sl-color-red-low: color-mix(in oklch, var(--destructive) 12%, var(--background));
+	--sl-color-green: var(--success);
+	--sl-color-green-high: var(--success);
+	--sl-color-green-low: color-mix(in oklch, var(--success) 12%, var(--background));
+
+	--sl-shadow-sm: var(--elevation-raised);
+	--sl-shadow-md: var(--elevation-overlay);
+	--sl-shadow-lg: var(--elevation-modal);
+
+	--sl-font: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+	--sl-font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
+	--sl-text-body: 0.9375rem;
+	--sl-line-height: 1.7;
+	--sl-text-h1: 1.875rem;
+	--sl-text-h2: 1.375rem;
+	--sl-text-h3: 1.125rem;
+	--sl-text-h4: 1rem;
+	--sl-text-h5: 0.9375rem;
+	--sl-content-width: 46rem;
+}
+
+@media (min-width: 50em) {
+	:root {
+		--sl-text-h1: 2.125rem;
+		--sl-text-h2: 1.5rem;
+		--sl-text-h3: 1.1875rem;
+		--sl-text-h4: 1rem;
+	}
+}
+
+::selection {
+	background: color-mix(in oklch, var(--primary) 32%, transparent);
+}
+
+body {
+	background: var(--background);
+}
+
+h1,
+h2,
+h3,
+h4,
+.sl-markdown-content :is(h1, h2, h3, h4) {
+	font-weight: 600;
+	letter-spacing: -0.015em;
+}
+
+/* Header: the brand tile and a quiet "Docs" after the wordmark. */
+.klef-site-title {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	color: var(--foreground);
+	font-weight: 600;
+	font-size: 0.9375rem;
+	text-decoration: none;
+	white-space: nowrap;
+}
+.klef-mark {
+	display: inline-grid;
+	place-items: center;
+	width: 1.5rem;
+	height: 1.5rem;
+	border-radius: var(--radius);
+	background: var(--primary);
+	color: var(--primary-foreground);
+}
+.klef-mark svg {
+	width: 0.875rem;
+	height: 0.875rem;
+}
+.klef-docs-label {
+	color: var(--muted-foreground);
+	font-weight: 500;
+}
+
+.klef-app-link {
+	display: inline-flex;
+	align-items: center;
+	height: 2rem;
+	padding: 0 0.75rem;
+	border: 1px solid var(--input);
+	border-radius: var(--radius);
+	color: var(--foreground);
+	font-size: 0.8125rem;
+	font-weight: 500;
+	text-decoration: none;
+	white-space: nowrap;
+	transition: background-color var(--duration-fast) ease-out;
+}
+.klef-app-link:hover {
+	background: var(--muted);
+}
+
+.klef-theme-toggle {
+	display: inline-grid;
+	place-items: center;
+	width: 2rem;
+	height: 2rem;
+	border: 0;
+	border-radius: var(--radius);
+	background: transparent;
+	color: var(--muted-foreground);
+	cursor: pointer;
+	transition:
+		background-color var(--duration-fast) ease-out,
+		color var(--duration-fast) ease-out;
+}
+.klef-theme-toggle:hover {
+	background: var(--muted);
+	color: var(--foreground);
+}
+.klef-theme-toggle svg {
+	width: 1rem;
+	height: 1rem;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+/* Show the theme you would switch to. */
+:root[data-theme="dark"] .klef-theme-moon,
+:root[data-theme="light"] .klef-theme-sun {
+	display: none;
+}
+
+/* Sidebar: the current page is an accent row, not a filled ember bar. */
+.sidebar-content a[aria-current="page"],
+.sidebar-content a[aria-current="page"]:hover,
+.sidebar-content a[aria-current="page"]:focus {
+	background: var(--sidebar-accent);
+	color: var(--foreground);
+	font-weight: 600;
+}
+.sidebar-content a:hover {
+	background: var(--sidebar-hover);
+	border-radius: var(--radius);
+}
+
+/* Content links: ember text with a quiet underline. */
+.sl-markdown-content a:not(:where(.not-content *)) {
+	color: var(--brand);
+	text-decoration-color: color-mix(in oklch, var(--brand) 40%, transparent);
+	text-underline-offset: 0.2em;
+}
+
+.sl-markdown-content code:not(:where(.not-content *, pre code)) {
+	border: 1px solid var(--border);
+	border-radius: calc(var(--radius) - 2px);
+	padding: 0.1em 0.3em;
+	font-size: 0.875em;
+}
+
+.sl-markdown-content table {
+	font-size: 0.875rem;
+}
+
+/* Focus: the ember ring the app uses. */
+:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		transition: none !important;
+	}
+}
+
+/* Page footer: "Edit page" and "View as Markdown" side by side, both quiet. */
+.klef-page-links {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem 1.25rem;
+}
+.klef-md-link {
+	color: var(--sl-color-gray-3);
+	font-size: var(--sl-text-sm);
+	text-decoration: none;
+}
+.klef-md-link:hover {
+	color: var(--sl-color-white);
+}
+
+/* Previous / next: one step up from body text, not a second page title. */
+.pagination-links a {
+	border-color: var(--border);
+	border-radius: var(--radius);
+	box-shadow: var(--elevation-raised);
+	transition: border-color var(--duration-fast) ease-out;
+}
+.pagination-links a:hover {
+	border-color: var(--input);
+}
+.pagination-links .link-title {
+	font-size: var(--sl-text-lg);
+	font-weight: 500;
+}
+
+/* Scrims dim, they never blur (DESIGN.md). */
+site-search dialog::backdrop {
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
+}
