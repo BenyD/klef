@@ -91,8 +91,9 @@ is unlocked; add \`--json\` to parse it.
 
 - **Locked vault**: pull and push need the passphrase. If \`status\` says
   locked, ask the user to run \`${cli} unlock\` themselves in their own
-  terminal, and wait. It keeps the key in memory for 15 idle minutes, and
-  after that you can run pull and push. Do not retry a command that fails
+  terminal, and wait. It keeps the key in memory until it has gone unused
+  for 15 minutes (or as long as \`--for\` says), and after that you can run
+  pull and push. Do not retry a command that fails
   with "This needs an interactive terminal"; hand it to the user instead.
 - **Not signed in or not linked**: run \`${cli} setup\`. Sign-in opens the
   browser for the user to approve; when it needs a choice from the user, it

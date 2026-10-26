@@ -67,7 +67,7 @@ export function defaultSetupDeps(args: ParsedArgs, env: NodeJS.ProcessEnv, cwd: 
       }
     },
     login: () => login(parseArgs(["login", ...(hasFlag(args, "paste") ? ["--paste"] : [])]), env),
-    unlock: () => unlock(env),
+    unlock: () => unlock(parseArgs(["unlock"]), env),
     pullFile: (file, localPath) =>
       pull(parseArgs(["pull", "--file", file, "--path", localPath]), env, cwd),
   };
