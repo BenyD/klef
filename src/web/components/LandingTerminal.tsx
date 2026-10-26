@@ -1,16 +1,12 @@
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
-// Terminal transcripts for the landing page.
+// Terminal transcripts and motion helpers for the landing page.
 //
 // Every line is what the CLI prints (src/cli/commands, src/cli/output.ts),
 // down to the wording. None shows a value, because the CLI never prints one:
 // that is the claim the page makes, so an invented line with a secret in it
-// would undercut it. SSR-safe: the first command renders on the server and
-// the rest is plain React state.
-
-export function Transcript({ children }: { children: ReactNode }) {
-  return <pre className="m-term-body">{children}</pre>;
-}
+// would undercut it. SSR-safe: the server renders the first step and every
+// label in its final form; motion starts only after mount.
 
 export function Cmd({ children }: { children: ReactNode }) {
   return (
@@ -23,13 +19,7 @@ export function Cmd({ children }: { children: ReactNode }) {
   );
 }
 
-export function Out({
-  tone,
-  children,
-}: {
-  tone?: "ok" | "fg";
-  children?: ReactNode;
-}) {
+export function Out({ tone, children }: { tone?: "ok" | "fg"; children?: ReactNode }) {
   const cls = tone ? `t-line t-${tone}` : "t-line";
   // An empty line still takes a row, like a blank line in a real terminal.
   return <span className={cls}>{children ?? " "}</span>;
@@ -40,16 +30,60 @@ export function Yes() {
   return <span className="t-fg">y</span>;
 }
 
-interface Command {
-  verb: string;
-  does: string;
+const CIPHER = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789*%#?";
+
+/**
+ * A label that decrypts into place: it starts as cipher characters and
+ * resolves left to right. The server and first paint show the final text,
+ * and reduced motion keeps it there, so nothing depends on the animation.
+ */
+export function useDecrypted(text: string, delay = 0): string {
+  const [shown, setShown] = useState(text);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let tick = 0;
+    let timer = 0;
+    const start = window.setTimeout(() => {
+      timer = window.setInterval(() => {
+        tick += 1;
+        setShown(
+          text
+            .split("")
+            .map((ch, i) => (ch === " " || tick > i * 2 ? ch : CIPHER[(i * 11 + tick * 17) % CIPHER.length]))
+            .join(""),
+        );
+        if (tick > text.length * 2) window.clearInterval(timer);
+      }, 40);
+    }, delay);
+    return () => {
+      window.clearTimeout(start);
+      window.clearInterval(timer);
+    };
+  }, [text, delay]);
+  return shown;
+}
+
+export function Decrypt({ text, delay }: { text: string; delay?: number }) {
+  const shown = useDecrypted(text, delay);
+  // The visible text scrambles; assistive tech reads the real label once.
+  return (
+    <>
+      <span aria-hidden="true">{shown}</span>
+      <span className="m-sr">{text}</span>
+    </>
+  );
+}
+
+interface Step {
+  label: string;
+  body: string;
   lines: ReactNode;
 }
 
-const COMMANDS: Command[] = [
+const STEPS: Step[] = [
   {
-    verb: "setup",
-    does: "Sign in, link, teach your agents, pull",
+    label: "01 Setup",
+    body: "Signs this machine in, links the repo, teaches your agents and pulls what is missing.",
     lines: (
       <>
         <Cmd>npx @klefsh/cli setup</Cmd>
@@ -63,13 +97,12 @@ const COMMANDS: Command[] = [
         </Out>
         <Out>Step 4 of 4: pull .env.local, .env.production.</Out>
         <Out tone="ok">Wrote 14 variables to .env.local</Out>
-        <Out tone="ok">Wrote 9 variables to .env.production</Out>
       </>
     ),
   },
   {
-    verb: "sync",
-    does: "Push or pull, whichever side changed",
+    label: "02 Sync",
+    body: "Pushes what you edited, pulls what changed. Both changed? It writes nothing and shows which keys differ.",
     lines: (
       <>
         <Cmd>klef sync</Cmd>
@@ -85,18 +118,8 @@ const COMMANDS: Command[] = [
     ),
   },
   {
-    verb: "pull",
-    does: "Write the vault's copy to disk, mode 0600",
-    lines: (
-      <>
-        <Cmd>klef pull</Cmd>
-        <Out tone="ok">Wrote 14 variables to .env.local</Out>
-      </>
-    ),
-  },
-  {
-    verb: "restore",
-    does: "Every linked checkout on a new Mac",
+    label: "03 Restore",
+    body: "Clone your repos on a new Mac, confirm once, and every linked checkout gets its files back.",
     lines: (
       <>
         <Cmd>klef restore ~/Developer</Cmd>
@@ -114,8 +137,8 @@ const COMMANDS: Command[] = [
     ),
   },
   {
-    verb: "audit",
-    does: "Key names on Vercel, GitHub, Cloudflare",
+    label: "04 Audit",
+    body: "Checks key names on Vercel, GitHub and Cloudflare against your files. Read-only, names only.",
     lines: (
       <>
         <Cmd>klef audit vercel</Cmd>
@@ -126,39 +149,26 @@ const COMMANDS: Command[] = [
       </>
     ),
   },
-  {
-    verb: "unlock",
-    does: "One passphrase for the next commands",
-    lines: (
-      <>
-        <Cmd>klef unlock</Cmd>
-        <Out>Master passphrase: </Out>
-        <Out>Unlocked. Locks after 15 minutes without use, or on `klef lock`.</Out>
-      </>
-    ),
-  },
 ];
 
-const PANEL_ID = "m-cmd-panel";
+const PANEL_ID = "m-step-panel";
 
 /**
- * The CLI section's card: the verbs as a vertical tab list, the chosen one's
- * output beside it. role="tab" promises arrow keys, so they are implemented,
- * with a roving tabindex so the list is one stop in the tab order.
+ * How it works: the steps as a vertical tab list, the chosen step's real
+ * output on the ember panel. role="tab" promises arrow keys, so they are
+ * implemented, with a roving tabindex so the list is one stop in tab order.
  */
-export function CommandTable() {
+export function StepTabs() {
   const [active, setActive] = useState(1);
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
-  const command = COMMANDS[active] as Command;
+  const step = STEPS[active] as Step;
 
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    const last = COMMANDS.length - 1;
+    const last = STEPS.length - 1;
     let next: number | null = null;
-    if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-      next = active === last ? 0 : active + 1;
-    } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-      next = active === 0 ? last : active - 1;
-    } else if (event.key === "Home") next = 0;
+    if (event.key === "ArrowDown" || event.key === "ArrowRight") next = active === last ? 0 : active + 1;
+    else if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = active === 0 ? last : active - 1;
+    else if (event.key === "Home") next = 0;
     else if (event.key === "End") next = last;
     if (next === null) return;
     event.preventDefault();
@@ -167,43 +177,36 @@ export function CommandTable() {
   }
 
   return (
-    <div className="m-cmds">
-      <div className="m-cmd-list" role="tablist" aria-label="Commands" aria-orientation="vertical">
-        {COMMANDS.map((c, i) => (
+    <div className="m-split">
+      <div className="m-steps" role="tablist" aria-label="How it works" aria-orientation="vertical">
+        {STEPS.map((s, i) => (
           <button
-            key={c.verb}
+            key={s.label}
             type="button"
             role="tab"
-            id={`m-cmd-${c.verb}`}
+            id={`m-step-${i}`}
             aria-selected={i === active}
             aria-controls={PANEL_ID}
             tabIndex={i === active ? 0 : -1}
             ref={(el) => {
               tabs.current[i] = el;
             }}
-            className="m-cmd"
+            className="m-step"
             onClick={() => setActive(i)}
             onKeyDown={onKeyDown}
           >
-            <span className="m-cmd-verb">{c.verb}</span>
-            <span className="m-cmd-does">{c.does}</span>
+            <span className="m-label">
+              <Decrypt text={s.label} delay={200 + i * 150} />
+            </span>
+            <span>{s.body}</span>
           </button>
         ))}
       </div>
-      <div
-        role="tabpanel"
-        id={PANEL_ID}
-        aria-labelledby={`m-cmd-${command.verb}`}
-        className="m-panel m-cmd-out"
-      >
+      <div className="m-grain" role="tabpanel" id={PANEL_ID} aria-labelledby={`m-step-${active}`}>
         {/* Keyed, so switching replays the entrance on the new lines. */}
-        <pre key={command.verb} className="m-term-body">
-          {command.lines}
+        <pre key={active} className="m-term">
+          {step.lines}
         </pre>
-        <p className="m-zero">
-          <span className="m-dot" aria-hidden="true" />
-          Values printed: 0
-        </p>
       </div>
     </div>
   );
