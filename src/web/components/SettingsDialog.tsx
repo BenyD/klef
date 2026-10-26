@@ -9,6 +9,7 @@ import {
   Boxes,
   CircleAlert,
   Fingerprint,
+  MoreHorizontal,
   Pencil,
   Plus,
   ShieldCheck,
@@ -18,6 +19,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
+import { workspaceSlug } from "../../shared/slug.ts";
 import { authClient } from "../auth.ts";
 import { isPasskeyCancel } from "../lib/passkey-cancel.ts";
 import { isStaleSession, staleSessionToast } from "../lib/stale-session.ts";
@@ -56,16 +58,21 @@ import {
   resolveIconUrl,
   settleIcon,
 } from "../lib/project-icon.ts";
-import { passkeyProviderName } from "../../shared/passkey-provider.ts";
+import { passkeyLabel } from "../../shared/passkey-provider.ts";
 import {
   ENVIRONMENTS,
   type PresetEnvironment,
   type WorkspaceNode,
 } from "../../shared/api-types.ts";
 import { useIsMobile } from "../hooks/use-mobile.ts";
-import { LockShortcutKeys } from "./LockShortcutKeys.tsx";
 import { AccessTokensPanel } from "./AccessTokensPanel.tsx";
 import { RecoveryKeyPanel } from "./RecoveryKeyPanel.tsx";
+import {
+  SettingNote,
+  SettingRow,
+  SettingsPage,
+  SettingsSection,
+} from "./settings-layout.tsx";
 import { StrengthMeter } from "./StrengthMeter.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar.tsx";
 import { Button } from "./ui/button.tsx";
@@ -77,12 +84,11 @@ import {
   DialogTitle,
 } from "./ui/dialog.tsx";
 import {
-  Empty,
-  EmptyContent,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "./ui/empty.tsx";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu.tsx";
 import { Input } from "./ui/input.tsx";
 import { Label } from "./ui/label.tsx";
 import { Switch } from "./ui/switch.tsx";
@@ -94,7 +100,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select.tsx";
-import { Separator } from "./ui/separator.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs.tsx";
 
 export type SettingsTab = "profile" | "preferences" | "security" | "workspace";
@@ -139,21 +144,26 @@ export function SettingsDialog({
   // near-square, so the rail folds back into a horizontal strip up top.
   const isMobile = useIsMobile();
   // min-w-0 lets the panel shrink inside the vertical tab row; without it a
-  // wide child would push the whole dialog past its max width and clip.
-  const panelClass =
-    "flex min-w-0 max-h-[65svh] flex-col gap-6 overflow-y-auto p-4 sm:max-h-none sm:p-6";
+  // wide child would push the whole dialog past its max width and clip. Each
+  // page brings its own sticky heading and padding (settings-layout.tsx).
+  const panelClass = "min-w-0 max-h-[65svh] overflow-y-auto sm:max-h-none";
   // Linear-style settings: a quiet nav column on the canvas colour, the
   // section filling the rest. Rows fill when active instead of growing a bar.
   const navItem =
     "h-7 flex-none justify-start gap-2 px-2 font-normal text-muted-foreground after:hidden hover:bg-sidebar-accent data-active:bg-sidebar-accent! data-active:font-medium data-active:text-foreground sm:w-full";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl">
+      <DialogContent
+        // The close button rides above each page's sticky header.
+        className="gap-0 overflow-hidden p-0 sm:max-w-3xl [&>[data-slot=dialog-close]]:z-20"
+      >
         <Tabs
           orientation={isMobile ? "horizontal" : "vertical"}
           value={tab}
           onValueChange={(value) => onTabChange(value as SettingsTab)}
-          className="gap-0 sm:h-[min(40rem,85svh)]"
+          // min-w-0: as a grid item the tabs would otherwise widen to fit the
+          // phone tab strip and push every page past the dialog's edge.
+          className="min-w-0 gap-0 sm:h-[min(40rem,85svh)]"
         >
           <div className="bg-sidebar flex shrink-0 flex-col gap-1 border-b p-2 sm:w-48 sm:border-r sm:border-b-0 sm:p-3">
             <DialogTitle className="px-2 pt-1 pb-1 text-sm font-semibold sm:pb-2">
@@ -183,43 +193,54 @@ export function SettingsDialog({
           </div>
 
           <TabsContent value="profile" className={panelClass}>
-            <ProfileSection name={name} email={email} image={image} />
-            <Separator />
-            <DeleteAccountSection email={email} />
+            <SettingsPage title="Profile" description="How you appear in Klef.">
+              <ProfileSection name={name} email={email} image={image} />
+              <DeleteAccountSection email={email} />
+            </SettingsPage>
           </TabsContent>
 
           <TabsContent value="preferences" className={panelClass}>
-            <PreferencesSection />
+            <SettingsPage
+              title="Preferences"
+              description="Saved on this device only."
+            >
+              <PreferencesSection />
+            </SettingsPage>
           </TabsContent>
 
           <TabsContent value="security" className={panelClass}>
-            <GroupLabel>Signing in</GroupLabel>
-            <PasskeysSection />
-            <GroupLabel>Vault</GroupLabel>
-            <PassphraseSection />
-            <Separator />
-            <RecoverySection email={email} />
-            <Separator />
-            <SecuritySection />
-            <GroupLabel>Developer</GroupLabel>
-            <AccessTokensPanel />
+            {/* Signing in (passkeys) and unlocking (the vault) stay in
+                separate sections: auth is not unlock. */}
+            <SettingsPage
+              title="Security"
+              description="How you sign in, and how your vault unlocks and locks."
+            >
+              <PasskeysSection />
+              <VaultSection />
+              <AccessTokensPanel />
+              <RecoverySection email={email} />
+            </SettingsPage>
           </TabsContent>
 
           <TabsContent value="workspace" className={panelClass}>
-            <WorkspaceSection
-              workspace={workspace}
-              onRename={onRenameWorkspace}
-              onUpdateIcon={onUpdateWorkspaceIcon}
-            />
-            <Separator />
-            <DangerZone
-              workspace={workspace}
-              canDelete={canDeleteWorkspace}
-              onDelete={() => {
-                onOpenChange(false);
-                onRequestDeleteWorkspace();
-              }}
-            />
+            <SettingsPage
+              title="Workspace"
+              description="Settings for the workspace you're in."
+            >
+              <WorkspaceSection
+                workspace={workspace}
+                onRename={onRenameWorkspace}
+                onUpdateIcon={onUpdateWorkspaceIcon}
+              />
+              <DangerZone
+                workspace={workspace}
+                canDelete={canDeleteWorkspace}
+                onDelete={() => {
+                  onOpenChange(false);
+                  onRequestDeleteWorkspace();
+                }}
+              />
+            </SettingsPage>
           </TabsContent>
         </Tabs>
       </DialogContent>
@@ -315,63 +336,68 @@ function ProfileSection({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <Avatar className="size-12">
-          {preview && (
-            <AvatarImage src={preview} alt="" referrerPolicy="no-referrer" />
-          )}
-          <AvatarFallback className="text-base">{initial}</AvatarFallback>
-        </Avatar>
-        <div className="flex min-w-0 flex-col">
-          <span className="truncate text-sm font-medium">
-            {displayName.trim() || email}
-          </span>
-          <span className="text-muted-foreground truncate text-sm">
-            {email}
-          </span>
-        </div>
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="settings-name">Display name</Label>
-        <Input
-          id="settings-name"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          onBlur={saveName}
+    <form onSubmit={submit}>
+      <SettingsSection title="Account">
+        <SettingRow
+          leading={
+            <Avatar className="size-10">
+              {preview && (
+                <AvatarImage src={preview} alt="" referrerPolicy="no-referrer" />
+              )}
+              <AvatarFallback>{initial}</AvatarFallback>
+            </Avatar>
+          }
+          label={displayName.trim() || email}
+          hint={email}
+          control={
+            <>
+              <input
+                ref={photoFileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => void onPickPhoto(e)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => photoFileRef.current?.click()}
+              >
+                <Upload />
+                {preview ? "Replace photo" : "Upload photo"}
+              </Button>
+              {preview && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Remove photo"
+                  title="Remove photo"
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={removePhoto}
+                >
+                  <Trash2 />
+                </Button>
+              )}
+            </>
+          }
         />
-      </div>
-      <div className="grid gap-2">
-        <Label>Profile picture</Label>
-        <div className="flex items-center gap-2">
-          <input
-            ref={photoFileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => void onPickPhoto(e)}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => photoFileRef.current?.click()}
-          >
-            <Upload />
-            {preview ? "Replace photo" : "Upload photo"}
-          </Button>
-          {preview && (
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={removePhoto}
-            >
-              <Trash2 />
-              Remove
-            </Button>
-          )}
-        </div>
-      </div>
+        <SettingRow
+          label="Display name"
+          hint="Shown in the sidebar and menus."
+          htmlFor="settings-name"
+          control={
+            <Input
+              id="settings-name"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              onBlur={saveName}
+              className="h-8 sm:w-56"
+            />
+          }
+        />
+      </SettingsSection>
       {cropSrc && (
         <AvatarCropDialog
           key={cropSrc}
@@ -410,22 +436,21 @@ function DeleteAccountSection({ email }: { email: string }) {
   }
 
   return (
-    <div className="border-destructive/30 flex flex-col gap-3 rounded-lg border p-4">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-medium">Delete account</h3>
-        <p className="text-muted-foreground text-sm">
-          Deletes your account and every workspace in it.
-        </p>
-      </div>
-      <div>
-        <Button
-          type="button"
-          variant="destructive"
-          onClick={() => setOpen(true)}
-        >
-          Delete account
-        </Button>
-      </div>
+    <SettingsSection title="Danger zone" tone="danger">
+      <SettingRow
+        label="Delete account"
+        hint="Deletes your account and every workspace in it."
+        control={
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={() => setOpen(true)}
+          >
+            Delete account
+          </Button>
+        }
+      />
       <AlertDialog
         open={open}
         onOpenChange={(next) => {
@@ -467,20 +492,7 @@ function DeleteAccountSection({ email }: { email: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-// Visual grouping for the security tab: sign-in credentials vs vault keys.
-// The two worlds are deliberately separate (auth is not unlock), and the tab
-// layout should say so.
-function GroupLabel({ children }: { children: React.ReactNode }) {
-  return (
-    // Negative margin pulls the first section up against its label; the
-    // panel's gap-6 otherwise leaves the eyebrow floating between groups.
-    <p className="text-muted-foreground -mb-4 text-xs font-medium tracking-wide uppercase">
-      {children}
-    </p>
+    </SettingsSection>
   );
 }
 
@@ -537,49 +549,61 @@ function WorkspaceSection({
   }
 
   return (
-    <form onSubmit={submit} className="flex min-w-0 flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-medium">Workspace</h3>
-        <p className="text-muted-foreground text-sm">
-          The workspace you're currently in.
-        </p>
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="settings-workspace">Workspace name</Label>
-        <Input
-          id="settings-workspace"
-          value={wsName}
-          onChange={(e) => setWsName(e.target.value)}
-          onBlur={() => void save()}
-          disabled={!workspace}
+    <form onSubmit={submit} className="min-w-0">
+      <SettingsSection title="General">
+        <SettingRow
+          label="Name"
+          // Renaming moves the workspace's address with it.
+          hint={
+            workspace
+              ? `Address: ${window.location.host}/${workspaceSlug(workspace.name, workspace.id)}`
+              : undefined
+          }
+          htmlFor="settings-workspace"
+          control={
+            <Input
+              id="settings-workspace"
+              value={wsName}
+              onChange={(e) => setWsName(e.target.value)}
+              onBlur={() => void save()}
+              disabled={!workspace}
+              className="h-8 sm:w-56"
+            />
+          }
         />
-      </div>
-      <div className="grid gap-2">
-        <Label>Icon</Label>
-        <div className="flex flex-wrap items-center gap-2">
-          <WorkspaceIcon workspace={workspace} size="md" />
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!workspace}
-            onClick={() => setIconOpen(true)}
-          >
-            <Upload />
-            {workspace?.icon ? "Change icon" : "Add icon"}
-          </Button>
-          {workspace?.icon && (
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={removeIcon}
-            >
-              <Trash2 />
-              Remove
-            </Button>
-          )}
-        </div>
-      </div>
+        <SettingRow
+          label="Icon"
+          hint="Shown in the sidebar and the workspace switcher."
+          leading={<WorkspaceIcon workspace={workspace} size="md" className="size-10" />}
+          control={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!workspace}
+                onClick={() => setIconOpen(true)}
+              >
+                <Upload />
+                {workspace?.icon ? "Change icon" : "Add icon"}
+              </Button>
+              {workspace?.icon && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Remove icon"
+                  title="Remove icon"
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={removeIcon}
+                >
+                  <Trash2 />
+                </Button>
+              )}
+            </>
+          }
+        />
+      </SettingsSection>
       {workspace && (
         <WorkspaceIconDialog
           open={iconOpen}
@@ -795,52 +819,26 @@ function PasskeysSection() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-medium">Passkeys</h3>
-        <p className="text-muted-foreground text-sm">
-          Sign in with Face ID, Touch ID, or a hardware key. A passkey can
-          also unlock your vault.
-        </p>
-      </div>
+    <SettingsSection
+      title="Passkeys"
+      description="Sign in with Face ID, Touch ID or a security key."
+      action={
+        <Button variant="outline" size="sm" onClick={add} disabled={adding}>
+          <Plus />
+          {adding ? "Waiting for your device..." : "Add passkey"}
+        </Button>
+      }
+    >
       {isPending ? (
-        <p className="text-muted-foreground text-sm">Loading passkeys...</p>
+        <SettingNote>Loading passkeys...</SettingNote>
       ) : passkeys?.length ? (
-        <>
-          <ul className="flex flex-col gap-2">
-            {passkeys.map((pk) => (
-              <PasskeyRow key={pk.id} passkey={pk} />
-            ))}
-          </ul>
-          <div>
-            <Button variant="outline" onClick={add} disabled={adding}>
-              <Plus />
-              {adding ? "Waiting for your device..." : "Add passkey"}
-            </Button>
-          </div>
-        </>
+        passkeys.map((pk) => <PasskeyRow key={pk.id} passkey={pk} />)
       ) : (
-        <Empty className="bg-muted/40 gap-3 border border-dashed py-8">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Fingerprint />
-            </EmptyMedia>
-            <EmptyTitle>No passkeys yet</EmptyTitle>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={add}
-              disabled={adding}
-            >
-              <Plus />
-              {adding ? "Waiting for your device..." : "Add passkey"}
-            </Button>
-          </EmptyContent>
-        </Empty>
+        <SettingNote>
+          No passkeys yet. Add one to sign in without Google or GitHub.
+        </SettingNote>
       )}
-    </div>
+    </SettingsSection>
   );
 }
 
@@ -952,18 +950,21 @@ function PasskeyRow({
     }
   }
 
+  const label = passkeyLabel(passkey.name, passkey.aaguid);
+  const leading = (
+        <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md">
+          <Fingerprint className="text-muted-foreground size-4" />
+        </span>
+  );
+
   if (enabling) {
     return (
-      <li className="rounded-md border p-3">
+      <SettingRow
+        leading={leading}
+        label={label}
+        hint="Turn on unlocking with this passkey"
+      >
         <form onSubmit={enableUnlock} className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <Fingerprint className="text-muted-foreground size-4 shrink-0" />
-            <span className="truncate text-sm font-medium">
-              {passkey.name?.trim() ||
-                passkeyProviderName(passkey.aaguid) ||
-                "Passkey"}
-            </span>
-          </div>
           <div className="grid gap-2">
             <Label htmlFor={`passkey-unlock-${passkey.id}`}>
               Master passphrase
@@ -986,7 +987,7 @@ function PasskeyRow({
           </div>
           <div className="flex gap-2">
             <Button type="submit" size="sm" disabled={busy || !passphrase}>
-              {busy ? "Waiting for your passkey..." : "Confirm and enable"}
+              {busy ? "Waiting for your passkey..." : "Confirm and turn on"}
             </Button>
             <Button
               type="button"
@@ -999,20 +1000,20 @@ function PasskeyRow({
             </Button>
           </div>
         </form>
-      </li>
+      </SettingRow>
     );
   }
 
-  return (
-    <li className="flex items-center gap-3 rounded-md border p-3">
-      <Fingerprint className="text-muted-foreground size-4 shrink-0" />
-      {editing ? (
-        <form onSubmit={rename} className="flex flex-1 items-center gap-2">
+  if (editing) {
+    return (
+      <SettingRow leading={leading} label="Rename passkey">
+        <form onSubmit={rename} className="flex items-center gap-2">
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
             aria-label="Passkey name"
+            className="h-8"
           />
           <Button type="submit" size="sm" disabled={busy || !name.trim()}>
             Save
@@ -1029,10 +1030,18 @@ function PasskeyRow({
             Cancel
           </Button>
         </form>
-      ) : confirming ? (
-        <div className="flex flex-1 items-center justify-between gap-2">
-          <span className="text-sm">Remove this passkey?</span>
-          <div className="flex gap-2">
+      </SettingRow>
+    );
+  }
+
+  if (confirming) {
+    return (
+      <SettingRow
+        leading={leading}
+        label={`Remove ${label}?`}
+        hint="You won't be able to sign in or unlock with it again."
+        control={
+          <>
             <Button
               size="sm"
               variant="destructive"
@@ -1048,55 +1057,64 @@ function PasskeyRow({
             >
               Cancel
             </Button>
-          </div>
-        </div>
-      ) : (
+          </>
+        }
+      />
+    );
+  }
+
+  return (
+    <SettingRow
+      leading={leading}
+      label={label}
+      hint={`${added ? `Added ${added}` : "Added"}, ${
+        passkey.backedUp ? "synced" : "this device only"
+      }`}
+      control={
         <>
-          <div className="flex min-w-0 flex-1 flex-col">
-            {/* Unnamed passkeys fall back to their authenticator's product
-                name (from the AAGUID) before the generic label. */}
-            <span className="truncate text-sm font-medium">
-              {passkey.name?.trim() ||
-                passkeyProviderName(passkey.aaguid) ||
-                "Passkey"}
-            </span>
-            <span className="text-muted-foreground text-xs">
-              {added ? `Added ${added}` : "Added"}
-              {passkey.backedUp ? ", synced" : ", this device only"}
-            </span>
-          </div>
-          <label className="flex shrink-0 items-center gap-2">
-            <span className="text-muted-foreground text-xs">Unlock</span>
+          <label className="text-muted-foreground flex items-center gap-2 text-xs">
+            Unlocks vault
             <Switch
               size="sm"
               checked={unlockEnabled}
               disabled={busy}
-              aria-label="Unlock your vault with this passkey"
+              aria-label={`Unlock your vault with ${label}`}
               onCheckedChange={(checked) => {
                 if (checked) startEnableUnlock();
                 else void disableUnlock();
               }}
             />
           </label>
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            onClick={() => setEditing(true)}
-            aria-label="Rename passkey"
-          >
-            <Pencil />
-          </Button>
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            onClick={() => setConfirming(true)}
-            aria-label="Remove passkey"
-          >
-            <Trash2 />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={`Actions for ${label}`}
+                  className="text-muted-foreground"
+                >
+                  <MoreHorizontal />
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="end" className="min-w-40">
+              <DropdownMenuItem onClick={() => setEditing(true)}>
+                <Pencil />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => setConfirming(true)}
+              >
+                <Trash2 />
+                Remove
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </>
-      )}
-    </li>
+      }
+    />
   );
 }
 
@@ -1105,55 +1123,42 @@ function PreferencesSection() {
   const confirmSave = useConfirmSaveReview();
   const confirmLoad = useConfirmLoadVersion();
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-medium">Editor</h3>
-        <p className="text-muted-foreground text-sm">
-          How saving behaves on this device.
-        </p>
-      </div>
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="settings-confirm-save">
-            Review changes before saving
-          </Label>
-          <p className="text-muted-foreground text-sm">
-            Shows the diff to confirm each time you save a version.
-          </p>
-        </div>
-        <Switch
-          id="settings-confirm-save"
-          checked={confirmSave}
-          onCheckedChange={setConfirmSaveReview}
+    <>
+      <SettingsSection title="Editor">
+        <SettingRow
+          label="Review changes before saving"
+          hint="Show the diff each time you save a version."
+          htmlFor="settings-confirm-save"
+          control={
+            <Switch
+              id="settings-confirm-save"
+              checked={confirmSave}
+              onCheckedChange={setConfirmSaveReview}
+            />
+          }
         />
-      </div>
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="settings-confirm-load">
-            Warn before replacing unsaved edits
-          </Label>
-          <p className="text-muted-foreground text-sm">
-            Asks to confirm when loading a version would overwrite edits you
-            have not saved.
-          </p>
-        </div>
-        <Switch
-          id="settings-confirm-load"
-          checked={confirmLoad}
-          onCheckedChange={setConfirmLoadVersion}
+        <SettingRow
+          label="Warn before replacing unsaved edits"
+          hint="Ask before loading a version over edits you haven't saved."
+          htmlFor="settings-confirm-load"
+          control={
+            <Switch
+              id="settings-confirm-load"
+              checked={confirmLoad}
+              onCheckedChange={setConfirmLoadVersion}
+            />
+          }
         />
-      </div>
-      <div className="mt-2 flex flex-col gap-1">
-        <h3 className="text-sm font-medium">Environment labels</h3>
-        <p className="text-muted-foreground text-sm">
-          Rename the built-in labels on this device. Leave a field empty to
-          use the default.
-        </p>
-      </div>
-      {ENVIRONMENTS.map((env) => (
-        <EnvLabelField key={env} env={env} />
-      ))}
-    </div>
+      </SettingsSection>
+      <SettingsSection
+        title="Environment labels"
+        description="Rename the built-in labels. Leave one empty for the default."
+      >
+        {ENVIRONMENTS.map((env) => (
+          <EnvLabelField key={env} env={env} />
+        ))}
+      </SettingsSection>
+    </>
   );
 }
 
@@ -1161,56 +1166,61 @@ function EnvLabelField({ env }: { env: PresetEnvironment }) {
   const [text, setText] = useState(() => getEnvLabelOverrides()[env] ?? "");
   const meta = ENV_META[env];
   return (
-    <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
-      <Label
-        htmlFor={`settings-env-label-${env}`}
-        className="flex items-center gap-2 font-normal"
-      >
-        <span
-          className={`size-1.5 shrink-0 rounded-full ${meta.dot}`}
-          aria-hidden="true"
+    <SettingRow
+      label={
+        <span className="flex items-center gap-2">
+          <span
+            className={`size-1.5 shrink-0 rounded-full ${meta.dot}`}
+            aria-hidden="true"
+          />
+          {meta.label}
+        </span>
+      }
+      htmlFor={`settings-env-label-${env}`}
+      control={
+        <Input
+          id={`settings-env-label-${env}`}
+          value={text}
+          maxLength={32}
+          placeholder={meta.label}
+          onChange={(e) => {
+            setText(e.target.value);
+            setEnvLabelOverride(env, e.target.value || null);
+          }}
+          className="h-8 sm:w-56"
         />
-        {meta.label}
-      </Label>
-      <Input
-        id={`settings-env-label-${env}`}
-        value={text}
-        maxLength={32}
-        placeholder={meta.label}
-        onChange={(e) => {
-          setText(e.target.value);
-          setEnvLabelOverride(env, e.target.value || null);
-        }}
-      />
-    </div>
+      }
+    />
   );
 }
 
-function SecuritySection() {
+// The unlock side of security: the passphrase and how long the vault stays
+// open. Both are about the vault, not the account sign-in above them.
+function VaultSection() {
+  return (
+    <SettingsSection title="Vault">
+      <PassphraseRow />
+      <AutoLockRow />
+    </SettingsSection>
+  );
+}
+
+function AutoLockRow() {
   const minutes = useAutoLockMinutes();
   const current = AUTO_LOCK_OPTIONS.find((o) => o.minutes === minutes);
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-medium">Auto-lock</h3>
-        <p className="text-muted-foreground text-sm">
-          Locks the vault when you're idle, and sets how long this device
-          stays unlocked between visits. Lock instantly with the lock
-          button
-          <span className="max-sm:hidden">
-            {" "}
-            or <LockShortcutKeys />
-          </span>
-          .
-        </p>
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="settings-auto-lock">Lock after</Label>
+    <SettingRow
+      label="Auto-lock"
+      // Lock-now lives in the account menu and on the sidebar's lock button,
+      // each with its shortcut, so the hint stays one line.
+      hint="Locks when idle, and between visits on this device."
+      htmlFor="settings-auto-lock"
+      control={
         <Select
           value={String(minutes)}
           onValueChange={(v) => setAutoLockMinutes(Number(v))}
         >
-          <SelectTrigger id="settings-auto-lock" className="w-full">
+          <SelectTrigger id="settings-auto-lock" size="sm" className="w-44">
             <SelectValue>{current?.label ?? "After 15 minutes"}</SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -1221,14 +1231,14 @@ function SecuritySection() {
             ))}
           </SelectContent>
         </Select>
-      </div>
-    </div>
+      }
+    />
   );
 }
 
 // Change the master passphrase (the unlock gate, not the account password).
 // Only the DEK wrapping is redone; blobs and the recovery key are untouched.
-function PassphraseSection() {
+function PassphraseRow() {
   const { changePassphrase, lock } = useVault();
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState("");
@@ -1266,15 +1276,18 @@ function PassphraseSection() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-medium">Master passphrase</h3>
-        <p className="text-muted-foreground text-sm">
-          Unlocks your vault. Changing it re-keys every device; your recovery
-          key keeps working.
-        </p>
-      </div>
-      {open ? (
+    <SettingRow
+      label="Master passphrase"
+      hint="Unlocks your vault. Your recovery key keeps working after a change."
+      control={
+        !open && (
+          <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+            Change
+          </Button>
+        )
+      }
+    >
+      {open && (
         <form onSubmit={submit} className="flex flex-col gap-4">
           <div className="grid gap-2">
             <Label htmlFor="settings-passphrase-current">
@@ -1339,14 +1352,8 @@ function PassphraseSection() {
             </Button>
           </div>
         </form>
-      ) : (
-        <div>
-          <Button variant="outline" onClick={() => setOpen(true)}>
-            Change passphrase
-          </Button>
-        </div>
       )}
-    </div>
+    </SettingRow>
   );
 }
 
@@ -1375,23 +1382,34 @@ function RecoverySection({ email }: { email: string }) {
 
   return (
     // The id lets the recovery-key banner deep-link here (open + scroll).
-    <div id="settings-recovery" className="flex scroll-mt-2 flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-medium">Recovery key</h3>
-        <p className="text-muted-foreground text-sm">
-          Generates a new recovery key. The old one stops working immediately.
-        </p>
-      </div>
-      {newKey ? (
-        <div className="flex flex-col gap-3">
-          <RecoveryKeyPanel recoveryKey={newKey} email={email} />
-          <p className="text-muted-foreground text-xs">
-            You'll only see it once, so save it before closing settings.
-          </p>
-        </div>
-      ) : open ? (
-        // Inline confirm step; settings is already a dialog, so the warning
-        // must not stack another one on top.
+    // Danger-toned: generating a new key kills the old one on the spot.
+    <SettingsSection id="settings-recovery" title="Recovery key" tone="danger">
+      <SettingRow
+        label="Generate a new recovery key"
+        hint="Your current key stops working the moment you do."
+        control={
+          !open &&
+          !newKey && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setOpen(true)}
+            >
+              Generate new key
+            </Button>
+          )
+        }
+      >
+        {newKey ? (
+          <div className="flex flex-col gap-3">
+            <RecoveryKeyPanel recoveryKey={newKey} email={email} />
+            <p className="text-muted-foreground text-xs">
+              You'll only see it once, so save it before closing settings.
+            </p>
+          </div>
+        ) : open ? (
+          // Inline confirm step; settings is already a dialog, so the
+          // warning must not stack another one on top.
         <form onSubmit={submit} className="flex flex-col gap-4">
           <div
             role="alert"
@@ -1433,14 +1451,9 @@ function RecoverySection({ email }: { email: string }) {
             </Button>
           </div>
         </form>
-      ) : (
-        <div>
-          <Button variant="outline" onClick={() => setOpen(true)}>
-            Generate new recovery key
-          </Button>
-        </div>
-      )}
-    </div>
+        ) : null}
+      </SettingRow>
+    </SettingsSection>
   );
 }
 
@@ -1454,30 +1467,28 @@ function DangerZone({
   onDelete: () => void;
 }) {
   return (
-    <div className="border-destructive/30 flex flex-col gap-3 rounded-lg border p-4">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-medium">Delete workspace</h3>
-        <p className="text-muted-foreground text-sm">
-          {workspace
-            ? `Deletes "${workspace.name}" and everything inside it.`
-            : "No workspace to delete."}
-        </p>
-      </div>
-      <div>
-        <Button
-          type="button"
-          variant="destructive"
-          disabled={!workspace || !canDelete}
-          onClick={onDelete}
-        >
-          Delete workspace
-        </Button>
-        {workspace && !canDelete && (
-          <p className="text-muted-foreground mt-2 text-xs">
-            You can't delete your only workspace. Create another one first.
-          </p>
-        )}
-      </div>
-    </div>
+    <SettingsSection title="Danger zone" tone="danger">
+      <SettingRow
+        label="Delete workspace"
+        hint={
+          !workspace
+            ? "No workspace to delete."
+            : canDelete
+              ? `Deletes "${workspace.name}" and everything inside it.`
+              : "You can't delete your only workspace. Create another first."
+        }
+        control={
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            disabled={!workspace || !canDelete}
+            onClick={onDelete}
+          >
+            Delete workspace
+          </Button>
+        }
+      />
+    </SettingsSection>
   );
 }

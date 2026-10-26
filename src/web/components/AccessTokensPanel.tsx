@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Check, Copy, KeyRound, Plus, Terminal, Trash2 } from "lucide-react";
+import { Check, Copy, KeyRound, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { AccessTokenSummary } from "../../shared/api-types.ts";
 import {
@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
 } from "./ui/alert-dialog.tsx";
 import { Button } from "./ui/button.tsx";
+import { SettingNote, SettingRow, SettingsSection } from "./settings-layout.tsx";
 import {
   Dialog,
   DialogContent,
@@ -30,13 +31,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog.tsx";
-import {
-  Empty,
-  EmptyContent,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "./ui/empty.tsx";
 import { Input } from "./ui/input.tsx";
 import { Label } from "./ui/label.tsx";
 import {
@@ -73,47 +67,25 @@ export function AccessTokensPanel() {
   }, [refresh]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-medium">Access tokens</h3>
-        <p className="text-muted-foreground text-sm">
-          Let the Klef CLI and MCP server reach your vault. A token proves who
-          you are. It can't decrypt anything, because that still needs your
-          master passphrase on your own machine.
-        </p>
-      </div>
-
+    <SettingsSection
+      title="Access tokens"
+      // The one detail worth keeping: a token is identity, not a key.
+      description="For the CLI and MCP server. Tokens can't decrypt your data."
+      action={
+        <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
+          <Plus />
+          New token
+        </Button>
+      }
+    >
       {tokens === null ? (
-        <p className="text-muted-foreground text-sm">Loading tokens...</p>
+        <SettingNote>Loading tokens...</SettingNote>
       ) : tokens.length ? (
-        <>
-          <ul className="flex flex-col gap-2">
-            {tokens.map((token) => (
-              <TokenRow key={token.id} token={token} onRevoked={refresh} />
-            ))}
-          </ul>
-          <div>
-            <Button variant="outline" onClick={() => setCreating(true)}>
-              <Plus />
-              New token
-            </Button>
-          </div>
-        </>
+        tokens.map((token) => (
+          <TokenRow key={token.id} token={token} onRevoked={refresh} />
+        ))
       ) : (
-        <Empty className="bg-muted/40 gap-3 border border-dashed py-8">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Terminal />
-            </EmptyMedia>
-            <EmptyTitle>No access tokens yet</EmptyTitle>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
-              <Plus />
-              New token
-            </Button>
-          </EmptyContent>
-        </Empty>
+        <SettingNote>No access tokens yet.</SettingNote>
       )}
 
       <CreateTokenDialog
@@ -121,7 +93,7 @@ export function AccessTokensPanel() {
         onOpenChange={setCreating}
         onCreated={refresh}
       />
-    </div>
+    </SettingsSection>
   );
 }
 
@@ -151,42 +123,44 @@ function TokenRow({
   }
 
   return (
-    <li className="flex items-center gap-3 rounded-md border px-3 py-2">
-      <KeyRound className="text-muted-foreground size-4 shrink-0" />
-      <div className="flex min-w-0 flex-col">
-        <span className="truncate text-sm font-medium">{token.name}</span>
-        <span className="text-muted-foreground truncate font-mono text-xs">
-          {displayToken(token.prefix)}
+    <SettingRow
+      leading={
+        <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md">
+          <KeyRound className="text-muted-foreground size-4" />
         </span>
-      </div>
-      <div className="ml-auto flex items-center gap-3">
-        <div className="hidden flex-col items-end sm:flex">
+      }
+      label={token.name}
+      hint={
+        <span className="flex flex-wrap gap-x-3">
+          <span className="font-mono">{displayToken(token.prefix)}</span>
           <span
             className={
               state === "expired"
-                ? "text-destructive text-xs"
+                ? "text-destructive"
                 : state === "expiring"
-                  ? "text-xs text-warning"
-                  : "text-muted-foreground text-xs"
+                  ? "text-warning"
+                  : undefined
             }
           >
             {describeExpiry(token)}
           </span>
-          <span className="text-muted-foreground text-xs">
-            {describeLastUsed(token)}
-          </span>
-        </div>
+          <span>{describeLastUsed(token)}</span>
+        </span>
+      }
+      control={
         <Button
           variant="ghost"
-          size="icon"
+          size="icon-sm"
           aria-label={`Revoke ${token.name}`}
+          title="Revoke"
+          className="text-muted-foreground hover:text-destructive"
           disabled={busy}
           onClick={() => setConfirming(true)}
         >
           <Trash2 />
         </Button>
-      </div>
-
+      }
+    >
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -205,7 +179,7 @@ function TokenRow({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </li>
+    </SettingRow>
   );
 }
 
