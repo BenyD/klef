@@ -6,6 +6,7 @@ import { parseArgs } from "./args.ts";
 import { groupNames, localFileFor, readWorkerName, SCOPES } from "./audit.ts";
 import type { ProjectConfig } from "./project-config.ts";
 import { audit } from "./commands/audit.ts";
+import { resetUi, setUiMode } from "./ui.ts";
 
 // `klef audit` against fake `vercel`, `gh` and `wrangler` executables on PATH
 // (test-fixtures/fake-cli.mjs), so the spawn path is the real one. After every
@@ -61,6 +62,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  resetUi();
   vi.restoreAllMocks();
   await rm(root, { recursive: true, force: true });
   expect(output.join("\n")).not.toContain(SECRET);
@@ -110,8 +112,11 @@ describe("klef audit", () => {
 
   it("gives an agent the same answer as JSON", async () => {
     await seed(FULL);
+    setUiMode({ json: true }, "audit");
     expect(await audit(parseArgs(["audit", "vercel", "--json"]), env, cwd)).toBe(0);
-    const { targets } = JSON.parse(output.join("\n")) as { targets: Record<string, unknown>[] };
+    const envelope = JSON.parse(output.join("\n"));
+    expect(envelope).toMatchObject({ schema: 1, ok: true, command: "audit" });
+    const { targets } = envelope.data as { targets: Record<string, unknown>[] };
     expect(targets).toEqual([
       {
         platform: "vercel",
@@ -148,8 +153,9 @@ describe("klef audit", () => {
     }
     env.PATH = `${withoutWrangler}${path.delimiter}${path.dirname(process.execPath)}`;
 
+    setUiMode({ json: true }, "audit");
     expect(await audit(parseArgs(["audit", "--json"]), env, cwd)).toBe(0);
-    const { targets } = JSON.parse(output.join("\n")) as {
+    const { targets } = JSON.parse(output.join("\n")).data as {
       targets: { platform: string; status: string; reason: string | null }[];
     };
     expect(targets.map((t) => [t.platform, t.status])).toEqual([
@@ -222,8 +228,10 @@ describe("klef audit", () => {
   });
 
   it("rejects an unknown platform", async () => {
-    expect(await audit(parseArgs(["audit", "netlify"]), env, cwd)).toBe(1);
-    expect(output).toEqual(["Unknown platform \"netlify\". Use one of: vercel, github, cloudflare."]);
+    await expect(audit(parseArgs(["audit", "netlify"]), env, cwd)).rejects.toMatchObject({
+      code: "usage",
+      message: "Unknown platform \"netlify\". Use one of: vercel, github, cloudflare.",
+    });
   });
 });
 

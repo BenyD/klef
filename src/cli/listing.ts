@@ -40,7 +40,9 @@ export function listFiles(tree: VaultTree): ListedFile[] {
 
 /** The argument list for `link`, ready to paste. */
 export function linkArgs(entry: ListedFile): string {
-  return [entry.workspace, entry.project, entry.file].map(shellQuote).join(" ");
+  // Quoted only where the shell would split or expand a name.
+  const arg = (name: string) => (/^[\w.@%+=:,/-]+$/.test(name) ? name : shellQuote(name));
+  return [entry.workspace, entry.project, entry.file].map(arg).join(" ");
 }
 
 /** What `--json` prints. Names and flags only; no ids, no ciphertext. */

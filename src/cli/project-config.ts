@@ -4,6 +4,8 @@
 // the vault. Committed, and deliberately free of anything secret: it holds
 // names, which Klef stores in plaintext anyway.
 
+import { CliError } from "./ui.ts";
+
 export const CONFIG_FILENAME = ".klef.json";
 
 export interface ProjectConfig {
@@ -29,7 +31,11 @@ export interface FileEntry {
   path: string;
 }
 
-export class ConfigError extends Error {}
+export class ConfigError extends CliError {
+  constructor(message: string) {
+    super("usage", message);
+  }
+}
 
 function requireName(value: unknown, field: string): string {
   if (typeof value !== "string" || value.trim() === "") {

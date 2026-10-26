@@ -7,6 +7,7 @@
 // collects a token sealed to a key only it holds. No token passes through a
 // clipboard, which is the step that leaked one when this was paste-only.
 
+import { CliError } from "./ui.ts";
 import { spawn } from "node:child_process";
 import { hostname, type as osType } from "node:os";
 import { DEVICE_POLL_INTERVAL_MS } from "../shared/device-code.ts";
@@ -17,7 +18,11 @@ import {
   type SealedToken,
 } from "../shared/device-seal.ts";
 
-export class DeviceLoginError extends Error {}
+export class DeviceLoginError extends CliError {
+  constructor(message: string) {
+    super("server", message);
+  }
+}
 
 interface StartResponse {
   deviceCode: string;

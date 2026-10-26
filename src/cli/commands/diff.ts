@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import path from "node:path";
-import { command } from "../invocation.ts";
 import { requireApi } from "../session.ts";
-import { readProjectConfig } from "../project-file.ts";
-import { CONFIG_FILENAME } from "../project-config.ts";
-import { openVault } from "../vault-key.ts";
+import { requireConfig, requireVault, unlockedVault } from "../common.ts";
+import { emit, EXIT, say, style } from "../ui.ts";
 import { syncTargets } from "../targets.ts";
 import { flagValue, hasFlag, type ParsedArgs } from "../args.ts";
 import { formatKeyDiff, keyDiff } from "../key-diff.ts";
@@ -17,8 +15,8 @@ import { inspectProject } from "../project-sync.ts";
  * Prints what `sync` would make of each and, where they differ, which keys
  * differ and how. Key names only; a value has no way into this output.
  *
- * Exits 0 whether or not anything differs. Differences are the answer here,
- * not a failure, and an agent reading a non-zero exit would retry.
+ * Exits 0 whether or not anything differs, unless --exit-code asks for 10
+ * on a difference: differences are the answer here, not a failure.
  */
 export async function diff(
   args: ParsedArgs,
@@ -26,12 +24,7 @@ export async function diff(
   cwd: string,
   prompt?: (question: string) => Promise<string>,
 ): Promise<number> {
-  const config = await readProjectConfig(cwd);
-  if (!config) {
-    console.error(`No ${CONFIG_FILENAME} here. Run \`${command("link")}\` first.`);
-    return 1;
-  }
-
+  const config = await requireConfig(cwd);
   const targets = syncTargets(config, {
     all: hasFlag(args, "all"),
     file: flagValue(args, "file"),
@@ -40,23 +33,30 @@ export async function diff(
 
   const api = await requireApi(env);
   const tree = await api.tree();
-  const vault = await api.vault();
-  if (!vault.exists || !vault.keyMaterial) {
-    console.error("This account has no vault yet. Set one up in the web app first.");
-    return 1;
-  }
-  const cipher = await openVault(vault.keyMaterial, env, prompt);
+  const cipher = await unlockedVault(await requireVault(api), env, prompt);
 
   const entries = targets.map((t) => ({ file: t.file, path: t.path ?? t.file }));
   const files = await inspectProject({ api, tree, cipher, env }, cwd, config, entries);
 
+  let differs = false;
+  const out: Record<string, unknown>[] = [];
   for (const file of files) {
-    console.log(`${path.relative(cwd, file.destination)}: ${file.decision.reason}`);
-    if (file.local && file.vault) {
-      for (const line of formatKeyDiff(keyDiff(file.local.text, file.vault.text), file.local.text, file.vault.text)) {
-        console.log(line);
-      }
-    }
+    const shown = path.relative(cwd, file.destination);
+    const keys = file.local && file.vault ? keyDiff(file.local.text, file.vault.text) : null;
+    const same = file.decision.action === "in-sync" || file.decision.action === "absent";
+    if (!same) differs = true;
+    say(`${style.bold(shown)}  ${same ? style.dim(file.decision.reason) : file.decision.reason}`);
+    if (keys) for (const line of formatKeyDiff(keys, file.local!.text, file.vault!.text)) say(line);
+    out.push({
+      file: file.entry.file,
+      path: shown,
+      state: file.decision.action,
+      reason: file.decision.reason,
+      onlyLocal: keys?.onlyLocal ?? [],
+      onlyVault: keys?.onlyVault ?? [],
+      changed: keys?.changed ?? [],
+    });
   }
-  return 0;
+  emit({ files: out });
+  return differs && hasFlag(args, "exit-code") ? EXIT.differs : EXIT.ok;
 }

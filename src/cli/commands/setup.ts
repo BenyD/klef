@@ -28,6 +28,8 @@ import { allFiles, CONFIG_FILENAME } from "../project-config.ts";
 import { resolveWritePath } from "../write-path.ts";
 import { confirm, NoTerminalError, promptLine } from "../prompt.ts";
 import { flagValue, hasFlag, parseArgs, type ParsedArgs } from "../args.ts";
+import { confirmOrFail } from "../common.ts";
+import { CliError, cmd, done, emit, nested, note, say, style, uiMode } from "../ui.ts";
 import type { VaultTree } from "../../shared/api-types.ts";
 import { login } from "./login.ts";
 import { unlock } from "./unlock.ts";
@@ -66,10 +68,10 @@ export function defaultSetupDeps(args: ParsedArgs, env: NodeJS.ProcessEnv, cwd: 
         throw err;
       }
     },
-    login: () => login(parseArgs(["login", ...(hasFlag(args, "paste") ? ["--paste"] : [])]), env),
-    unlock: () => unlock(parseArgs(["unlock"]), env),
+    login: () => nested(() => login(parseArgs(["login", ...(hasFlag(args, "paste") ? ["--paste"] : [])]), env)),
+    unlock: () => nested(() => unlock(parseArgs(["unlock"]), env)),
     pullFile: (file, localPath) =>
-      pull(parseArgs(["pull", "--file", file, "--path", localPath]), env, cwd),
+      nested(() => pull(parseArgs(["pull", "--file", file, "--path", localPath]), env, cwd)),
   };
 }
 
@@ -96,38 +98,41 @@ export async function setup(
     return installAgentFiles(args, cwd, deps);
   }
 
+  const step = (n: number, text: string) => say(`${style.dim(`${n}/4`)}  ${text}`);
+  const report: Record<string, unknown> = { signedIn: false, email: null, linked: null, agentFiles: [], pulled: [] };
+
   // 1. Signed in.
   let account = await deps.account();
   if (!account) {
-    console.log("Step 1 of 4: sign in.");
+    step(1, "Sign in");
     const code = await deps.login();
     if (code !== 0) return code;
     account = await deps.account();
     if (!account) {
-      console.error(`Still not signed in. Run \`${command("login")}\`, then \`${command("setup")}\` again.`);
-      return 1;
+      throw new CliError("not_signed_in", "Still not signed in.", { next: [command("login"), command("setup")] });
     }
   } else {
-    console.log(`Step 1 of 4: signed in as ${account.email}.`);
+    step(1, `Signed in as ${account.email}`);
   }
+  report.signedIn = true;
+  report.email = account.email;
 
   // 2. Linked.
   let config = await readProjectConfig(cwd);
   if (config) {
-    console.log(`Step 2 of 4: linked to ${config.workspace} / ${config.project}.`);
+    step(2, `Linked to ${config.workspace} / ${config.project}`);
   } else {
     const choice = await chooseProject(args, projectChoices(account.tree), deps);
-    if (!choice) return 1;
     config = configForChoice(choice);
     await writeProjectConfig(cwd, config);
-    console.log(
-      `Step 2 of 4: linked to ${config.workspace} / ${config.project} (${allFiles(config).length} files). Wrote ${CONFIG_FILENAME}, which is safe to commit.`,
-    );
+    step(2, `Linked to ${config.workspace} / ${config.project} (${allFiles(config).length} files)`);
+    say(style.dim(`     Wrote ${CONFIG_FILENAME}: names only, safe to commit.`));
   }
+  report.linked = { workspace: config.workspace, project: config.project, files: allFiles(config) };
 
   // 3. Agents taught.
-  console.log("Step 3 of 4: instructions for Claude Code and Cursor.");
-  const agentCode = await installAgentFiles(args, cwd, deps);
+  step(3, "Instructions for Claude Code and Cursor");
+  const agentCode = await installAgentFiles(args, cwd, deps, report);
 
   // 4. Files on disk. Only the missing ones: pull overwrites, and a local
   // file may hold edits that are not in the vault yet.
@@ -136,20 +141,23 @@ export async function setup(
     if (!(await exists(resolveWritePath(cwd, entry.path)))) missing.push(entry);
   }
   if (missing.length === 0) {
-    console.log(`Step 4 of 4: every file is already on disk. \`${command("pull --all")}\` replaces them with the vault's copy.`);
+    step(4, "Every file is already here");
+    note(`${cmd(command("sync"), true)} keeps them in line with the vault from now on.`);
+    emit(report);
     return agentCode;
   }
 
-  console.log(`Step 4 of 4: pull ${missing.map((m) => m.path).join(", ")}.`);
+  step(4, `Pull ${missing.map((m) => m.path).join(", ")}`);
   let unlocked: number;
   try {
     unlocked = await deps.unlock();
   } catch (err) {
-    if (!(err instanceof NoTerminalError)) throw err;
-    console.error(
-      `The passphrase is the user's to type. Ask them to run \`${command("unlock")}\` in their own terminal, then run \`${command("pull --all")}\`.`,
-    );
-    return 1;
+    if (!(err instanceof NoTerminalError || (err instanceof CliError && err.code === "no_terminal"))) throw err;
+    throw new CliError("locked", "Pulling needs the vault unlocked, and the passphrase is the user's to type.", {
+      hint: "Ask the user to run this in their own terminal, then pull:",
+      next: [command("unlock"), command("pull --all")],
+      data: report,
+    });
   }
   // Without the unlock agent (Windows) each pull asks on its own; still fine.
   if (unlocked !== 0 && process.platform !== "win32") return unlocked;
@@ -157,8 +165,10 @@ export async function setup(
   for (const { file, path: localPath } of missing) {
     const code = await deps.pullFile(file, localPath);
     if (code !== 0) return code;
+    (report.pulled as string[]).push(localPath);
   }
-  console.log(`Done. New Claude Code and Cursor sessions in this repo already know how to use Klef.`);
+  done("Done. New Claude Code and Cursor sessions in this repo already know how to use Klef");
+  emit(report);
   return agentCode;
 }
 
@@ -166,40 +176,53 @@ async function chooseProject(
   args: ParsedArgs,
   choices: ProjectChoice[],
   deps: SetupDeps,
-): Promise<ProjectChoice | null> {
+): Promise<ProjectChoice> {
   if (choices.length === 0) {
-    console.error("Your vault has no env files yet. Add them at klef.sh, then run this again.");
-    return null;
+    throw new CliError("not_found", "Your vault has no env files yet.", {
+      hint: "Add them at klef.sh, then run this again.",
+    });
   }
 
   const named = flagValue(args, "project");
   if (named) {
     const found = findChoice(choices, flagValue(args, "workspace"), named);
-    if (!found) console.error(`No single project called "${named}" in your vault.`);
+    if (!found) {
+      throw new CliError("not_found", `No single project called "${named}" in your vault.`, {
+        hint: "Add --workspace if two workspaces have a project by that name.",
+        next: [command("list")],
+      });
+    }
     return found;
   }
   if (choices.length === 1) return choices[0]!;
 
-  console.log("Step 2 of 4: which project is this directory?");
-  choices.forEach((c, i) => console.log(`  ${i + 1}. ${describeChoice(c)}`));
+  // An agent ran this, or nobody can answer. The choices are names only; the
+  // user picks, and the agent reruns with the flags.
+  const needChoice = new CliError("confirmation_required", "Which project is this directory? It needs a choice.", {
+    hint: `Ask the user which one (${choices.map(describeChoice).join("; ")}), then rerun:`,
+    next: [command("setup --workspace <workspace> --project <project>")],
+    data: {
+      choices: choices.map((c) => ({ workspace: c.workspace, project: c.project, files: c.files.map((f) => f.name) })),
+    },
+  });
+  if (!uiMode().input || uiMode().json) throw needChoice;
+
+  say(`${style.dim("2/4")}  Which project is this directory?`);
+  choices.forEach((c, i) => say(`       ${i + 1}. ${describeChoice(c)}`));
 
   let answer: string;
   try {
     answer = await deps.line(`Number (1-${choices.length}): `);
   } catch (err) {
     if (!(err instanceof NoTerminalError)) throw err;
-    // An agent ran this. The list above is names only; the user picks.
-    console.error(
-      `Ask the user which one, then run \`${command("setup --workspace <workspace> --project <project>")}\`.`,
-    );
-    return null;
+    throw needChoice;
   }
   const picked = choices[Number.parseInt(answer.trim(), 10) - 1];
-  if (!picked) console.error("Not one of the options. Nothing linked.");
-  return picked ?? null;
+  if (!picked) throw new CliError("usage", "Not one of the options. Nothing linked.");
+  return picked;
 }
 
-const VERB = { create: "Create", update: "Update" } as const;
+const VERB = { create: "create", update: "update" } as const;
 
 /**
  * Write the instruction files agents load on their own: a Claude Code skill
@@ -210,9 +233,15 @@ const VERB = { create: "Create", update: "Update" } as const;
  * Nothing is written without a yes: typed at the terminal, or `--yes` from an
  * agent that has already asked the user in its chat. Files we did not write
  * are never overwritten, and shared ones only ever have our marked block
- * replaced.
+ * replaced. `report` is setup's own --json result when called from setup;
+ * otherwise this is the whole command and emits its own.
  */
-async function installAgentFiles(args: ParsedArgs, cwd: string, deps: SetupDeps): Promise<number> {
+async function installAgentFiles(
+  args: ParsedArgs,
+  cwd: string,
+  deps: SetupDeps,
+  report: Record<string, unknown> | null = null,
+): Promise<number> {
   const global = hasFlag(args, "global");
   const root = global ? deps.home : cwd;
 
@@ -221,10 +250,7 @@ async function installAgentFiles(args: ParsedArgs, cwd: string, deps: SetupDeps)
     : args.positionals;
   const unknown = named.filter((name) => !isSetupTarget(name));
   if (unknown.length > 0) {
-    console.error(
-      `Unknown target "${unknown[0]}". Choose from: ${SETUP_TARGETS.join(", ")}, or all.`,
-    );
-    return 1;
+    throw new CliError("usage", `Unknown target "${unknown[0]}". Choose from: ${SETUP_TARGETS.join(", ")}, or all.`);
   }
 
   const targets = named.length > 0 ? (named as SetupTarget[]) : DEFAULT_TARGETS;
@@ -232,10 +258,10 @@ async function installAgentFiles(args: ParsedArgs, cwd: string, deps: SetupDeps)
   if (local.length > 0) {
     // Cursor keeps user-wide rules in its settings rather than in a file, and
     // AGENTS.md is read per repository, so there is nowhere global to put them.
-    console.error(
-      `${local.join(", ")} can only be set up per project. Run \`${command(`setup ${local.join(" ")}`)}\` inside one.`,
-    );
-    return 1;
+    throw new CliError("usage", `${local.join(", ")} can only be set up per project.`, {
+      hint: "Run it inside one:",
+      next: [command(`setup ${local.join(" ")}`)],
+    });
   }
 
   const existing = new Map<string, string | null>();
@@ -246,11 +272,14 @@ async function installAgentFiles(args: ParsedArgs, cwd: string, deps: SetupDeps)
   const plan = planSetup(targets, (rel) => existing.get(rel) ?? null, invocationName(), global);
 
   const where = global ? "~" : ".";
+  const files = plan.map((item) => ({ path: `${where}/${item.path}`, action: item.action }));
+  if (report) report.agentFiles = files;
+  const own = report === null;
   for (const item of plan) {
     if (item.action === "conflict") {
-      console.log(`  Skip    ${where}/${item.path} (exists and was not written by klef; left alone)`);
+      say(`     ${style.yellow("skip".padEnd(8))} ${where}/${item.path} ${style.dim("(not written by klef; left alone)")}`);
     } else if (item.action === "unchanged") {
-      console.log(`  Current ${where}/${item.path}`);
+      say(`     ${style.dim("current".padEnd(8))} ${where}/${item.path}`);
     }
   }
 
@@ -259,33 +288,26 @@ async function installAgentFiles(args: ParsedArgs, cwd: string, deps: SetupDeps)
       item.contents !== null && (item.action === "create" || item.action === "update"),
   );
   if (writes.length === 0) {
-    console.log("  Nothing to write.");
+    say(style.dim("     Nothing to write."));
+    if (own) emit({ agentFiles: files });
     return plan.some((item) => item.action === "conflict") ? 1 : 0;
   }
 
-  for (const item of writes) console.log(`  ${VERB[item.action].padEnd(7)} ${where}/${item.path}`);
-  console.log(
-    global
-      ? "  These teach Claude Code in every project how to use Klef. They hold commands and rules, never a value."
-      : "  These teach coding agents in this repo how to use Klef. They hold commands and rules, never a value, and are safe to commit.",
+  for (const item of writes) say(`     ${VERB[item.action].padEnd(8)} ${where}/${item.path}`);
+  say(
+    style.dim(
+      global
+        ? "     They teach Claude Code in every project how to use Klef: commands and rules, never a value."
+        : "     They teach coding agents here how to use Klef: commands and rules, never a value. Safe to commit.",
+    ),
   );
 
-  if (!hasFlag(args, "yes", "y")) {
-    let yes: boolean;
-    try {
-      yes = await deps.ask(writes.length === 1 ? "Write it?" : `Write ${writes.length} files?`);
-    } catch (err) {
-      if (!(err instanceof NoTerminalError)) throw err;
-      // An agent ran this. It may only go ahead once the user has said yes in
-      // its chat, so say that rather than the generic terminal error.
-      const rerun = ["setup", ...args.positionals, ...(global ? ["--global"] : []), "--yes"];
-      console.error(`  Nothing written. Ask the user first, then run \`${command(rerun.join(" "))}\`.`);
-      return 1;
-    }
-    if (!yes) {
-      console.log("  Nothing written.");
-      return 1;
-    }
+  // An agent may only go ahead once the user has said yes in its chat, so
+  // without a terminal this fails with the exact command to rerun with --yes.
+  const question = writes.length === 1 ? "Write it?" : `Write ${writes.length} files?`;
+  if (!(await confirmOrFail(question, "setup", args, deps.ask))) {
+    say("     Nothing written.");
+    return 1;
   }
 
   for (const item of writes) {
@@ -294,7 +316,8 @@ async function installAgentFiles(args: ParsedArgs, cwd: string, deps: SetupDeps)
     await writeFile(file, item.contents);
   }
   const one = writes.length === 1;
-  console.log(`  Wrote ${writes.length} ${one ? "file" : "files"}. New agent sessions pick ${one ? "it" : "them"} up.`);
+  done(`Wrote ${writes.length} ${one ? "file" : "files"}. New agent sessions pick ${one ? "it" : "them"} up`, "     ");
+  if (own) emit({ agentFiles: files });
   return 0;
 }
 

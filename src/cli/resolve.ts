@@ -6,6 +6,7 @@
 // plaintext in Klef by design, which is what makes a name-keyed config file
 // possible at all — nothing here needs the vault to be unlocked.
 
+import { CliError } from "./ui.ts";
 import type { ProjectNode, VaultTree, WorkspaceNode } from "../shared/api-types.ts";
 
 export interface ResolvedTarget {
@@ -20,7 +21,11 @@ export interface ResolvedTarget {
   currentVersionId: string | null;
 }
 
-export class ResolveError extends Error {}
+export class ResolveError extends CliError {
+  constructor(message: string) {
+    super("not_found", message);
+  }
+}
 
 /** Case-insensitive, so `.klef.json` doesn't have to match casing exactly. */
 function findByName<T extends { name: string }>(items: T[], name: string): T | undefined {

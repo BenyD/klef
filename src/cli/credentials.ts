@@ -12,6 +12,7 @@
 // manager: it reaches ciphertext and plaintext names only. Decryption needs the
 // passphrase, which is never stored anywhere by anything.
 
+import { CliError } from "./ui.ts";
 import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -133,9 +134,9 @@ export async function clearToken(env: NodeJS.ProcessEnv = process.env): Promise<
 export function validateToken(token: string): string {
   const trimmed = token.trim();
   if (!isTokenShape(trimmed)) {
-    throw new Error(
-      "That doesn't look like a Klef access token. Create one in Settings -> Security -> Developer; it starts with klef_pat_.",
-    );
+    throw new CliError("usage", "That doesn't look like a Klef access token (they start with klef_pat_).", {
+      hint: "Create one in the web app: Settings, Security, Developer.",
+    });
   }
   return trimmed;
 }

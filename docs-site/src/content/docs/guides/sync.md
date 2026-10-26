@@ -7,10 +7,6 @@ sidebar:
 
 The common setup is one project per repo, with `.env.local` for development and `.env.production` for production. This guide keeps both in step with the vault on every machine.
 
-:::note
-The CLI's commands, flags and output are being reworked. The commands named here are current; see the [CLI reference](/docs/cli/) for exact flags once it is published.
-:::
-
 ## Link the repo once
 
 If you have not already, run setup from the repo root:
@@ -66,7 +62,23 @@ For each file in `.klef.json`, `sync` decides on its own:
 | Exists, never synced on this machine, differs | Any | **Conflict** |
 | Exists | Has no such file | **Create** it in the vault |
 
-A conflict stops the whole run before anything is written to either side. `sync` prints which keys differ, by name and never by value, and the two commands that settle it: pull the vault's copy over yours, or push yours over the vault's. Because every push is a new version, choosing push loses nothing; the old version stays in the history.
+A push asks first; `klef sync --yes` answers for you. A conflict stops the whole run before anything is written to either side, and exits 5. `sync` prints which keys differ, by name and never by value, and the two commands that settle it: pull the vault's copy over yours, or push yours over the vault's. Because every push is a new version, choosing push loses nothing; the old version stays in the history.
+
+```console
+$ klef sync
+.env.local       edited here and changed in the vault
+.env.production  in sync
+
+.env.local against the vault:
+  ~ PORT        value differs
+  ~ STRIPE_KEY  value differs
+✗ 1 file needs a decision. Nothing was written.
+  Keep one side of each, then sync again:
+  Run: klef pull --file .env.local  (take the vault's .env.local)
+  Run: klef push --file .env.local  (keep this .env.local)
+```
+
+`klef status` shows the same states without the passphrase, from what this machine last synced: in sync, edited here, changed in the vault, missing here.
 
 ### How sync knows what changed
 
@@ -78,7 +90,7 @@ Each machine keeps `~/.config/klef/sync-state.json` (mode `0600`). For each loca
 klef diff --all
 ```
 
-`diff` compares each local file with the vault by key and writes nothing. A line looks like `~ API_KEY  value differs`: the key's name, never its value. `klef sync --dry-run` shows what sync would do and does none of it.
+`diff` compares each local file with the vault by key and writes nothing. A line looks like `~ API_KEY  value differs`: the key's name, never its value. With `--exit-code` it exits 10 when anything differs, for scripts. `klef sync --dry-run` shows what sync would do and does none of it.
 
 ## Pulling and pushing by hand
 
@@ -87,7 +99,7 @@ klef pull --all   # write every linked file from the vault
 klef push --all   # upload every linked file as a new version, one confirmation
 ```
 
-`pull` writes each file with mode `0600` and reports a count, such as `wrote 14 variables to .env.local`. `push` shows what changed, by count, and asks before uploading.
+`pull` writes each file with mode `0600` and reports a count, such as `✓ Wrote 14 variables to .env.local`. `push` shows what changed, by count, and asks before uploading; `--yes` skips the question. Where nobody can answer it (a script, CI, an agent), push stops with the command to rerun with `--yes` instead of waiting.
 
 ## Unlock once per session
 
