@@ -42,9 +42,9 @@ Because each repo commits its `.klef.json`, a new machine only needs your repos 
 Then it pulls each checkout's files. Restore **only pulls**:
 
 - A file that is missing locally is written from the vault, with mode `0600`.
-- A file that already exists and differs from the vault is left alone and named in the output. Settle it with `klef sync` in that checkout.
+- A file that already exists and differs from the vault is left alone and named in the output. Settle it with `klef sync` in that checkout; restore ends with that command for each one, and exits 5 so a script can tell.
 
-That makes restore safe to run again, and means a stale checkout can never overwrite a good version in the vault.
+That makes restore safe to run again, and means a stale checkout can never overwrite a good version in the vault. `klef restore ~/Developer --yes` skips the confirmation, once you have looked at the list.
 
 ## On a machine without a browser
 

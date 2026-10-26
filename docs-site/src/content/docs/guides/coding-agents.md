@@ -33,7 +33,7 @@ Along with signing in, linking and pulling, setup offers to write instructions f
 | Claude Code, always loaded | `CLAUDE.md` | When asked |
 | Other agents | `AGENTS.md` | When asked |
 
-The instructions tell the agent how this repo's env files are synced (status, pull, push, unlock) and that it must never read or print a secret value. Commit them with the repo so every later session starts out knowing.
+The instructions tell the agent how this repo's env files are synced (status, sync, pull, push, unlock), how to read the CLI's `--json` errors, and that it must never read or print a secret value. Commit them with the repo so every later session starts out knowing.
 
 Choose the files with targets:
 
@@ -61,12 +61,23 @@ Paste it into a session once per repo. The landing page at [klef.sh](https://kle
 ## A typical session
 
 1. You start the agent and, if you will need the vault, run `klef unlock` in a terminal yourself. For a long session, `klef unlock --for 8h`.
-2. The agent runs `klef status` to see whether the repo is linked and the vault unlocked.
-3. It runs `klef sync`, `klef pull` or `klef push` as the task needs.
-4. On a conflict, it reads the key names `sync` printed and asks you which side wins.
+2. The agent runs `klef status --json`: account, link, lock state and each file's sync state in one call, with the commands to run `next`.
+3. It runs `klef sync`, `klef pull` or `klef push` as the task needs, with `--json`.
+4. On a conflict, it reads the key names `sync` returned and asks you which side wins.
 5. When you are done, `klef lock`, or let it time out.
 
-If the agent runs a command while the vault is locked, the CLI refuses to prompt (the agent has no terminal) and tells it to have you unlock. Nothing is written.
+## How the CLI talks to an agent
+
+The CLI never waits on a prompt an agent cannot answer. It detects Claude Code, Cursor and other agents from the variables they set, and treats a run with no terminal the same way. Where it would need a person, it stops with an error code, an exit code and the command to run next:
+
+| Error code | Exit | What the agent does |
+| --- | --- | --- |
+| `locked`, `no_terminal` | 4 | Asks you to run `klef unlock` in your own terminal, and waits |
+| `confirmation_required` | 2 | Says what will change, gets your yes in the chat, then runs the `next` command, which adds `--yes` |
+| `conflict` | 5 | Shows you the key names in `data` and lets you choose; `next` holds the pull and push that settle it |
+| `not_signed_in`, `not_linked` | 3, 6 | Runs `klef setup`, which opens the browser for you to approve |
+
+Nothing is written when a command stops this way. The full list of codes is in [JSON output and exit codes](/docs/cli/json/).
 
 ## What agents should not do
 

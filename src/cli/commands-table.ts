@@ -241,7 +241,7 @@ export const COMMANDS: CommandSpec[] = [
       "and any conflict, is left for `klef sync` in that checkout.",
     flags: [],
     examples: [["klef restore ~/Developer", "Every linked repo under ~/Developer"]],
-    json: "{ root, projects: [ { dir, workspace, project, files: [ { path, action, reason } ] } ] }",
+    json: "{ root, projects: [ { dir, workspace, project, files: [ { path, action, reason } ] } ], problems: [ { dir, error } ] }",
   },
   {
     name: "logout",
@@ -440,6 +440,7 @@ export function topicHelp(topic: (typeof TOPICS)[number], cli: string): string {
         ["KLEF_TOKEN", "Access token to use instead of the stored one"],
         ["KLEF_NO_KEYCHAIN", "Store the token in a 0600 file instead of the OS keychain"],
         ["KLEF_CONFIG_DIR", "Where klef keeps state (default ~/.config/klef)"],
+        ["KLEF_AGENT_SOCK", "Where the unlock agent's socket lives"],
         ["KLEF_NO_INPUT", "Never prompt, like --no-input"],
         ["CI", "Set by CI systems; klef then never prompts"],
         ["NO_COLOR", "No colour (https://no-color.org)"],

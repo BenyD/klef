@@ -11,11 +11,10 @@ Env vars drift. A key gets added to `.env.production` and never to Vercel, or a 
 klef audit             # every platform set up in this directory
 klef audit vercel      # one platform: vercel, github or cloudflare
 klef audit --json      # for agents and scripts
+klef audit --exit-code # exit 10 when any names differ
 ```
 
-:::note
-The CLI's output and `--json` shapes are being reworked. The exact JSON schema will be in the [CLI reference](/docs/cli/).
-:::
+With `--json`, the result is in `data.targets`: one entry per scope with `onlyOnPlatform`, `onlyLocal` and `both`, and a `status` of `ok`, `no-local-file`, `skipped` or `unavailable`. See [Commands](/docs/cli/commands/#klef-audit).
 
 ## What is compared
 
