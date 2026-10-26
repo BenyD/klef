@@ -20,7 +20,7 @@ const TOKEN_CLASS: Record<EnvToken["type"], string> = {
 
 // Both layers must wrap identically; any divergence misaligns the caret.
 const TYPOGRAPHY =
-  "p-3 font-mono text-sm leading-relaxed break-words whitespace-pre-wrap";
+  "px-4 py-3 font-mono text-sm leading-relaxed break-words whitespace-pre-wrap";
 
 /**
  * A highlighted env editor: a real textarea (transparent text, visible caret)
