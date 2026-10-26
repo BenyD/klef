@@ -137,6 +137,8 @@ beforeEach(async () => {
     KLEF_TOKEN: "klef_pat_test",
     KLEF_API_URL: "https://klef.test",
     KLEF_AGENT_SOCK: path.join(cwd, ".agent", "agent.sock"),
+    // Pull and push record what they synced; keep that out of the real home.
+    KLEF_CONFIG_DIR: path.join(cwd, ".config"),
   };
   versions = new Map();
   agent = null;
