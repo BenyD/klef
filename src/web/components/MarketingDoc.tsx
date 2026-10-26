@@ -45,17 +45,24 @@ function useScrollSpy(ids: string[]) {
 }
 
 // Document-style marketing page: sticky table of contents on the left
-// (desktop), inline "On this page" list on mobile, prose on the right.
+// (desktop), an "On this page" disclosure on phones, and the prose on a
+// white panel in a card, like every section of the landing page.
 export function MarketingDoc({
+  kicker,
   title,
   updated,
   lead,
+  intro,
   sections,
   children,
 }: {
+  /** Small label over the title, matching the landing page's sections. */
+  kicker: string;
   title: string;
   updated?: string;
   lead: ReactNode;
+  /** Optional figure between the lead and the first section. */
+  intro?: ReactNode;
   sections: DocSection[];
   children?: ReactNode;
 }) {
@@ -64,50 +71,56 @@ export function MarketingDoc({
   const [tocOpen, setTocOpen] = useState(false);
   return (
     <MarketingLayout>
-      <main className="marketing-doc">
-        <aside className="marketing-doc-toc" aria-label="Table of contents">
-          <div className="marketing-doc-toc-inner">
-            <button
-              type="button"
-              className="marketing-doc-toc-toggle"
-              aria-expanded={tocOpen}
-              onClick={() => setTocOpen((open) => !open)}
-            >
-              On this page
-              <ChevronDown size={16} className="marketing-doc-toc-chevron" />
-            </button>
-            <span className="marketing-doc-toc-label">On this page</span>
-            <nav data-open={tocOpen} onClick={() => setTocOpen(false)}>
+      <main className="marketing-doc m-wrap">
+        <div className="marketing-doc-grid">
+          <aside className="marketing-doc-toc" aria-label="Table of contents">
+            <div className="marketing-doc-toc-inner">
+              <button
+                type="button"
+                className="marketing-doc-toc-toggle"
+                aria-expanded={tocOpen}
+                onClick={() => setTocOpen((open) => !open)}
+              >
+                On this page
+                <ChevronDown size={16} className="marketing-doc-toc-chevron" />
+              </button>
+              <span className="marketing-doc-toc-label">On this page</span>
+              <nav data-open={tocOpen} onClick={() => setTocOpen(false)}>
+                {sections.map((s) => (
+                  <a
+                    key={s.id}
+                    href={`#${s.id}`}
+                    aria-current={s.id === active ? "true" : undefined}
+                  >
+                    {s.heading}
+                  </a>
+                ))}
+              </nav>
+            </div>
+          </aside>
+          <div className="m-card">
+            <article className="m-panel marketing-page">
+              <p className="m-eyebrow">{kicker}</p>
+              <h1>{title}</h1>
+              <p className="marketing-page-lead">{lead}</p>
+              {updated && (
+                <p className="marketing-page-updated">Last updated {updated}</p>
+              )}
+              {intro && <div className="marketing-page-intro">{intro}</div>}
               {sections.map((s) => (
-                <a
-                  key={s.id}
-                  href={`#${s.id}`}
-                  aria-current={s.id === active ? "true" : undefined}
-                >
-                  {s.heading}
-                </a>
+                <section key={s.id} id={s.id}>
+                  <h2>
+                    <a href={`#${s.id}`} className="marketing-doc-anchor">
+                      {s.heading}
+                    </a>
+                  </h2>
+                  {s.body}
+                </section>
               ))}
-            </nav>
+              {children}
+            </article>
           </div>
-        </aside>
-        <article className="marketing-page">
-          <h1>{title}</h1>
-          {updated && (
-            <p className="marketing-page-updated">Last updated: {updated}</p>
-          )}
-          <p className="marketing-page-lead">{lead}</p>
-          {sections.map((s) => (
-            <section key={s.id} id={s.id}>
-              <h2>
-                <a href={`#${s.id}`} className="marketing-doc-anchor">
-                  {s.heading}
-                </a>
-              </h2>
-              {s.body}
-            </section>
-          ))}
-          {children}
-        </article>
+        </div>
       </main>
     </MarketingLayout>
   );

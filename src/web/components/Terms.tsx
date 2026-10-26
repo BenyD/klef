@@ -45,6 +45,20 @@ const sections: DocSection[] = [
     ),
   },
   {
+    id: "cli-and-agents",
+    heading: "The CLI and coding agents",
+    body: (
+      <p>
+        The Klef CLI is built so a coding agent can run it without seeing a
+        value, but the agent still acts on your behalf, and files the CLI
+        writes are ordinary plaintext files on your disk. You are responsible
+        for what you let an agent do. <code>klef audit</code> runs your own{" "}
+        <code>vercel</code>, <code>gh</code> and <code>wrangler</code> tools,
+        whose own terms apply.
+      </p>
+    ),
+  },
+  {
     id: "no-warranty",
     heading: "No warranty",
     body: (
@@ -81,8 +95,9 @@ const sections: DocSection[] = [
 export function Terms() {
   return (
     <MarketingDoc
+      kicker="Terms"
       title="Terms of service"
-      updated="July 5, 2026"
+      updated="October 27, 2026"
       lead={
         <>
           Klef is a free, open-source, personal tool for syncing encrypted
