@@ -16,6 +16,16 @@ export interface AuthDeps {
   github: { clientId: string; clientSecret: string };
 }
 
+/**
+ * How long a sign-in lasts. Sliding: a session used at least once a day keeps
+ * extending, so a returning user on the same device is not sent back to
+ * sign-in. Better Auth's default is 7 days, which signed out anyone who
+ * skipped a week. This is the auth gate only; the vault still needs unlocking.
+ */
+export const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 30;
+/** Refresh the expiry at most once a day, not on every request. */
+export const SESSION_UPDATE_AGE_SECONDS = 60 * 60 * 24;
+
 export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
   const url = new URL(deps.baseURL);
   return {
@@ -30,6 +40,10 @@ export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
     // workspaces, and Better Auth's own) cascades from user(id), so the one
     // DELETE wipes all of the account's data.
     user: { deleteUser: { enabled: true } },
+    session: {
+      expiresIn: SESSION_EXPIRES_IN_SECONDS,
+      updateAge: SESSION_UPDATE_AGE_SECONDS,
+    },
     socialProviders: {
       google: {
         clientId: deps.google.clientId,

@@ -4,7 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AUTO_LOCK_CHECK_INTERVAL_MS,
   AUTO_LOCK_DEFAULT_MINUTES,
+  applyRememberDevice,
   getAutoLockMinutes,
+  rememberedKeyMaxAgeMs,
+  REMEMBER_DEVICE_MINUTES,
+  remembersDevice,
   setAutoLockMinutes,
   useAutoLock,
   useLockShortcut,
@@ -41,6 +45,54 @@ describe("auto-lock preference", () => {
     expect(getAutoLockMinutes()).toBe(AUTO_LOCK_DEFAULT_MINUTES);
     store.set("klef:auto-lock-minutes", "not-a-number");
     expect(getAutoLockMinutes()).toBe(AUTO_LOCK_DEFAULT_MINUTES);
+  });
+});
+
+describe("keep unlocked on this device", () => {
+  it("is off by default", () => {
+    expect(remembersDevice()).toBe(false);
+  });
+
+  it("opting in stores the 7-day window, which survives a reload", () => {
+    applyRememberDevice(true);
+    expect(getAutoLockMinutes()).toBe(REMEMBER_DEVICE_MINUTES);
+    expect(remembersDevice()).toBe(true);
+  });
+
+  it("sets how long a reopened tab may restore the key", () => {
+    expect(rememberedKeyMaxAgeMs()).toBe(15 * 60_000);
+    applyRememberDevice(true);
+    expect(rememberedKeyMaxAgeMs()).toBe(7 * 24 * 60 * 60_000);
+    setAutoLockMinutes(0);
+    expect(rememberedKeyMaxAgeMs()).toBe(Infinity);
+  });
+
+  it("counts a day or more, or never, as remembering", () => {
+    expect(remembersDevice(60)).toBe(false);
+    expect(remembersDevice(8 * 60)).toBe(false);
+    expect(remembersDevice(24 * 60)).toBe(true);
+    expect(remembersDevice(0)).toBe(true);
+  });
+
+  it("keeps a longer choice the user already made", () => {
+    setAutoLockMinutes(0);
+    applyRememberDevice(true);
+    expect(getAutoLockMinutes()).toBe(0);
+  });
+
+  it("revoking returns to the default", () => {
+    applyRememberDevice(true);
+    applyRememberDevice(false);
+    expect(getAutoLockMinutes()).toBe(AUTO_LOCK_DEFAULT_MINUTES);
+    setAutoLockMinutes(0);
+    applyRememberDevice(false);
+    expect(getAutoLockMinutes()).toBe(AUTO_LOCK_DEFAULT_MINUTES);
+  });
+
+  it("leaves a short custom choice alone when the box stays clear", () => {
+    setAutoLockMinutes(30);
+    applyRememberDevice(false);
+    expect(getAutoLockMinutes()).toBe(30);
   });
 });
 

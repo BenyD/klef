@@ -37,6 +37,34 @@ that could exfiltrate keys from the browser.
   the same trade `ssh-agent` makes. After `klef unlock`, any process running
   as your user can ask the unlock agent to decrypt or encrypt until it locks.
 
+## Staying signed in and staying unlocked
+
+Klef has two gates and they are remembered separately.
+
+- **Sign-in** is a Better Auth session cookie (`HttpOnly`, `Secure`,
+  `SameSite=Lax`) that lasts 30 days and slides forward when used, at most
+  once a day. It reaches ciphertext and plaintext names, never a value.
+- **Unlock** needs the passphrase or an enrolled passkey. To spare a prompt on
+  every reload, the browser keeps the unwrapped data key in IndexedDB as a
+  non-extractable `CryptoKey`: page scripts can ask it to decrypt but cannot
+  read its bytes, and it is scoped to the signed-in user. It is restored only
+  while it is younger than the auto-lock setting (15 idle minutes by default),
+  and locking, signing out, or auto-lock deletes it.
+
+**Keep unlocked on this device** is an opt-in on the unlock screen that sets
+auto-lock to 7 days for that browser. Clearing the box at the next unlock, or
+picking a shorter auto-lock in Settings, revokes it; locking ends the current
+window at once. The trade-off, stated plainly: while it is on, anyone who can
+use that browser profile, or code running in Klef's origin there (an XSS, a
+malicious extension with access to the site), can decrypt the vault for up to
+7 days after the last use, without the passphrase. They still cannot export the
+key itself, and nothing about it reaches the server. Leave it off on shared or
+untrusted machines. The longer settings (8 hours, 1 day, 7 days) sit between
+the existing 1 hour and "Never", so the weakest choice available is unchanged.
+
+`klef unlock --for 8h` is the CLI's counterpart: the agent holds the key in
+memory for that long without use, up to 7 days, and never on disk.
+
 ## Access tokens and the CLI
 
 The CLI holds an **access token**, which is an auth credential and nothing
@@ -69,7 +97,8 @@ added later is browser-only until someone deliberately opens it.
   cannot disable, it refuses to prompt rather than printing what you type.
 - **It cannot run unattended.** Every decrypt needs a human to have typed the
   passphrase at a terminal: either for this command, or into `klef unlock`
-  within the last 15 idle minutes. That is what makes it safe to hand to a
+  within its idle window (15 minutes unless `--for` asked for longer, at most
+  7 days). That is what makes it safe to hand to a
   coding agent: the agent orchestrates, a person unlocks.
 - **`pull` and `push` stay inside the working directory.** Absolute paths and
   `../` escapes are refused, so an agent that can be talked into running either
@@ -118,7 +147,8 @@ built like `ssh-agent`:
   no peer-credential API, so this directory check stands in for a same-uid
   check on the connection.
 - **It locks itself** after 15 minutes without an encrypt or decrypt (the web
-  vault's default), on `klef lock`, and when it is signalled to stop. A status
+  vault's default) or the `--for` time you chose, on `klef lock`, and when it
+  is signalled to stop. A status
   check does not count as use.
 
 What it does not change: while it is unlocked, any process running as you can
@@ -142,7 +172,9 @@ reading the database, including the operator. Collection is single use.
 
 ## Handling rules the code follows
 
-- Encryption keys exist only in browser memory during an unlocked session.
+- Encryption keys exist only on the client during an unlocked session: in
+  memory, and in IndexedDB as a non-extractable key until the auto-lock window
+  ends (see "Staying signed in and staying unlocked").
 - No key material, passphrase, or plaintext is ever sent to the server or logged.
 - Locking clears keys from memory, in the browser and in the CLI's unlock
   agent alike.

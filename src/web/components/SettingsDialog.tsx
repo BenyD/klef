@@ -1172,7 +1172,8 @@ function SecuritySection() {
       <div className="flex flex-col gap-1">
         <h3 className="text-sm font-medium">Auto-lock</h3>
         <p className="text-muted-foreground text-sm">
-          Locks the vault when you're idle. Lock instantly with the lock
+          Locks the vault when you're idle, and sets how long this device
+          stays unlocked between visits. Lock instantly with the lock
           button
           <span className="max-sm:hidden">
             {" "}
