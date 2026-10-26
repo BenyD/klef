@@ -25,6 +25,7 @@ diverged it is marked inline.
 | Unlock agent | `src/cli/agent.ts`, `agent-client.ts`, `agent-spawn.ts`, `socket-dir.ts`, `vault-key.ts` |
 | Agent timeout | `klef unlock --for 8h`: 15 minutes by default, up to 7 days (`MAX_LOCK_MINUTES` in `src/shared/lock-policy.ts`) |
 | Multi-file sync | `files` in `.klef.json` (`src/cli/project-config.ts`), `push --all`, `pull --all` |
+| Platform audit | `klef audit [vercel\|github\|cloudflare] [--json]`: key names only, read-only (`src/cli/audit.ts`) |
 | Published package | `@klefsh/cli`, one bundled file, zero required dependencies |
 | Browser sign-in | `db/migrations/0013_device_authorizations.sql`, `src/api/device.ts`, `/cli` |
 | Agent prompts | Landing page, and per-file from the app's toolbar |
@@ -258,7 +259,14 @@ klef pull [--file <name>|--all]  # write .env from vault
 klef push [--file <name>|--all]  # read .env, encrypt, upload as new version
 klef unlock                      # TTY passphrase prompt → starts klef-agent
 klef lock                        # stop the agent, forgetting the key
+klef audit [platform] [--json]   # key names on Vercel/GitHub/Cloudflare vs local files; read-only
 ```
+
+`audit` is the one command that looks beyond Klef. It lists, never writes:
+an agent can run it any time and turn `onlyOnPlatform` into a question for
+the person ("X is in Vercel Production but not in `.env.production`; still
+needed?"). Changing what a platform holds stays the person's call, made in
+that platform's own tools.
 
 `status` also reports whether the vault is unlocked and how long until the
 agent locks (`unlocked`, `lockInSeconds` with `--json`). `pull` and `push` use
