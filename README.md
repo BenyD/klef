@@ -53,6 +53,18 @@ npx @klefsh/cli unlock  # one passphrase for the next pulls and pushes
 npx @klefsh/cli push --all  # every file listed in .klef.json, one confirmation
 ```
 
+`klef audit` lists which key names Vercel, GitHub Actions and Cloudflare
+Workers hold that your local files lack, and the reverse, so you (or an agent)
+can ask "OLD_FLAG is on Vercel Production but not in `.env.production`; still
+needed?". It is read-only and prints names only, through your own `vercel`,
+`gh` and `wrangler` sign-ins; `--json` for agents. Klef never writes to those
+platforms.
+
+```bash
+npx @klefsh/cli audit           # every platform set up in this directory
+npx @klefsh/cli audit vercel --json
+```
+
 A repo with several env files lists them in `.klef.json`, each with the path
 it lives at locally:
 

@@ -14,6 +14,7 @@ import { pull } from "./commands/pull.ts";
 import { push } from "./commands/push.ts";
 import { unlock } from "./commands/unlock.ts";
 import { lock } from "./commands/lock.ts";
+import { audit } from "./commands/audit.ts";
 import { AGENT_COMMAND } from "./agent-spawn.ts";
 import { runAgentProcess } from "./agent.ts";
 import { CLI_VERSION } from "./version.ts";
@@ -49,6 +50,8 @@ async function main(): Promise<number> {
       return pull(args, env, cwd);
     case "push":
       return push(args, env, cwd);
+    case "audit":
+      return audit(args, env, cwd);
     case "unlock":
       return unlock(args, env);
     case "lock":
