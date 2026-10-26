@@ -7,8 +7,7 @@ const sections: DocSection[] = [
     heading: "The service",
     body: (
       <p>
-        Klef at klef.sh is provided free of charge, currently in beta.
-        Features may change, and availability is not guaranteed; there is
+        Klef at klef.sh is provided free of charge. Features may change, and availability is not guaranteed; there is
         no SLA. If you need hard guarantees, you can{" "}
         <a
           href="https://github.com/BenyD/klef"

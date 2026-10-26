@@ -6,6 +6,11 @@ Usage:
   klef <command> [options]
 
 Commands:
+  setup              Do everything in one go: sign in, link this repo to a
+                     project, teach Claude Code and Cursor to use klef, unlock,
+                     and pull. Skips what is done; safe to rerun
+  setup <targets>    Only write the agent instructions: claude (skill), cursor
+                     (rule), claude-md, agents (AGENTS.md), or all
   login              Sign in through the browser (--paste for a token instead)
   logout             Forget the stored token on this machine
   status             Show sign-in state and what this directory is linked to
@@ -21,7 +26,10 @@ Options:
   --file <name>      Which env file in the vault (pull defaults to the linked one)
   --path <path>      Which local file to read or write (default: the file's name)
   --all              Pull or push every file listed in .klef.json
-  -y, --yes          Skip the confirmation on push
+  --workspace, --project <name>
+                     setup: which project to link, without the menu
+  -y, --yes          Skip the confirmation on push and setup
+  --global           setup: install the Claude Code skill for every project
   --json             Machine-readable output (list, status)
   --paste            Sign in by pasting a token, for machines with no browser
   --for <time>       How long unlock lasts without use: 30m, 8h, 7d (default 15m)

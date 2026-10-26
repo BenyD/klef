@@ -140,3 +140,15 @@ export async function confirm(question: string): Promise<boolean> {
     tty.close();
   }
 }
+
+/** One line of ordinary, echoed input, for choices that are not secret. */
+export async function promptLine(question: string): Promise<string> {
+  const tty = openTty();
+  const rl = createInterface({ input: tty.input, output: tty.output, terminal: true });
+  try {
+    return await new Promise<string>((resolve) => rl.question(question, resolve));
+  } finally {
+    rl.close();
+    tty.close();
+  }
+}

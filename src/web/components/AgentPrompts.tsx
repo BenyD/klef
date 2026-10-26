@@ -51,8 +51,10 @@ export function AgentPrompts() {
     <section className="marketing-section marketing-agent" id="agents">
       <h2>Hand it to your agent</h2>
       <p className="marketing-section-lead">
-        Copy a prompt into Claude Code, Cursor, or whatever you use. Each one
-        ends with a rule telling the agent not to print your secrets.
+        Paste one into Claude Code or Cursor once per repo. Connect my agent
+        installs Klef instructions in the repo, so every later session already
+        knows how to sync without printing a secret. Or skip the agent and run
+        npx @klefsh/cli setup yourself.
       </p>
 
       <div className="marketing-agent-card">
