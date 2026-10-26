@@ -97,6 +97,50 @@ added later is browser-only until someone deliberately opens it.
   file that exists only locally, with an environment label taken from its
   name. Deleting stays browser-only.
 
+## Vercel, GitHub Actions and Cloudflare Workers
+
+`klef push --to vercel|github|cloudflare`, `klef status --targets` and
+`klef import --from vercel` move values between Klef and a deploy platform.
+Sending a value to a platform is the point, so the platform sees plaintext;
+what these commands guarantee is how it gets there.
+
+- **Decryption stays on your machine, and Klef's server learns nothing new.**
+  The vault copy is decrypted here, exactly as `pull` does, and handed to your
+  own `vercel`, `gh` or `wrangler`, signed in as you. Klef never reads, stores
+  or forwards those tools' tokens, and sends the platforms nothing itself.
+- **Values travel on a child process's stdin, never in argv**, which any
+  process on the machine can read through `ps`. `vercel env add` and
+  `gh secret set` get one value each on stdin; `wrangler secret bulk` gets one
+  JSON object on stdin, so no file is written. `gh` seals each value to the
+  repository's public key before it leaves the machine.
+- **Tool output is captured, not shown.** A listing (which for Vercel can
+  include readable values) is parsed in memory and never printed. When a tool
+  fails, only the last line of its stderr is shown, with every value klef sent
+  replaced by `<redacted>` and assignment-shaped text redacted as well.
+- **Reading Vercel values touches disk briefly.** `vercel env ls` reports names
+  and which variables are Sensitive but does not decrypt; only
+  `vercel env pull` does, and only into a file. Klef points it at a fresh
+  directory from `mkdtemp` (mode `0700`, so only you can enter it), reads the
+  file into memory, and deletes the directory before going on, on success or
+  failure. A crash in that window leaves the file in your temp directory,
+  inside that private folder.
+- **Drift reports verdicts, not values.** `status --targets` prints names
+  missing on either side, and for Vercel "matches", "differs" or "can't check
+  (Sensitive)" per variable. GitHub and Cloudflare secrets cannot be read back
+  by anyone, so they get names only.
+- **What is deployed is what Klef holds.** A push stops if the local file has
+  drifted from the vault, so an unsynced edit is never deployed silently.
+  Pushes add and update only: a name that exists only on the platform is
+  listed and left alone, since deleting a production variable should not be a
+  side effect. Each push lists where it is going and asks first (`-y` skips).
+- **Import replaces nothing by default.** `import --from vercel` refuses a Klef
+  file that already has a version unless `--force` is given, and then asks even
+  under `-y`. The replaced version is kept. Sensitive variables cannot be read
+  from Vercel and are listed for you to add by hand.
+- **Trust in the tools is yours.** Klef runs `vercel`, `gh` and `wrangler` from
+  your `PATH` (wrangler from the project's `node_modules/.bin` first), so it
+  trusts them exactly as much as you do when you run them yourself.
+
 ## The unlock agent
 
 `klef unlock` asks for the passphrase once and starts a background process

@@ -15,6 +15,7 @@ import { pullTarget } from "./pull.ts";
 import { resolveWritePath } from "../write-path.ts";
 import { flagValue, hasFlag, type ParsedArgs } from "../args.ts";
 import { recordSynced } from "../sync-state.ts";
+import { pushTo } from "./deploy.ts";
 
 /**
  * Send this directory's env files to the vault as new versions: the linked
@@ -36,6 +37,9 @@ export async function push(
   prompt?: (question: string) => Promise<string>,
   ask: (question: string) => Promise<boolean> = confirm,
 ): Promise<number> {
+  // A deploy target rather than the vault: see deploy.ts.
+  if (hasFlag(args, "to")) return pushTo(args, env, cwd, prompt, ask);
+
   const config = await readProjectConfig(cwd);
   if (!config) {
     console.error(`No ${CONFIG_FILENAME} here. Run \`${command("link")}\` first.`);

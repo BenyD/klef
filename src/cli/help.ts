@@ -8,7 +8,8 @@ Usage:
 Commands:
   login              Sign in through the browser (--paste for a token instead)
   logout             Forget the stored token on this machine
-  status             Show sign-in state and what this directory is linked to
+  status             Show sign-in state and what this directory is linked to;
+                     --targets compares with Vercel, GitHub and Cloudflare
   list               Show the env files in your vault (read-only)
   link [ws] [proj]   Link this directory to the vault (.klef.json); records
                      .env.local and .env.production when the project has them
@@ -16,7 +17,9 @@ Commands:
                      stops on a conflict and shows which keys differ
   diff               Compare local files with the vault, by key, writing nothing
   pull               Write the vault's copy of the env file to disk
-  push               Send this directory's env file up as a new version
+  push               Send this directory's env file up as a new version;
+                     --to vercel|github|cloudflare sends its values there instead
+  import             --from vercel: copy a Vercel environment into Klef, once
   restore [dir]      On a new machine: pull every linked checkout under dir
   unlock             Ask for the passphrase once; pull and push reuse it
   lock               Forget the key now instead of after 15 idle minutes
@@ -27,6 +30,10 @@ Options:
   --path <path>      Which local file to read or write (default: the file's name)
   --all              Pull, push or diff every file listed in .klef.json
   --dry-run          Show what sync would do, and do none of it
+  --to <target>      vercel, github or cloudflare (push, status --targets)
+  --env <name>       Vercel or GitHub environment, or wrangler --env
+  --name <worker>    Cloudflare Worker (default: the one in wrangler config)
+  --force            Let import replace a file that already has a version
   -y, --yes          Skip the confirmation on push, sync and restore
   --json             Machine-readable output (list, status)
   --paste            Sign in by pasting a token, for machines with no browser
