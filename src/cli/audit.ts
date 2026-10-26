@@ -12,6 +12,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { failureLine, runTool, ToolError } from "./run-tool.ts";
+import { allFiles, localPathFor, type ProjectConfig } from "./project-config.ts";
+import {
+  effectiveEnvironment,
+  environmentFromName,
+} from "../shared/env-from-name.ts";
 
 export const PLATFORMS = ["vercel", "github", "cloudflare"] as const;
 export type Platform = (typeof PLATFORMS)[number];
@@ -48,6 +53,33 @@ export const SCOPES: Record<Platform, AuditScope[]> = {
   ],
   cloudflare: [{ platform: "cloudflare", environment: null, file: ".env.production" }],
 };
+
+/**
+ * The local file a scope is compared with. A linked repo's own files win over
+ * the conventional name when one of them stands for the scope's environment
+ * (its explicit label, else what its name says): a project that keeps
+ * production in `.env.development`-style names, or in a plain `.env` marked
+ * production, is audited against what it actually uses. Without a match, the
+ * conventional file, at its configured path if it has one.
+ */
+export function localFileFor(scope: AuditScope, config: ProjectConfig | null): string {
+  const conventional = config ? (localPathFor(config, scope.file) ?? scope.file) : scope.file;
+  if (!config) return conventional;
+  // Repository secrets and Workers have no environment of their own; they
+  // run production, which is what their conventional file says.
+  const target = scope.environment ?? environmentFromName(scope.file);
+  if (!target) return conventional;
+  // The conventional name first, so a repo that has it is never surprised.
+  if (localPathFor(config, scope.file)) return conventional;
+  const match = allFiles(config).find(
+    (entry) =>
+      effectiveEnvironment(
+        entry.file,
+        entry.file === config.file ? config.environment : null,
+      ) === target,
+  );
+  return match?.path ?? conventional;
+}
 
 export function scopeLabel(scope: AuditScope, worker: string | null = null): string {
   if (scope.platform === "vercel") {

@@ -16,7 +16,7 @@ import {
 import { toast } from "sonner";
 import { isMacPlatform } from "../lib/auto-lock.ts";
 import { cn } from "../lib/utils.ts";
-import { useEnvMeta } from "../lib/env-meta.ts";
+import { useEffectiveEnvLabel, useEnvTag } from "../lib/env-meta.ts";
 import { getRecentFileIds, sortByRecency } from "../lib/recent-files.ts";
 import {
   highlightRuns,
@@ -155,7 +155,9 @@ export function CommandPalette({
   onSearchKeys,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
-  const envMeta = useEnvMeta();
+  // Search by the environment a file stands for, explicit or from its
+  // name, so "production" finds .env.production with nothing set on it.
+  const effectiveEnv = useEffectiveEnvLabel();
   const { resolvedTheme, setTheme } = useTheme();
   const { toggleSidebar } = useSidebar();
   const scope = useMemo(() => (workspace ? [workspace] : []), [workspace]);
@@ -189,7 +191,7 @@ export function CommandPalette({
             { text: file.name },
             { text: project.name, weight: 0.8 },
             {
-              text: file.environment ? envMeta(file.environment).label : "",
+              text: effectiveEnv(file.name, file.environment) ?? "",
               weight: 0.6,
             },
           ],
@@ -207,7 +209,7 @@ export function CommandPalette({
     return entries.sort(
       (a, b) => (order.get(a.file.id) ?? 0) - (order.get(b.file.id) ?? 0),
     );
-  }, [projects, envMeta, open]);
+  }, [projects, effectiveEnv, open]);
 
   const keys = useMemo(
     () =>
@@ -392,7 +394,7 @@ export function CommandPalette({
             <RowTrail
               project={entry.project}
               projectIndices={highlights[1]}
-              environment={entry.file.environment}
+              file={entry.file}
               environmentIndices={highlights[2]}
             />
           </CommandItem>
@@ -414,10 +416,7 @@ export function CommandPalette({
             <span className="text-muted-foreground min-w-0 truncate font-mono text-xs">
               {entry.file.name}
             </span>
-            <RowTrail
-              project={entry.project}
-              environment={entry.file.environment}
-            />
+            <RowTrail project={entry.project} file={entry.file} />
           </CommandItem>
         );
       case "project":
@@ -618,18 +617,19 @@ function Marked({
 }
 
 // The right end of a file or key row: the project (logo and name), then the
-// environment, so the environment column lines up at the edge.
+// environment, but only when the file's name doesn't already say it.
 function RowTrail({
   project,
   projectIndices,
-  environment,
+  file,
   environmentIndices,
 }: {
   project: ProjectNode;
   projectIndices?: readonly number[];
-  environment?: string | null;
+  file: EnvFileNode;
   environmentIndices?: readonly number[];
 }) {
+  const tag = useEnvTag()(file.name, file.environment);
   return (
     <CommandShortcut className="flex min-w-0 shrink items-center gap-3 tracking-normal">
       <span className="flex min-w-0 items-center gap-1.5">
@@ -640,30 +640,9 @@ function RowTrail({
           indices={projectIndices}
         />
       </span>
-      {environment && (
-        <EnvLabel environment={environment} indices={environmentIndices} />
-      )}
+      {/* A shown tag is the explicit label, the same text the search field
+          holds, so the match marks still line up. */}
+      {tag && <Marked text={tag} indices={environmentIndices} />}
     </CommandShortcut>
-  );
-}
-
-// The environment as a dot and a short label, quiet enough to end a row
-// without competing with the file name.
-function EnvLabel({
-  environment,
-  indices,
-}: {
-  environment: string;
-  indices?: readonly number[];
-}) {
-  const meta = useEnvMeta()(environment);
-  return (
-    <span className="flex items-center gap-1.5 tracking-normal">
-      <span
-        className={cn("size-1.5 shrink-0 rounded-full", meta.dot)}
-        aria-hidden="true"
-      />
-      <Marked text={meta.label} indices={indices} />
-    </span>
   );
 }

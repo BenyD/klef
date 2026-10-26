@@ -8,6 +8,7 @@
 
 import type { VaultTree } from "../shared/api-types.ts";
 import { hasAwkwardQuoting, shellQuote } from "../shared/shell.ts";
+import { environmentWorthShowing } from "../shared/env-from-name.ts";
 
 export interface ListedFile {
   workspace: string;
@@ -63,7 +64,10 @@ function pickExample(entries: ListedFile[]): ListedFile {
 
 function annotate(entry: ListedFile): string {
   const parts: string[] = [];
-  if (entry.environment) parts.push(entry.environment);
+  // `.env.production (production)` says it twice; only a label the name
+  // doesn't already carry is worth the space. --json keeps the raw field.
+  const env = environmentWorthShowing(entry.file, entry.environment);
+  if (env) parts.push(env);
   if (!entry.hasVersion) parts.push("no saved version yet");
   return parts.length ? `  (${parts.join(", ")})` : "";
 }
