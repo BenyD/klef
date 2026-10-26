@@ -78,6 +78,9 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 264);
   --sidebar-border: oklch(0.915 0.004 264);
   --sidebar-ring: oklch(0.56 0.18 42);
+  /* Behind dialogs and sheets: dims the page without blurring it, so the
+     context you came from stays legible. */
+  --scrim: oklch(0.21 0.006 264 / 22%);
   /* Elevation. Borders do the separating; shadows only say "this floats".
      Three layers, each a hairline plus a soft cast. Higher surfaces get a
      longer, softer cast, never a darker one. */
@@ -136,6 +139,7 @@
   --sidebar-accent-foreground: oklch(0.955 0.003 264);
   --sidebar-border: oklch(1 0 0 / 7%);
   --sidebar-ring: oklch(0.76 0.15 55);
+  --scrim: oklch(0 0 0 / 55%);
   /* Near-black surfaces can't be told apart by a cast shadow alone, so each
      layer leads with a top-edge highlight - light catching the leading edge
      is what says "this is in front" - and keeps a short, deep cast. */
@@ -181,6 +185,7 @@
   --color-env-custom: var(--env-custom);
   --color-diff-add: var(--diff-add);
   --color-diff-remove: var(--diff-remove);
+  --color-scrim: var(--scrim);
   --color-syntax-key: var(--syntax-key);
   --color-syntax-string: var(--syntax-string);
   --color-syntax-keyword: var(--syntax-keyword);

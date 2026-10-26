@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   ChevronLeft,
   Code,
@@ -50,6 +57,7 @@ import {
 import { useVault } from "../vault-context.ts";
 import type { SelectedFile } from "../vault-types.ts";
 import { useIsMobile } from "../hooks/use-mobile.ts";
+import { isMacPlatform } from "../lib/auto-lock.ts";
 import { EnvCodeEditor } from "./EnvCodeEditor.tsx";
 import { EnvTable } from "./EnvTable.tsx";
 import { Badge } from "./ui/badge.tsx";
@@ -64,6 +72,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog.tsx";
+import { Kbd, KbdGroup } from "./ui/kbd.tsx";
 import { Label } from "./ui/label.tsx";
 import {
   Empty,
@@ -244,6 +253,31 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
       void onSave();
     }
   }
+
+  // Cmd/Ctrl+S saves the file in view. Every open tab keeps its pane
+  // mounted, so only the visible one (the others sit in a display:none
+  // wrapper and have no offsetParent) answers. The browser's own "save page"
+  // is swallowed either way: inside the vault it never means that.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const requestSaveRef = useRef(requestSave);
+  requestSaveRef.current = requestSave;
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (
+        !(e.metaKey || e.ctrlKey) ||
+        e.shiftKey ||
+        e.altKey ||
+        e.key.toLowerCase() !== "s"
+      ) {
+        return;
+      }
+      if (!rootRef.current?.offsetParent) return;
+      e.preventDefault();
+      requestSaveRef.current();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   async function confirmSave() {
     if (skipFutureReviews) setConfirmSaveReview(false);
@@ -565,15 +599,18 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
 
   return (
     <Tabs
+      ref={rootRef}
       /* Only dotenv exposes the table lens; other formats stay in the code
          view, so pin the effective value there. */
       value={dotenv ? view : "editor"}
       onValueChange={setView}
       /* min-h-0 keeps the pane viewport-bound so the side panel and table
          scroll internally instead of growing the page. */
-      className="flex min-h-0 flex-1 flex-col gap-3 p-4"
+      className="flex min-h-0 flex-1 flex-col gap-0"
     >
-      <div className="flex flex-wrap items-center gap-2">
+      {/* One toolbar row over a full-bleed editor: the file reads as a
+          document, not as a form field inside a page. */}
+      <div className="flex min-h-11 shrink-0 flex-wrap items-center gap-2 border-b px-3 py-1.5">
         {/* View switch: same draft, two lenses. Icons, not labeled tabs;
             the code view is the byte-for-byte source of truth, the table is
             the KV lens over it. Non-dotenv files have no table, so we show
@@ -618,7 +655,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
               onClick={() =>
                 setPanel((p) => (p === "review" ? null : "review"))
               }
-              className="h-8 gap-1.5 font-mono text-xs"
+              className="gap-1.5 font-mono text-xs"
             >
               <span className="text-diff-add">
                 +{stats.added}
@@ -654,15 +691,24 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
               <History />
             </IconAction>
           </ButtonGroup>
-          <Button
-            size="sm"
-            className="h-8"
-            onClick={requestSave}
-            disabled={!changed || saving}
-          >
-            {saving ? <Loader2 className="animate-spin" /> : <Save />}
-            Save version
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  size="sm"
+                  onClick={requestSave}
+                  disabled={!changed || saving}
+                >
+                  {saving ? <Loader2 className="animate-spin" /> : <Save />}
+                  Save version
+                </Button>
+              }
+            />
+            <TooltipContent className="flex items-center gap-2">
+              Save version
+              <SaveShortcutKeys />
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -677,7 +723,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
               // Banner and editor read as one framed unit: the wrapper owns
               // the border, rounding, and focus ring; the banner fills the
               // rounded top and the editor drops its own frame.
-              <div className="border-input focus-within:border-ring focus-within:ring-ring/30 flex h-full min-h-80 flex-col overflow-hidden rounded-md border transition-colors focus-within:ring-2 dark:bg-input/30">
+              <div className="flex h-full min-h-80 flex-col">
                 <WhitespaceWarning
                   lint={lint}
                   onClean={() => setDraft(cleanEnvWhitespace(draft))}
@@ -694,7 +740,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
                 value={draft}
                 onChange={setDraft}
                 placeholder="Paste your config here..."
-                className="h-full min-h-80"
+                className="h-full min-h-80 rounded-none border-0 focus-within:ring-0 dark:bg-transparent"
               />
             )}
           </TabsContent>
@@ -703,7 +749,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
             <TabsContent
               value="table"
               keepMounted
-              className="h-full overflow-y-auto"
+              className="h-full overflow-y-auto p-3 sm:p-4"
             >
               {/* Rows normally diff against the saved version; while a version
                   is open in the compare panel, they diff against that instead,
@@ -723,17 +769,14 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
             persists per device. Review keeps editing live on the left. */}
         {!isMobile && activePanel && (
           <>
-            <ResizableHandle
-              withHandle
-              className="mx-1.5 bg-transparent after:w-3"
-            />
+            <ResizableHandle withHandle />
             <ResizablePanel defaultSize={40} minSize={20} className="min-w-0">
-              <aside className="flex h-full flex-col overflow-hidden rounded-md border">
+              <aside className="bg-sidebar/40 flex h-full flex-col overflow-hidden">
                 {/* One header row; in a compare it becomes back + timestamp +
                     stats instead of stacking a second title underneath. */}
                 <div
                   className={cn(
-                    "flex items-center gap-2 border-b py-2 pr-3",
+                    "flex h-10 shrink-0 items-center gap-2 border-b pr-2",
                     activePanel === "history" && compare ? "pl-2" : "pl-3",
                   )}
                 >
@@ -1103,6 +1146,16 @@ function DiffRow({ op }: { op: DiffOp }) {
   );
 }
 
+function SaveShortcutKeys() {
+  const mac = isMacPlatform();
+  return (
+    <KbdGroup className="max-sm:hidden">
+      <Kbd>{mac ? "⌘" : "Ctrl"}</Kbd>
+      <Kbd>S</Kbd>
+    </KbdGroup>
+  );
+}
+
 function IconAction({
   label,
   onClick,
@@ -1118,7 +1171,7 @@ function IconAction({
         render={
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={onClick}
             aria-label={label}
             className="text-muted-foreground hover:text-foreground"
