@@ -14,9 +14,7 @@ export interface ParsedArgs {
 }
 
 /** Flags that take a value, so `--file .env` consumes the next argument. */
-const VALUE_FLAGS = new Set([
-  "file", "path", "project", "workspace", "environment", "to", "from", "env", "name",
-]);
+const VALUE_FLAGS = new Set(["file", "path", "project", "workspace", "environment"]);
 
 export function parseArgs(argv: readonly string[]): ParsedArgs {
   const positionals: string[] = [];

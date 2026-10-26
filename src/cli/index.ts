@@ -17,7 +17,6 @@ import { lock } from "./commands/lock.ts";
 import { sync } from "./commands/sync.ts";
 import { diff } from "./commands/diff.ts";
 import { restore } from "./commands/restore.ts";
-import { importFrom } from "./commands/import.ts";
 import { AGENT_COMMAND } from "./agent-spawn.ts";
 import { runAgentProcess } from "./agent.ts";
 import { CLI_VERSION } from "./version.ts";
@@ -59,8 +58,6 @@ async function main(): Promise<number> {
       return diff(args, env, cwd);
     case "restore":
       return restore(args, env, cwd);
-    case "import":
-      return importFrom(args, env, cwd);
     case "unlock":
       return unlock(env);
     case "lock":

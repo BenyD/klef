@@ -78,26 +78,6 @@ to confirm, and pulls their files. It only ever pulls: a checkout with a local
 file that differs from the vault is left alone and named, for `klef sync` to
 settle there.
 
-### Vercel, GitHub Actions and Cloudflare Workers
-
-Values are decrypted on your machine and handed to your own `vercel`, `gh` or
-`wrangler` on stdin; Klef never sees those tools' tokens.
-
-```bash
-klef push --to vercel        # .env.local -> Development, .env.production -> Production
-klef push --to github        # .env.production -> repository secrets (--env <name> for an Environment)
-klef push --to cloudflare    # .env.production -> the Worker in wrangler config (--name, --env)
-klef status --targets        # names missing on either side; values too on Vercel, where readable
-klef import --from vercel    # one time: Vercel's production variables into Klef
-```
-
-Pushes add and update; a variable only on the platform is listed and left
-alone. A push stops if the local file differs from the vault, so run
-`klef sync` first. Import builds one line per variable in Vercel's order:
-comments and formatting are not recoverable, Sensitive variables cannot be
-read and are listed for you to add, and an existing Klef file is replaced
-only with `--force` and a confirmation.
-
 A repo with other env files, or files that live elsewhere, lists them in
 `.klef.json`, each with the path it lives at locally:
 
