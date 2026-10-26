@@ -609,7 +609,7 @@ export function VaultHome({
 
   return (
     <SidebarProvider
-      defaultOpen={readSidebarOpen()}
+      defaultOpen
       className="klef-screen h-svh overflow-hidden"
     >
       <AppSidebar
@@ -1056,12 +1056,6 @@ export function VaultHome({
       </AlertDialog>
     </SidebarProvider>
   );
-}
-
-// The sidebar remembers whether it was open (shadcn's sidebar writes this
-// cookie on every toggle); first visits start open.
-function readSidebarOpen(): boolean {
-  return !document.cookie.split("; ").includes("sidebar_state=false");
 }
 
 function SidebarShortcutKeys() {
