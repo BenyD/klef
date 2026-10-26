@@ -4,6 +4,7 @@
 // list of (vault name, local path) out, so `--all` and its edge cases are
 // tested without a vault.
 
+import { CliError } from "./ui.ts";
 import { allFiles, localPathFor, type ProjectConfig } from "./project-config.ts";
 
 export interface SyncTarget {
@@ -16,7 +17,11 @@ export interface SyncTarget {
   path: string | null;
 }
 
-export class UsageError extends Error {}
+export class UsageError extends CliError {
+  constructor(message: string) {
+    super("usage", message);
+  }
+}
 
 export function syncTargets(
   config: ProjectConfig,

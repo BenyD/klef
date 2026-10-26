@@ -10,6 +10,7 @@ import { link } from "./commands/link.ts";
 import { pull } from "./commands/pull.ts";
 import { restore } from "./commands/restore.ts";
 import { sync } from "./commands/sync.ts";
+import type { CliError } from "./ui.ts";
 
 // sync, diff, restore and link's defaults end to end against an in-memory API:
 // real crypto, real files, fake network. Same shape as sync-all.test.ts, with
@@ -165,7 +166,8 @@ describe("link", () => {
       { file: ".env.local", path: ".env.local" },
       { file: ".env.production", path: ".env.production" },
     ]);
-    expect(output).toContain("Syncing .env.local, .env.production");
+    expect(output).toContain("✓ Linked to Personal / lensdrop");
+    expect(output).toContain("  Files   .env.local, .env.production");
   });
 
   it("records a production file that exists only here", async () => {
@@ -200,7 +202,7 @@ describe("sync", () => {
 
     output = [];
     expect(await sync(parseArgs(["sync"]), env, cwd, prompt, no)).toBe(0);
-    expect(output).toContain("Everything is in sync.");
+    expect(output).toContain("✓ Everything is in sync");
   });
 
   it("pushes a local edit after one confirmation", async () => {
@@ -231,7 +233,8 @@ describe("sync", () => {
     await save(".env.local", `# App\nAPI_KEY=${SECRET}_theirs\n`);
     await save(".env.production", `${PROD}ADDED=1\n`);
 
-    expect(await sync(parseArgs(["sync", "-y"]), env, cwd, prompt, yes)).toBe(1);
+    const failure = await sync(parseArgs(["sync", "-y"]), env, cwd, prompt, yes).catch((err: unknown) => err);
+    expect(failure).toMatchObject({ code: "conflict", exitCode: 5 });
 
     expect(await local(".env.local")).toContain("MINE=1");
     expect(await local(".env.production")).toBe(PROD);
@@ -241,15 +244,18 @@ describe("sync", () => {
         "  + MINE     only here",
         "  + PORT     only here",
         "  ~ API_KEY  value differs",
-        "  klef pull --file .env.local   take the vault's copy",
-        "  klef push --file .env.local   keep this one",
       ]),
     );
+    expect((failure as CliError).next).toEqual([
+      { command: "klef pull --file .env.local", description: "take the vault's .env.local" },
+      { command: "klef push --file .env.local", description: "keep this .env.local" },
+    ]);
+    expect(JSON.stringify((failure as CliError).data)).not.toContain(SECRET);
   });
 
   it("treats a differing file this machine never synced as a conflict", async () => {
     await writeFile(path.join(cwd, ".env.local"), "PORT=1\n");
-    expect(await sync(parseArgs(["sync"]), env, cwd, prompt, yes)).toBe(1);
+    await expect(sync(parseArgs(["sync"]), env, cwd, prompt, yes)).rejects.toMatchObject({ code: "conflict" });
     expect(await local(".env.local")).toBe("PORT=1\n");
     expect(output.join("\n")).toContain("never been synced on this machine");
   });
@@ -298,9 +304,9 @@ describe("diff", () => {
 
     expect(await diff(parseArgs(["diff", "--all"]), env, cwd, prompt)).toBe(0);
     expect(output).toEqual([
-      ".env.local: differs from the vault and has never been synced on this machine",
+      ".env.local  differs from the vault and has never been synced on this machine",
       "  ~ API_KEY  value differs",
-      ".env.production: missing here",
+      ".env.production  missing here",
     ]);
     await expect(stat(path.join(cwd, ".env.production"))).rejects.toThrow();
   });
@@ -322,7 +328,7 @@ describe("restore", () => {
     expect(await restore(parseArgs(["restore", root]), env, cwd, prompt, ask)).toBe(0);
 
     expect(questions).toEqual(["Restore these 2?"]);
-    expect(output).toContain("  lensdrop  Personal / lensdrop  (.env.local, .env.production)");
+    expect(output).toContain("  lensdrop           Personal / lensdrop  .env.local, .env.production");
     expect(await local(".env.production")).toBe(PROD);
     expect(await local(".env.local", other)).toBe(LOCAL);
   });
@@ -340,15 +346,17 @@ describe("restore", () => {
     await writeConfig();
     await writeFile(path.join(cwd, ".env.local"), "PORT=1\n");
 
-    expect(await restore(parseArgs(["restore", root, "-y"]), env, cwd, prompt, no)).toBe(1);
+    const failure = await restore(parseArgs(["restore", root, "-y"]), env, cwd, prompt, no).catch((e: unknown) => e);
+    expect(failure).toMatchObject({ code: "conflict", next: [{ command: "klef sync -C ." }] });
     expect(await local(".env.local")).toBe("PORT=1\n");
     expect(await local(".env.production")).toBe(PROD);
     expect(files.get(".env.local")!.versions).toHaveLength(1);
-    expect(output.at(-1)).toBe("\nRun `klef sync` in lensdrop to settle the rest.");
   });
 
   it("says so when there is nothing linked", async () => {
-    expect(await restore(parseArgs(["restore", root]), env, cwd, prompt, yes)).toBe(1);
-    expect(output[0]).toMatch(/^No linked checkouts under /);
+    await expect(restore(parseArgs(["restore", root]), env, cwd, prompt, yes)).rejects.toMatchObject({
+      code: "not_linked",
+      message: expect.stringMatching(/^No linked checkouts under /),
+    });
   });
 });

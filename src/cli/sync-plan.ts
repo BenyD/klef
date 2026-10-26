@@ -83,3 +83,48 @@ function decide({ local, inVault, vault, baseline }: SyncInput): SyncDecision {
   // Neither side moved, yet they differ: the record is wrong about something.
   return { action: "conflict", reason: "differs from the vault for a reason klef cannot tell" };
 }
+
+/** A file's state from what can be seen without the passphrase, for `status`. */
+export type QuickState =
+  | "in-sync"
+  | "edited-here"
+  | "changed-in-vault"
+  | "both-changed"
+  | "missing-here"
+  | "only-here"
+  | "unknown"
+  | "absent";
+
+/**
+ * What `status` can say about a file without decrypting anything: the local
+ * file's mtime and size and the vault's current version id, against the last
+ * time this machine synced it. "unknown" means never synced here, so only a
+ * `diff` (which needs the passphrase) can say whether they match.
+ */
+export function quickState(input: {
+  local: { mtimeMs: number; size: number } | null;
+  vaultVersionId: string | null;
+  baseline: Baseline | null;
+}): QuickState {
+  const { local, vaultVersionId, baseline } = input;
+  if (!vaultVersionId) return local ? "only-here" : "absent";
+  if (!local) return "missing-here";
+  if (!baseline) return "unknown";
+  const editedHere = local.mtimeMs !== baseline.mtimeMs || local.size !== baseline.size;
+  const changedThere = vaultVersionId !== baseline.versionId;
+  if (editedHere && changedThere) return "both-changed";
+  if (editedHere) return "edited-here";
+  if (changedThere) return "changed-in-vault";
+  return "in-sync";
+}
+
+export const QUICK_STATE_WORDS: Record<QuickState, string> = {
+  "in-sync": "in sync",
+  "edited-here": "edited here",
+  "changed-in-vault": "changed in the vault",
+  "both-changed": "edited here and changed in the vault",
+  "missing-here": "missing here",
+  "only-here": "only here, not in the vault yet",
+  unknown: "not synced on this machine yet",
+  absent: "not here and not in the vault",
+};

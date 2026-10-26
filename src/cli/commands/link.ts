@@ -3,10 +3,12 @@
 import { command } from "../invocation.ts";
 import { KlefApi } from "../api.ts";
 import { requireApi } from "../session.ts";
-import { CONFIG_FILENAME, type ProjectConfig } from "../project-config.ts";
+import { allFiles, CONFIG_FILENAME, serializeProjectConfig, type ProjectConfig } from "../project-config.ts";
 import { readProjectConfig, writeProjectConfig } from "../project-file.ts";
 import { resolveTarget } from "../resolve.ts";
 import { formatListing, listFiles } from "../listing.ts";
+import { shellArg } from "../common.ts";
+import { CliError, cmd, done, emit, note, say, style, uiMode } from "../ui.ts";
 import { flagValue, type ParsedArgs } from "../args.ts";
 import { DEFAULT_FILES, defaultFileList, defaultLinkedFile } from "../default-files.ts";
 import { existsSync } from "node:fs";
@@ -61,18 +63,29 @@ export async function link(
     const files = defaultFileList(resolved.fileName, vaultNames, localNames);
     if (files) config.files = files;
   }
-  const written = await writeProjectConfig(cwd, config);
+  const changed = existing === null || serializeProjectConfig(existing) !== serializeProjectConfig(config);
+  const written = changed ? await writeProjectConfig(cwd, config) : path.join(cwd, CONFIG_FILENAME);
 
-  console.log(
-    `Linked to ${resolved.workspaceName} / ${resolved.projectName} / ${resolved.fileName}`,
+  const files = allFiles(config);
+  done(
+    changed
+      ? `Linked to ${resolved.workspaceName} / ${resolved.projectName}`
+      : `Already linked to ${resolved.workspaceName} / ${resolved.projectName}`,
   );
-  if (config.files) {
-    console.log(`Syncing ${config.files.map((entry) => entry.file).join(", ")}`);
-  }
-  console.log(`Wrote ${written}`);
+  say(`  Files   ${files.map((entry) => entry.file).join(", ")}`);
+  say(`  Config  ${path.relative(cwd, written) || CONFIG_FILENAME} ${style.dim("(names only, safe to commit)")}`);
   if (!resolved.currentVersionId) {
-    console.log("This file has no saved version yet, so there's nothing to pull.");
+    note(`${resolved.fileName} has no saved version yet, so there is nothing to pull.`);
   }
+  note(`Next: ${cmd(command("sync"), true)} to bring the files here.`);
+  emit({
+    workspace: config.workspace,
+    project: config.project,
+    file: config.file,
+    files,
+    config: path.relative(cwd, written) || CONFIG_FILENAME,
+    changed,
+  });
   return 0;
 }
 
@@ -93,17 +106,18 @@ async function listAvailable(
 ): Promise<number> {
   const existing = await readProjectConfig(cwd);
   if (existing) {
-    console.log(
-      `Already linked to ${existing.workspace} / ${existing.project} / ${existing.file}.`,
-    );
-    console.log("Pass a workspace and project to change it.\n");
+    say(`Already linked to ${existing.workspace} / ${existing.project}. Pass a workspace and project to change it.`);
+    say();
   }
 
   // Same listing `list` prints, so the two never drift apart. Reaching this
-  // path still means the link did not happen, hence the non-zero exit.
+  // path still means the link did not happen, hence the usage error.
   const entries = listFiles(tree);
   const commands = { link: command("link"), list: command("list") };
-  for (const line of formatListing(entries, commands)) console.log(line);
-  if (entries.length) console.log(`\nThat writes ${CONFIG_FILENAME} here.`);
-  return 1;
+  if (!uiMode().json) for (const line of formatListing(entries, commands)) say(line);
+  throw new CliError("usage", "Say which project to link.", {
+    hint: `That writes ${CONFIG_FILENAME} here.`,
+    next: entries.length ? [command(`link ${shellArg(entries[0]!.workspace)} ${shellArg(entries[0]!.project)}`)] : [],
+    data: { files: entries },
+  });
 }

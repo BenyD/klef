@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideSync, type SyncInput } from "./sync-plan.ts";
+import { decideSync, quickState, type SyncInput } from "./sync-plan.ts";
 
 const baseline = { versionId: "v1", mtimeMs: 1000, size: 4 };
 const untouched = { text: "A=1\n", mtimeMs: 1000, size: 4 };
@@ -68,5 +68,24 @@ describe("decideSync", () => {
     const empty = { text: "  \n", mtimeMs: 3000, size: 3 };
     expect(decide({ local: empty })).toBe("conflict");
     expect(decide({ local: empty, inVault: false, vault: null })).toBe("conflict");
+  });
+});
+
+describe("quickState", () => {
+  const base = { versionId: "v1", mtimeMs: 1000, size: 4 };
+  const same = { mtimeMs: 1000, size: 4 };
+
+  it("says what it can without the passphrase", () => {
+    expect(quickState({ local: same, vaultVersionId: "v1", baseline: base })).toBe("in-sync");
+    expect(quickState({ local: { mtimeMs: 2000, size: 4 }, vaultVersionId: "v1", baseline: base })).toBe("edited-here");
+    expect(quickState({ local: same, vaultVersionId: "v2", baseline: base })).toBe("changed-in-vault");
+    expect(quickState({ local: { mtimeMs: 2000, size: 9 }, vaultVersionId: "v2", baseline: base })).toBe("both-changed");
+  });
+
+  it("covers the files one side lacks, and the never-synced ones", () => {
+    expect(quickState({ local: null, vaultVersionId: "v1", baseline: null })).toBe("missing-here");
+    expect(quickState({ local: same, vaultVersionId: null, baseline: null })).toBe("only-here");
+    expect(quickState({ local: null, vaultVersionId: null, baseline: null })).toBe("absent");
+    expect(quickState({ local: same, vaultVersionId: "v1", baseline: null })).toBe("unknown");
   });
 });

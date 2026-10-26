@@ -1,24 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { clearToken, loadToken } from "../credentials.ts";
+import { done, emit, note, warn } from "../ui.ts";
 
 export async function logout(env: NodeJS.ProcessEnv): Promise<number> {
   const existing = await loadToken(env);
   await clearToken(env);
+  const inEnv = existing?.source === "environment";
 
-  if (!existing) {
-    console.log("Not signed in.");
-    return 0;
+  if (!existing) done("Not signed in; nothing to forget");
+  else if (inEnv) {
+    done("Removed any stored token");
+    warn("KLEF_TOKEN is still set in your environment, so klef still signs in with it.");
+  } else {
+    done("Signed out on this machine");
+    note("The token stays valid until you revoke it in the web app (Settings, Security).");
   }
-
-  if (existing.source === "environment") {
-    // Nothing on this machine to remove — the token came from the environment.
-    console.log(
-      "Removed any stored token, but KLEF_TOKEN is still set in your environment.",
-    );
-    return 0;
-  }
-
-  console.log("Signed out. The token still exists until you revoke it in the web app.");
+  emit({ signedOut: existing !== null && !inEnv, tokenStillInEnvironment: inEnv });
   return 0;
 }

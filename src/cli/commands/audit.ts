@@ -2,6 +2,8 @@
 
 import { readFile } from "node:fs/promises";
 import { hasFlag, type ParsedArgs } from "../args.ts";
+import { CliError, emit, EXIT, say, style } from "../ui.ts";
+import { suggest } from "../commands-table.ts";
 import {
   groupNames,
   isPlatform,
@@ -47,8 +49,11 @@ export interface AuditEntry extends Partial<NameGroups> {
 export async function audit(args: ParsedArgs, env: NodeJS.ProcessEnv, cwd: string): Promise<number> {
   const asked = args.positionals[0];
   if (asked !== undefined && !isPlatform(asked)) {
-    console.error(`Unknown platform "${asked}". Use one of: ${PLATFORMS.join(", ")}.`);
-    return 1;
+    const guess = suggest(asked, PLATFORMS);
+    throw new CliError(
+      "usage",
+      `Unknown platform "${asked}".${guess ? ` Did you mean "${guess}"?` : ""} Use one of: ${PLATFORMS.join(", ")}.`,
+    );
   }
   const platforms: readonly Platform[] = asked ? [asked] : PLATFORMS;
   const config = await readProjectConfig(cwd).catch(() => null);
@@ -71,12 +76,10 @@ export async function audit(args: ParsedArgs, env: NodeJS.ProcessEnv, cwd: strin
     }
   }
 
-  if (hasFlag(args, "json")) {
-    console.log(JSON.stringify({ targets: entries }, null, 2));
-    return 0;
-  }
-  for (const line of formatAudit(entries)) console.log(line);
-  return 0;
+  emit({ targets: entries });
+  for (const line of formatAudit(entries)) say(line);
+  const differs = entries.some((e) => (e.onlyOnPlatform?.length ?? 0) + (e.onlyLocal?.length ?? 0) > 0);
+  return differs && hasFlag(args, "exit-code") ? EXIT.differs : EXIT.ok;
 }
 
 /** Key names in a local file, or null when there is none. Values are never kept. */
@@ -111,9 +114,10 @@ export function formatAudit(entries: AuditEntry[]): string[] {
   const lines: string[] = [];
   for (const entry of entries) {
     if (lines.length) lines.push("");
-    lines.push(`${entry.label}  (${entry.file})`);
+    lines.push(`${style.bold(entry.label)}  ${style.dim(`(${entry.file})`)}`);
     if (entry.status === "skipped" || entry.status === "unavailable") {
-      lines.push(`  ${entry.status === "skipped" ? "skipped" : "could not check"}: ${entry.reason}`);
+      const text = `${entry.status === "skipped" ? "skipped" : "could not check"}: ${entry.reason}`;
+      lines.push(`  ${entry.status === "skipped" ? style.dim(text) : style.yellow(text)}`);
       continue;
     }
     const platform = entry.label.split(" ")[0];
@@ -122,7 +126,7 @@ export function formatAudit(entries: AuditEntry[]): string[] {
       lines.push(`  only on ${platform}: ${entry.onlyOnPlatform!.join(", ")}`);
     }
     if (entry.onlyLocal!.length) lines.push(`  only in ${entry.file}: ${entry.onlyLocal!.join(", ")}`);
-    if (entry.status === "ok") lines.push(`  in both: ${entry.both!.length}`);
+    if (entry.status === "ok") lines.push(style.dim(`  in both: ${entry.both!.length}`));
   }
   if (entries.length === 0) lines.push("Nothing to audit here.");
   return lines;

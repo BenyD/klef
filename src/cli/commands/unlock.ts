@@ -18,7 +18,9 @@ import {
 } from "../agent-protocol.ts";
 import { spawnAgent } from "../agent-spawn.ts";
 import type { AgentHandoff } from "../agent.ts";
-import { promptSecret } from "../prompt.ts";
+import { NoTerminalError, promptSecret } from "../prompt.ts";
+import { requireVault } from "../common.ts";
+import { CliError, cmd, done, emit, note, uiMode } from "../ui.ts";
 import { WrongPassphraseError } from "../unlock.ts";
 
 /**
@@ -39,8 +41,9 @@ export async function unlock(
   start: (handoff: AgentHandoff) => Promise<void> = spawnAgent,
 ): Promise<number> {
   if (process.platform === "win32") {
-    console.error("The unlock agent is not available on Windows yet; pull and push will prompt.");
-    return 1;
+    throw new CliError("unsupported", "The unlock agent is not available on Windows yet.", {
+      hint: "pull and push still work; they ask for the passphrase each time.",
+    });
   }
 
   // Checked before anything else, so a typo costs nothing, not a passphrase.
@@ -48,19 +51,14 @@ export async function unlock(
   const minutes =
     forText === null ? AUTO_LOCK_DEFAULT_MINUTES : parseLockAfter(forText, MAX_LOCK_MINUTES);
   if (minutes === null) {
-    console.error(
+    throw new CliError(
+      "usage",
       `--for takes a time like 30m, 8h or 7d, up to ${describeLockAfter(MAX_LOCK_MINUTES)}.`,
     );
-    return 1;
   }
 
   const api = await requireApi(env);
-  const vault = await api.vault();
-  if (!vault.exists || !vault.keyMaterial) {
-    console.error("This account has no vault yet. Set one up in the web app first.");
-    return 1;
-  }
-  const { kdfParams, wrappedDek } = vault.keyMaterial;
+  const { kdfParams, wrappedDek } = await requireVault(api);
   const fingerprint = await vaultFingerprint(wrappedDek);
 
   // Absolute, because the agent runs from "/" and would resolve a relative
@@ -68,17 +66,30 @@ export async function unlock(
   const socketPath = path.resolve(agentSocketPath(env, homedir()));
   const running = await agentStatus(socketPath);
   if (running?.fingerprint === fingerprint) {
-    console.log(`Already unlocked. Locks in ${describeTimeLeft(running.msLeft)} without use.`);
-    if (forText !== null) {
-      console.log(`To change that, run \`${command("lock")}\` and unlock again with --for.`);
-    }
+    done(`Already unlocked. Locks in ${describeTimeLeft(running.msLeft)} without use`);
+    if (forText !== null) note(`To change that, run ${cmd(command("lock"), true)} and unlock again with --for.`);
+    emit({ unlocked: true, alreadyUnlocked: true, locksInSeconds: Math.floor(running.msLeft / 1000) });
     return 0;
   }
   // An agent for another vault (a different account or server) holds the one
   // socket; replace it rather than refusing.
   if (running) await lockAgent(socketPath);
 
-  const passphrase = await prompt("Master passphrase: ");
+  if (!uiMode().input) {
+    throw new CliError("no_terminal", "Unlocking needs the passphrase typed at a terminal, and prompts are off.", {
+      hint: "Run it without --no-input, outside CI, in your own terminal.",
+    });
+  }
+  let passphrase: string;
+  try {
+    passphrase = await prompt("Master passphrase: ");
+  } catch (err) {
+    if (!(err instanceof NoTerminalError)) throw err;
+    throw new CliError("no_terminal", "Unlocking needs the passphrase typed at a terminal, and there is none here.", {
+      hint: "If an agent ran this, ask the user to run it in their own terminal:",
+      next: [command("unlock")],
+    });
+  }
   if (!passphrase) throw new WrongPassphraseError();
 
   const kekBytes = await deriveKekBytes(passphrase, kdfParams);
@@ -93,8 +104,8 @@ export async function unlock(
     idleMs: minutes * 60_000,
   });
 
-  console.log(
-    `Unlocked. Locks after ${describeLockAfter(minutes)} without use, or on \`${command("lock")}\`.`,
-  );
+  done(`Unlocked. Locks after ${describeLockAfter(minutes)} without use`);
+  note(`${cmd(command("lock"), true)} locks it now.`);
+  emit({ unlocked: true, alreadyUnlocked: false, locksInSeconds: minutes * 60 });
   return 0;
 }

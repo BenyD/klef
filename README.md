@@ -93,6 +93,37 @@ npx @klefsh/cli audit           # every platform set up in this directory
 npx @klefsh/cli audit vercel --json
 ```
 
+### Scripts, CI and coding agents
+
+Every command takes `--json` and then prints exactly one object on stdout,
+`{ "schema": 1, "ok": true, "data": ... }` or, on failure,
+`{ "ok": false, "error": { "code", "message", "hint", "next": [...] }, "exit": n }`.
+Hints and progress go to stderr. `klef status --json` is the one call an agent
+needs first: account, link, lock state, each file's sync state, and the next
+commands to run. `klef help <command>` shows each command's `data`, and
+`klef help json` lists the error codes.
+
+klef never prompts where nobody can answer. Under `--json`, `--no-input`,
+`KLEF_NO_INPUT`, `CI`, or a detected coding agent, a command that needs a yes
+stops with `confirmation_required` (exit 2) and the exact command to rerun
+with `--yes`; one that needs the passphrase stops with `locked` (exit 4) and
+`klef unlock` for a person to run. The rest of the exit codes:
+
+| Code | Meaning |
+| --- | --- |
+| 0 | Success, including nothing to do |
+| 1 | Network, server, or unexpected failure |
+| 2 | Usage error, or a confirmation nobody could give |
+| 3 | Not signed in, or the token was rejected |
+| 4 | Locked: the passphrase is needed |
+| 5 | Conflict: both sides changed, nothing written |
+| 6 | Not linked, or no such workspace, project or file |
+| 10 | Differences found (`diff` and `audit`, with `--exit-code`) |
+
+Colour follows the terminal and respects `NO_COLOR`, `FORCE_COLOR` and
+`--no-color`. Shell completion: `klef completion bash|zsh|fish`. No telemetry,
+no update checks.
+
 ### A new or reset Mac
 
 Clone your repos (their `.klef.json` is committed), then:

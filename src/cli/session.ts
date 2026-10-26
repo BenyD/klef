@@ -4,10 +4,11 @@ import { command } from "./invocation.ts";
 import { KlefApi } from "./api.ts";
 import { loadToken } from "./credentials.ts";
 import { apiBaseUrl } from "./paths.ts";
+import { CliError } from "./ui.ts";
 
-export class NotSignedInError extends Error {
+export class NotSignedInError extends CliError {
   constructor() {
-    super(`Not signed in. Run \`${command("login")}\` first.`);
+    super("not_signed_in", "Not signed in.", { next: [command("login")] });
   }
 }
 

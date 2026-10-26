@@ -4,6 +4,8 @@
 // an ordinary answer rather than an error: a missing socket, or a stale one
 // left by an agent that has gone, both mean the vault is locked.
 
+import { command } from "./invocation.ts";
+import { CliError } from "./ui.ts";
 import { connect } from "node:net";
 import path from "node:path";
 import {
@@ -21,7 +23,11 @@ const RESPONSE_TIMEOUT_MS = 10_000;
 /** Errors that mean nobody is listening, as opposed to something broken. */
 const NOT_RUNNING = new Set(["ENOENT", "ECONNREFUSED", "ENOTSOCK"]);
 
-export class AgentError extends Error {}
+export class AgentError extends CliError {
+  constructor(message: string) {
+    super("locked", message, { next: [command("unlock")] });
+  }
+}
 
 /**
  * Send one request and wait for its reply. Null when no agent is running.
