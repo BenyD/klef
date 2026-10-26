@@ -15,10 +15,16 @@
 - GitHub Actions are restricted to GitHub-owned and verified-creator actions
   (plus `pnpm/action-setup`); a new third-party action in a workflow needs
   allow-listing in repo settings first.
-- Dependabot: weekly grouped version PRs (`.github/dependabot.yml`) with a
-  7-day cooldown against fresh releases. Patch/minor PRs arm their own
-  auto-merge (`.github/workflows/dependabot-auto-merge.yml`); majors wait
-  for human review. Vulnerability alerts and security-update PRs are on.
+- Dependabot: monthly grouped version PRs (`.github/dependabot.yml`) with a
+  7-day cooldown against fresh releases; security updates land as one
+  grouped PR whenever an advisory appears. Patch/minor PRs arm their own
+  auto-merge (`.github/workflows/dependabot-auto-merge.yml`); majors and
+  anything touching better-auth wait for human review (keep
+  `better-auth`, `auth`, and `@better-auth/*` on one version).
+- pnpm enforces a 1-day `minimumReleaseAge`, which Dependabot's cooldown
+  does not cover for security PRs: if CI fails with
+  `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`, wait a day and
+  `@dependabot recreate` rather than adding a `minimumReleaseAgeExclude`.
 
 ## Commands
 

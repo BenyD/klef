@@ -23,6 +23,7 @@ diverged it is marked inline.
 | Token management UI | Settings → Security → Developer |
 | CLI | `src/cli/` — `login`, `logout`, `status`, `link`, `pull`, `push`, `unlock`, `lock` |
 | Unlock agent | `src/cli/agent.ts`, `agent-client.ts`, `agent-spawn.ts`, `socket-dir.ts`, `vault-key.ts` |
+| Agent timeout | `klef unlock --for 8h`: 15 minutes by default, up to 7 days (`MAX_LOCK_MINUTES` in `src/shared/lock-policy.ts`) |
 | Multi-file sync | `files` in `.klef.json` (`src/cli/project-config.ts`), `push --all`, `pull --all` |
 | Published package | `@klefsh/cli`, one bundled file, zero required dependencies |
 | Browser sign-in | `db/migrations/0013_device_authorizations.sql`, `src/api/device.ts`, `/cli` |
@@ -40,8 +41,6 @@ it, but not yet run by hand against production.
 - **The MCP server** — §9 below, the piece this document was written for.
 - **The unlock agent on Windows** — named pipes with an ACL. `klef unlock`
   refuses there today, and `pull` / `push` prompt as before.
-- **A configurable agent timeout** — it uses the web vault's default, 15
-  minutes, and does not yet follow a changed setting (§12).
 
 ## What the build taught that the design did not
 
@@ -389,5 +388,7 @@ browser flow does not have:
   though the existing immutable version history already provides most of that.
 - Should the agent process be able to *stay* unlocked across an agent session
   longer than 15 minutes? Long agent runs will hit the timeout mid-task.
+  *(Answered: `klef unlock --for`, up to 7 days, chosen per unlock. The CLI
+  does not read the web's auto-lock setting, which lives in that browser.)*
 - Windows support: named pipes and DPAPI are a meaningful chunk of extra work.
   Ship Unix-first?

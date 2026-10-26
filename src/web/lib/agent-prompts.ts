@@ -62,86 +62,45 @@ Your job is to prepare everything, then walk me through it step by step.
 
 I'll paste the file contents in myself. Klef encrypts them in my browser, so the
 server only ever stores ciphertext, which is also why you never need to see
-them.`,
+them.
+
+5. Once they are in, give me \`npx @klefsh/cli setup\` to run in my own
+   terminal. That one command signs this machine in, links the repo, installs
+   Klef instructions for Claude Code and Cursor (so later sessions already know
+   how to sync these files), and pulls them back down.`,
   },
   {
-    id: "pull",
-    label: "Pull my envs",
+    id: "connect",
+    label: "Connect my agent",
     description:
-      "Gets this project's env files out of Klef and onto this machine. The agent runs the CLI; you type the passphrase and it never prints a value.",
-    body: `Get this project's environment files out of Klef (https://klef.sh) and onto
-this machine, using the Klef CLI.
+      "One time per repo: signs this machine in, links the repo, and installs instructions so every later Claude Code or Cursor session already knows Klef.",
+    body: `Connect this repository to Klef (https://klef.sh) with one command, so that
+you and every later agent session in this repo know how to sync its env files.
 
-Two things stay mine throughout: the access token and the master passphrase.
-Don't ask me for either. The CLI reads the passphrase straight from the
-terminal, which is exactly why it can't pass through you.
+Run \`npx @klefsh/cli setup\` and follow what it prints. It skips any step that
+is already done, so it is safe to run again. Along the way:
 
-1. Check where things stand: \`npx @klefsh/cli status\`.
-   If it says I'm not signed in, give me \`npx @klefsh/cli login\` to run myself and
-   wait. I'll paste a token from klef.sh → Settings → Security → Developer.
-2. If this directory isn't linked yet, run \`npx @klefsh/cli list\` to see what's
-   in my vault, show me the options, and link the one I pick with
-   \`npx @klefsh/cli link <workspace> <project> <file>\`. That writes .klef.json,
-   which is safe to commit, since it holds names, never values.
-   \`list\` is read-only and takes --json if you'd rather parse it.
-3. Give me \`npx @klefsh/cli pull\` to run myself. It stops for my passphrase, so it
-   won't work if you run it. Hand it over and wait for me to confirm.
-4. For other files in the same project, the same applies with
-   \`npx @klefsh/cli pull --file <name>\` (for example .env.local, then
-   .env.production).
-5. Finally, check every file it wrote is ignored by git:
-   \`git ls-files --error-unmatch <path>\` should fail for each. If one is tracked,
-   tell me immediately.
+1. Sign-in opens my browser. Tell me to approve it there and wait.
+2. If my vault has more than one project, it lists them by name and asks which
+   one this repo is. Ask me, then rerun with the
+   \`--workspace <workspace> --project <project>\` it suggests. That writes
+   .klef.json, which holds names only and is safe to commit.
+3. It wants to write a Claude Code skill (.claude/skills/klef/SKILL.md) and a
+   Cursor rule (.cursor/rules/klef.mdc). Show me those paths and ask me first.
+   Only once I say yes, rerun with \`--yes\`. They hold commands and rules,
+   never a value.
+4. Pulling needs my master passphrase, which the CLI reads from the terminal so
+   it never passes through you. When it says so, give me
+   \`npx @klefsh/cli unlock\` to run myself and wait for me. Then run setup
+   again: it pulls only the files that are not on disk yet, so nothing I have
+   edited locally is overwritten, and it reports a count, never a value.
+5. Check git does not track any env file it wrote:
+   \`git ls-files --error-unmatch <path>\` should fail for each. If one is
+   tracked, tell me immediately.
 
-\`pull\` writes files at mode 0600 and reports only a count, never a value. Don't
-open or print what it wrote; if you need to know which keys a file defines, ask
-me.`,
-  },
-  {
-    id: "sync",
-    label: "Keep in sync",
-    description:
-      "Works out whether this repo is ahead of your vault or behind it, then hands you the one command to run. It never opens a file.",
-    body: `Keep this repo's environment files and my Klef vault (https://klef.sh) in sync.
-
-Neither direction is yours to run. Both \`pull\` and \`push\` read my master
-passphrase straight from the terminal, and exit 1 with "This needs an
-interactive terminal" when anything else tries. That is deliberate: do not
-retry, do not pipe a passphrase, and do not go looking for a flag that skips it.
-
-What you can run:
-  npx @klefsh/cli status --json   # signed in? what is this directory linked to?
-  npx @klefsh/cli list --json     # the files in my vault, names only
-
-1. Run \`status --json\`. If signedIn is false, hand me \`npx @klefsh/cli login\`
-   and wait. If linked is null, run \`list --json\`, show me the options, and
-   link the one I pick with
-   \`npx @klefsh/cli link <workspace> <project> <file>\`.
-2. Work out which way sync should go, and tell me which before doing anything:
-   - in the vault (hasVersion true in list --json) but not on disk -> I pull
-   - on disk but hasVersion is false -> I push
-   - both exist -> ask me. Klef has no \`diff\` command yet, so neither of us
-     can tell whether they actually differ without opening the file, and you
-     are not going to open the file.
-3. Hand me the command and wait for me to confirm it finished:
-     npx @klefsh/cli pull   # vault -> disk, written at mode 0600
-     npx @klefsh/cli push   # disk -> vault, as a new version
-   For another file in the same project, add --file <name>.
-4. After a pull, check git does not track what it wrote:
-   \`git ls-files --error-unmatch <path>\` should fail. If it succeeds, that
-   file is committed and leaking. Tell me immediately and stop.
-5. Before a push, check .env.example lists every key the code reads. If the
-   code references a variable that is not in .env.example, add the key with a
-   comment saying where the value comes from. Never a value.
-
-The two directions are not equally safe. \`push\` is append-only: it adds a
-version and every earlier one stays, so a bad push is recoverable from the web
-app. \`pull\` overwrites the local file, and that is not recoverable. If a local
-file already exists and I have unsaved changes in it, say so before handing me
-the pull.
-
-Do not open or print what either command touched. If you need to know which
-keys a file defines, ask me.`,
+From then on, the installed instructions cover status, pull, push, and unlock,
+so no later session needs this prompt. Don't ask me for my passphrase or access
+token, and don't open or print any env file.`,
   },
   {
     id: "self-host",
@@ -232,38 +191,43 @@ export function pnpmScriptsIn(text: string): string[] {
 /**
  * The prompt offered from a file in the vault.
  *
- * Unlike the landing-page version this one already knows what the reader is
- * looking at, so the agent runs one command instead of listing the vault and
- * waiting for a choice. `pull` is still handed back, since it stops for the
- * passphrase and an agent running it only reaches the no-terminal error.
+ * Unlike the landing-page version this one already knows which project the
+ * reader is looking at, so `setup` gets it by flag instead of asking. The
+ * unlock is still handed back, since it stops for the passphrase and an agent
+ * running it only reaches the no-terminal error.
  */
 export function filePullPrompt(target: {
   workspace: string;
   project: string;
   file: string;
 }): string {
-  const link = [
-    "npx @klefsh/cli link",
+  const setup = [
+    "npx @klefsh/cli setup --workspace",
     shellQuote(target.workspace),
+    "--project",
     shellQuote(target.project),
-    shellQuote(target.file),
   ].join(" ");
 
-  return `Get ${target.file} out of Klef (https://klef.sh) and into this repo.
+  return `Connect this repo to the ${target.project} project in Klef (https://klef.sh),
+which holds ${target.file}, so its env files sync here and every later agent
+session already knows how.
 
-1. Link this directory to it:
-   ${link}
-2. Then give me \`npx @klefsh/cli pull\` to run myself, and wait. It stops for my
-   master passphrase, which is read from the terminal, so it won't work if you
-   run it and I won't paste it to you.
-3. Once it reports a count, check the file is ignored by git:
+1. Run:
+   ${setup}
+   If I'm not signed in, it opens my browser; tell me to approve it and wait.
+2. It wants to write a Claude Code skill and a Cursor rule. Show me the paths
+   it lists and ask me. Only once I say yes, rerun it with --yes.
+3. When it asks for the passphrase, give me \`npx @klefsh/cli unlock\` to run
+   myself, and wait. The passphrase is read from the terminal, so it won't
+   work if you run it and I won't paste it to you. Then run the setup command
+   again; it pulls only the files that are not on disk yet.
+4. Check every env file it wrote is ignored by git:
    \`git ls-files --error-unmatch ${target.file}\` should fail. If it doesn't,
    tell me immediately.
 
-If I'm not signed in, step 1 will say so; give me \`npx @klefsh/cli login\` to run
-and wait for me. \`pull\` writes at mode 0600 and reports only how many
-variables it wrote. Don't open or print what it wrote; if you need to know
-which keys it defines, ask me.
+Pulled files are written at mode 0600 and reported only as a count.
+Don't open or print what it wrote; if you need to know which keys it defines,
+ask me.
 
 ${SECRET_SAFETY_RULE}`;
 }

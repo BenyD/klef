@@ -1,7 +1,29 @@
 import { env, SELF } from "cloudflare:test";
 import { getAuthTables } from "better-auth/db";
+import { makeSignature } from "better-auth/crypto";
 import { describe, expect, it } from "vitest";
-import { createAuth } from "./auth";
+import {
+  createAuth,
+  SESSION_EXPIRES_IN_SECONDS,
+} from "./auth";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+async function seedUser(id: string) {
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "INSERT OR IGNORE INTO user (id, name, email, emailVerified, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)",
+  )
+    .bind(id, "Test", `${id}@test.dev`, 0, now, now)
+    .run();
+}
+
+/** The signed cookie a browser would send back for this session token. */
+async function sessionCookie(token: string): Promise<string> {
+  const signature = await makeSignature(token, env.BETTER_AUTH_SECRET);
+  // https baseURL, so Better Auth uses the __Secure- prefixed name.
+  return `__Secure-better-auth.session_token=${encodeURIComponent(`${token}.${signature}`)}`;
+}
 
 // Phase 1 — auth gating. We can't complete the Google OAuth round-trip without
 // real credentials + a browser, so we prove the two things that matter here:
@@ -92,5 +114,48 @@ describe("auth", () => {
       }),
     });
     expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+
+  // A returning user on the same device should not be sent back to sign-in.
+  // Better Auth's default lifetime is 7 days; Klef's is 30, and sliding.
+  describe("session lifetime", () => {
+    it("issues 30-day sessions", async () => {
+      await seedUser("lifetime-user");
+      const ctx = await createAuth(env).$context;
+      const session = await ctx.internalAdapter.createSession("lifetime-user");
+      const ttl = new Date(session.expiresAt).getTime() - Date.now();
+      expect(ttl).toBeGreaterThan(29 * DAY_MS);
+      expect(ttl).toBeLessThanOrEqual(SESSION_EXPIRES_IN_SECONDS * 1000);
+    });
+
+    it("slides the expiry forward when a day-old session is used", async () => {
+      await seedUser("sliding-user");
+      const ctx = await createAuth(env).$context;
+      const session = await ctx.internalAdapter.createSession("sliding-user");
+      // Pretend the session was last refreshed two days ago.
+      const aged = new Date(Date.now() + SESSION_EXPIRES_IN_SECONDS * 1000 - 2 * DAY_MS);
+      await env.DB.prepare("UPDATE session SET expiresAt = ? WHERE token = ?")
+        .bind(aged.toISOString(), session.token)
+        .run();
+
+      const res = await SELF.fetch("https://klef.test/api/auth/get-session", {
+        headers: { cookie: await sessionCookie(session.token) },
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { user?: { id: string } } | null;
+      expect(body?.user?.id).toBe("sliding-user");
+
+      // The browser cookie is re-issued for the full window...
+      const setCookie = res.headers.get("set-cookie") ?? "";
+      expect(setCookie).toContain(`Max-Age=${SESSION_EXPIRES_IN_SECONDS}`);
+      expect(setCookie).toMatch(/HttpOnly/i);
+      expect(setCookie).toMatch(/Secure/i);
+      expect(setCookie).toMatch(/SameSite=Lax/i);
+      // ...and the stored expiry moved forward with it.
+      const row = await env.DB.prepare("SELECT expiresAt FROM session WHERE token = ?")
+        .bind(session.token)
+        .first<{ expiresAt: string }>();
+      expect(new Date(row!.expiresAt).getTime()).toBeGreaterThan(aged.getTime() + DAY_MS);
+    });
   });
 });

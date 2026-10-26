@@ -51,8 +51,8 @@ const sections: DocSection[] = [
           The server stores the wrapped DEK, never the DEK itself. Changing
           your passphrase just re-wraps one key instead of re-encrypting
           every file. All key material lives as non-extractable WebCrypto
-          keys in memory, and locking your vault clears it without signing
-          you out.
+          keys on your device, kept across reloads only until auto-lock, and
+          locking your vault clears it without signing you out.
         </p>
       </>
     ),

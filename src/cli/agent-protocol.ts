@@ -104,5 +104,30 @@ export async function vaultFingerprint(wrappedDek: WrappedKey): Promise<string> 
 export function describeTimeLeft(msLeft: number): string {
   if (msLeft < 60_000) return "under a minute";
   const minutes = Math.floor(msLeft / 60_000);
-  return `${minutes} min`;
+  if (minutes < 120) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours} hours`;
+  return `${Math.floor(hours / 24)} days`;
+}
+
+/** "15 minutes", "8 hours", "7 days": a chosen timeout, as people say it. */
+export function describeLockAfter(minutes: number): string {
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+  if (minutes % (24 * 60) === 0) return plural(minutes / (24 * 60), "day");
+  if (minutes % 60 === 0) return plural(minutes / 60, "hour");
+  return plural(minutes, "minute");
+}
+
+/**
+ * `klef unlock --for 8h`: a whole number with m, h or d, or bare minutes.
+ * Null for anything else, or outside 1 minute to `max` minutes, so a typo
+ * never quietly becomes "forever".
+ */
+export function parseLockAfter(text: string, max: number): number | null {
+  const match = /^(\d+)\s*(m|min|h|d)?$/i.exec(text.trim());
+  if (!match) return null;
+  const unit = (match[2] ?? "m").toLowerCase();
+  const minutes =
+    Number(match[1]) * (unit === "d" ? 24 * 60 : unit === "h" ? 60 : 1);
+  return minutes >= 1 && minutes <= max ? minutes : null;
 }

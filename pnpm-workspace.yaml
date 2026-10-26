@@ -7,18 +7,6 @@ allowBuilds:
   sharp: true
   workerd: true
 
-minimumReleaseAgeExclude:
-  - '@better-auth/core@1.7.3'
-  - '@better-auth/drizzle-adapter@1.7.3'
-  - '@better-auth/kysely-adapter@1.7.3'
-  - '@better-auth/memory-adapter@1.7.3'
-  - '@better-auth/mongo-adapter@1.7.3'
-  - '@better-auth/passkey@1.7.3'
-  - '@better-auth/prisma-adapter@1.7.3'
-  - '@better-auth/telemetry@1.7.3'
-  - better-auth@1.7.3
-  - auth@1.7.3
-
 # Security / peer overrides. Schema generation uses `auth generate` (see
 # `db:generate`); do not reintroduce `@better-auth/cli`, which pins
 # better-call@1.1.x and breaks 1.7.
