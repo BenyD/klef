@@ -80,16 +80,36 @@
   border-radius: var(--m-radius-sm);
 }
 
-/* --- nav ----------------------------------------------------------------- */
+/* --- header ---------------------------------------------------------------- */
 
-.marketing-nav {
+/* Sticky, and quiet until the page scrolls under it: then a blurred
+   backdrop and a hairline say "this floats". */
+.m-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid transparent;
+  transition:
+    background-color var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out);
+}
+
+.m-header[data-scrolled] {
+  border-bottom-color: var(--m-border);
+  background: color-mix(in oklab, var(--m-bg) 82%, transparent);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+}
+
+.m-header-inner {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 32px;
   width: 100%;
   max-width: var(--m-width);
+  height: 60px;
   margin: 0 auto;
-  padding: 18px 24px;
+  padding: 0 24px;
 }
 
 .marketing-brand {
@@ -111,14 +131,15 @@
   color: var(--primary-foreground);
 }
 
-.marketing-nav-sections {
+.m-header-nav {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   margin-right: auto;
 }
 
-.marketing .marketing-nav-sections a {
+.marketing .m-header-nav a,
+.marketing .m-header-signin {
   padding: 6px 10px;
   border-radius: var(--m-radius);
   font-size: 13px;
@@ -129,24 +150,62 @@
     background-color var(--duration-fast) var(--ease-quick);
 }
 
-.marketing .marketing-nav-sections a:hover {
+.marketing .m-header-nav a:hover,
+.marketing .m-header-signin:hover {
   color: var(--m-fg);
   background: var(--m-hover);
 }
 
-.marketing-nav-links {
+.m-header-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
-@media (max-width: 720px) {
-  .marketing-nav {
-    padding: 14px 16px;
+.m-header-actions .m-btn-solid {
+  margin-left: 6px;
+}
+
+.marketing .m-header .m-menu-button {
+  display: none;
+}
+
+/* The phone menu: a full-width sheet under the bar. */
+.m-mobile-menu {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 16px 20px;
+  border-top: 1px solid var(--m-border);
+}
+
+.marketing .m-mobile-menu a {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  border-bottom: 1px solid var(--m-border);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--m-fg);
+}
+
+.marketing .m-mobile-menu .m-mobile-menu-signin {
+  border-bottom: 0;
+  color: var(--m-muted);
+}
+
+@media (max-width: 767px) {
+  .m-header-inner {
+    gap: 12px;
+    height: 56px;
+    padding: 0 16px;
     justify-content: space-between;
   }
-  .marketing-nav-sections {
+  .marketing .m-header .m-header-nav,
+  .marketing .m-header .m-hide-phone {
     display: none;
+  }
+  .marketing .m-header .m-menu-button {
+    display: inline-flex;
   }
 }
 
@@ -176,6 +235,16 @@
 }
 .marketing .m-btn-primary:hover {
   background: color-mix(in oklab, var(--primary) 90%, var(--foreground));
+}
+
+/* Foreground-filled: the header's call to action, which leaves ember to the
+   page's own. */
+.marketing .m-btn-solid {
+  background: var(--m-fg);
+  color: var(--m-bg);
+}
+.marketing .m-btn-solid:hover {
+  background: color-mix(in oklab, var(--m-fg) 85%, var(--m-bg));
 }
 
 .marketing .m-btn-ghost {
@@ -639,7 +708,7 @@
   margin: 0 auto;
   padding: 112px 24px;
   border-top: 1px solid var(--m-border);
-  scroll-margin-top: 16px;
+  scroll-margin-top: 72px;
 }
 
 /* The first section follows the proof bar, which already draws a rule. */
@@ -1299,37 +1368,95 @@
   overflow-wrap: anywhere;
 }
 
-/* --- footer --------------------------------------------------------------- */
+/* --- footer ---------------------------------------------------------------- */
 
-.marketing-footer {
+.m-footer {
   border-top: 1px solid var(--m-border);
+  background: var(--m-card);
 }
 
-.marketing-footer-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
+.m-footer-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+  gap: 40px;
   max-width: var(--m-width);
   margin: 0 auto;
-  padding: 24px;
+  padding: 64px 24px 48px;
+}
+
+.m-footer-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  max-width: 22rem;
+}
+
+.m-footer-brand p {
+  margin: 0;
   font-size: 13px;
+  line-height: 1.65;
   color: var(--m-muted);
 }
 
-.marketing .marketing-footer-inner a {
+.marketing .m-footer-github {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--m-mono);
+  font-size: 12px;
+  color: var(--m-muted);
   transition: color var(--duration-fast) var(--ease-quick);
 }
-.marketing .marketing-footer-inner a:hover {
+.marketing .m-footer-github:hover {
+  color: var(--m-fg);
+}
+.m-footer-github svg {
+  width: 15px;
+  height: 15px;
+}
+
+.m-footer-col h2 {
+  margin: 0 0 14px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--m-fg);
 }
 
-.marketing-footer-links {
+.m-footer-col ul {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.marketing .m-footer-col a {
+  font-size: 13px;
+  color: var(--m-muted);
+  transition: color var(--duration-fast) var(--ease-quick);
+}
+.marketing .m-footer-col a:hover {
+  color: var(--m-fg);
+}
+
+.m-footer-base {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 20px;
+  justify-content: space-between;
+  gap: 8px 24px;
+  max-width: var(--m-width);
+  margin: 0 auto;
+  padding: 20px 24px 28px;
+  border-top: 1px solid var(--m-border);
+  font-size: 12px;
+  color: var(--m-muted);
+}
+
+.marketing .m-footer-base a:hover {
+  color: var(--m-fg);
 }
 
 .marketing-credit {
@@ -1351,16 +1478,33 @@
   background: var(--sidebar);
 }
 
-@media (max-width: 560px) {
-  .marketing-footer-inner {
-    flex-direction: column;
-    justify-content: center;
-    text-align: center;
-    gap: 12px;
-    padding: 20px 16px;
+@media (max-width: 860px) {
+  .m-footer-inner {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 32px 24px;
+    padding: 48px 16px 32px;
   }
-  .marketing-footer-links {
-    justify-content: center;
+  .m-footer-brand {
+    grid-column: 1 / -1;
+    max-width: 32rem;
+  }
+  .m-footer-base {
+    padding: 20px 16px 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .m-footer-inner {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* Tap targets: rows of links get room to breathe on a phone. */
+  .m-footer-col ul {
+    gap: 4px;
+  }
+  .marketing .m-footer-col a {
+    display: inline-block;
+    padding: 6px 0;
+    font-size: 14px;
   }
 }
 
@@ -1531,7 +1675,7 @@
 
 .marketing-doc-toc-inner {
   position: sticky;
-  top: 40px;
+  top: 92px;
 }
 
 .marketing-doc-toc-label {
@@ -1598,7 +1742,7 @@
 
 /* Room under the top edge when jumping to a section. */
 .marketing-doc section {
-  scroll-margin-top: 32px;
+  scroll-margin-top: 84px;
 }
 
 /* Section headings are self-links: plain headings with a hover # mark. */
