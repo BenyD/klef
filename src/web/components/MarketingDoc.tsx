@@ -47,15 +47,21 @@ function useScrollSpy(ids: string[]) {
 // Document-style marketing page: sticky table of contents on the left
 // (desktop), inline "On this page" list on mobile, prose on the right.
 export function MarketingDoc({
+  kicker,
   title,
   updated,
   lead,
+  intro,
   sections,
   children,
 }: {
+  /** Small label over the title, matching the landing page's sections. */
+  kicker: string;
   title: string;
   updated?: string;
   lead: ReactNode;
+  /** Optional figure between the lead and the first section. */
+  intro?: ReactNode;
   sections: DocSection[];
   children?: ReactNode;
 }) {
@@ -91,11 +97,13 @@ export function MarketingDoc({
           </div>
         </aside>
         <article className="marketing-page">
+          <p className="m-kicker">{kicker}</p>
           <h1>{title}</h1>
-          {updated && (
-            <p className="marketing-page-updated">Last updated: {updated}</p>
-          )}
           <p className="marketing-page-lead">{lead}</p>
+          {updated && (
+            <p className="marketing-page-updated">Last updated {updated}</p>
+          )}
+          {intro && <div className="marketing-page-intro">{intro}</div>}
           {sections.map((s) => (
             <section key={s.id} id={s.id}>
               <h2>

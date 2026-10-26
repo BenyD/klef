@@ -25,6 +25,8 @@
   min-height: 100svh;
   display: flex;
   flex-direction: column;
+  /* The hero's glow reaches past the content; never let it scroll the page. */
+  overflow-x: clip;
   color: var(--m-fg);
   background:
     radial-gradient(50% 40% at 70% 0%, var(--m-ember-glow), transparent 70%),
@@ -242,37 +244,18 @@
 /* --- hero ----------------------------------------------------------------- */
 
 .m-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-  grid-template-areas:
-    "head head"
-    "copy term";
-  align-items: start;
-  gap: 40px 56px;
   width: 100%;
   max-width: var(--m-width);
   margin: 0 auto;
-  padding: 72px 24px 96px;
+  padding: 64px 24px 0;
 }
 
 .m-hero-head {
-  grid-area: head;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 20px;
-}
-
-.m-hero-copy {
-  grid-area: copy;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 24px;
-}
-
-.m-hero-terminal {
-  grid-area: term;
+  max-width: 52rem;
 }
 
 .m-eyebrow {
@@ -294,17 +277,29 @@
 
 .m-hero h1 {
   margin: 0;
-  max-width: 16em;
-  font-size: clamp(38px, 6vw, 64px);
-  line-height: 1.04;
-  letter-spacing: -0.032em;
+  font-size: clamp(36px, 6.4vw, 72px);
+  line-height: 1.02;
+  letter-spacing: -0.038em;
   font-weight: 600;
+}
+
+/* Headline phrases stay whole where there is room, so the breaks fall on
+   the commas; on a phone they wrap like any text. */
+@media (min-width: 640px) {
+  .m-phrase {
+    white-space: nowrap;
+  }
+}
+
+/* The second beat of the headline, a step back in the same breath. */
+.m-h1-quiet {
+  color: var(--m-muted);
 }
 
 .m-hero-lead {
   margin: 0;
-  max-width: 34rem;
-  font-size: 17px;
+  max-width: 38rem;
+  font-size: 18px;
   line-height: 1.6;
   color: var(--m-muted);
 }
@@ -313,26 +308,85 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 20px;
-  margin-top: 4px;
+  gap: 8px 24px;
 }
 
-.m-hero-note {
+.marketing .m-btn-lg {
+  height: 44px;
+  padding: 0 22px;
+  font-size: 15px;
+}
+
+/* The product shot: wide, lifted, with an ember wash behind it that fades
+   into the page. */
+.m-hero-visual {
+  position: relative;
+  margin-top: 56px;
+}
+.m-hero-visual::before {
+  content: "";
+  position: absolute;
+  inset: -40px -10% auto;
+  height: 70%;
+  background: radial-gradient(50% 60% at 50% 40%, var(--m-ember-glow), transparent 70%);
+  pointer-events: none;
+}
+
+/* Proof bar: four checkable facts under the shot. */
+.m-proof {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.m-proof li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 28px 24px 32px 0;
+}
+.m-proof li + li {
+  padding-left: 24px;
+  border-left: 1px solid var(--m-border);
+}
+.m-proof-k {
+  font-family: var(--m-mono);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--m-fg);
+}
+.m-proof-v {
   font-size: 13px;
+  line-height: 1.5;
   color: var(--m-muted);
 }
 
-@media (max-width: 920px) {
+@media (max-width: 820px) {
   .m-hero {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "head" "copy" "term";
-    gap: 28px;
-    padding: 40px 16px 56px;
+    padding: 40px 16px 0;
+  }
+  .m-hero-visual {
+    margin-top: 40px;
+  }
+  .m-proof {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .m-proof li,
+  .m-proof li + li {
+    padding: 20px 16px 20px 0;
+    border-left: 0;
+  }
+  .m-proof li:nth-child(even) {
+    padding-left: 16px;
+    border-left: 1px solid var(--m-border);
+  }
+  .m-proof li:nth-child(n + 3) {
+    border-top: 1px solid var(--m-border);
   }
 }
 
-/* Staggered entrance on load: once, on the hero only, never on scroll. */
+/* Entrance on load: once, on the hero only, never on scroll. */
 @keyframes m-rise {
   from {
     opacity: 0;
@@ -345,24 +399,149 @@
 }
 
 .m-hero-head > *,
-.m-hero-copy,
-.m-hero-terminal {
+.m-hero-visual {
   animation: m-rise var(--duration-slow) var(--ease-out) both;
 }
 .m-hero-head > h1 {
   animation-delay: 40ms;
 }
-.m-hero-copy {
+.m-hero-head > :nth-child(n + 3) {
   animation-delay: 80ms;
 }
-.m-hero-terminal {
-  animation-delay: 120ms;
+.m-hero-visual {
+  animation-delay: 140ms;
+}
+
+/* --- the hero's terminal demo --------------------------------------------- */
+
+.m-demo {
+  position: relative;
+  border: 1px solid var(--m-border);
+  border-radius: calc(var(--radius) + 6px);
+  background: var(--m-card);
+  box-shadow: var(--elevation-modal);
+  overflow: hidden;
+}
+
+.m-demo-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 12px 8px 16px;
+  border-bottom: 1px solid var(--m-border);
+}
+
+.m-demo-tabs {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.m-demo-tab {
+  flex: none;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--m-muted);
+  font-family: var(--m-mono);
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: var(--m-radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-quick),
+    color var(--duration-fast) var(--ease-quick);
+}
+.m-demo-tab:hover {
+  color: var(--m-fg);
+}
+.m-demo-tab[aria-selected="true"] {
+  background: var(--m-hover);
+  color: var(--m-fg);
+}
+
+.m-demo-cwd {
+  margin-left: auto;
+  flex: none;
+  font-family: var(--m-mono);
+  font-size: 12px;
+  color: var(--m-muted);
+}
+
+.m-demo-panel {
+  min-height: 340px;
+}
+
+.marketing .m-demo-body {
+  padding: 22px 24px;
+  font-size: 13px;
+  line-height: 1.85;
+}
+
+/* Lines arrive one after another when a tab opens: a replay of the run, not
+   decoration, and short enough to stay under the 300ms feedback rule per
+   line. Off entirely for reduced motion. */
+.m-demo-body .t-line {
+  animation: m-line var(--duration-base) var(--ease-out) both;
+}
+.m-demo-body .t-line:nth-child(2) { animation-delay: 60ms; }
+.m-demo-body .t-line:nth-child(3) { animation-delay: 120ms; }
+.m-demo-body .t-line:nth-child(4) { animation-delay: 180ms; }
+.m-demo-body .t-line:nth-child(5) { animation-delay: 240ms; }
+.m-demo-body .t-line:nth-child(6) { animation-delay: 300ms; }
+.m-demo-body .t-line:nth-child(7) { animation-delay: 360ms; }
+.m-demo-body .t-line:nth-child(8) { animation-delay: 420ms; }
+.m-demo-body .t-line:nth-child(9) { animation-delay: 480ms; }
+.m-demo-body .t-line:nth-child(n + 10) { animation-delay: 540ms; }
+
+@keyframes m-line {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.m-demo-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--m-border);
+  font-family: var(--m-mono);
+  font-size: 12px;
+  color: var(--m-muted);
+}
+
+.m-demo-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--diff-add);
+}
+
+@media (max-width: 640px) {
+  .m-demo-cwd {
+    display: none;
+  }
+  .m-demo-panel {
+    min-height: 0;
+  }
+  .marketing .m-demo-body {
+    padding: 16px;
+    font-size: 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .m-hero-head > *,
-  .m-hero-copy,
-  .m-hero-terminal,
+  .m-hero-visual,
+  .m-demo-body .t-line,
   .marketing-page,
   .marketing-doc {
     animation: none;
@@ -380,22 +559,6 @@
   overflow: hidden;
 }
 
-.m-hero-terminal {
-  box-shadow: var(--elevation-modal);
-}
-.m-hero-terminal .m-term-body {
-  padding: 18px 20px;
-  font-size: 12.5px;
-  line-height: 1.85;
-}
-@media (max-width: 560px) {
-  .m-hero-terminal .m-term-body {
-    padding: 14px 16px;
-    font-size: 12px;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-  }
-}
 
 .m-term-bar {
   display: flex;
@@ -461,39 +624,63 @@
 
 /* --- sections ------------------------------------------------------------- */
 
+.m-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .m-section {
   width: 100%;
   max-width: var(--m-width);
   margin: 0 auto;
-  padding: 88px 24px;
+  padding: 112px 24px;
   border-top: 1px solid var(--m-border);
   scroll-margin-top: 16px;
 }
 
-.m-section-head {
-  max-width: 40rem;
-  margin-bottom: 40px;
+/* The first section follows the proof bar, which already draws a rule. */
+.m-hero + .m-section {
+  margin-top: 0;
 }
 
-.m-kicker {
-  margin: 0 0 12px;
+.m-section-head {
+  max-width: 44rem;
+  margin-bottom: 56px;
+}
+
+.marketing .m-kicker {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 16px;
   font-size: 13px;
   font-weight: 500;
   color: var(--brand);
 }
 
+.m-kicker-n {
+  font-family: var(--m-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--m-muted);
+}
+
 .m-section h2,
 .m-closing h2 {
   margin: 0;
-  font-size: clamp(26px, 3.4vw, 36px);
-  line-height: 1.12;
-  letter-spacing: -0.026em;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
   font-weight: 600;
 }
 
 .m-section-lead {
-  margin: 14px 0 0;
-  font-size: 16px;
+  margin: 18px 0 0;
+  font-size: 17px;
   line-height: 1.65;
   color: var(--m-muted);
 }
@@ -506,38 +693,35 @@
 }
 
 .m-section-more {
-  margin-top: 28px;
+  margin-top: 32px;
 }
 
 @media (max-width: 720px) {
   .m-section {
-    padding: 56px 16px;
+    padding: 72px 16px;
   }
   .m-section-head {
-    margin-bottom: 28px;
+    margin-bottom: 36px;
+  }
+  .m-section-lead {
+    font-size: 16px;
   }
 }
 
-/* How it works: three steps, each prose beside its transcript. */
+/* 01 How it works: three steps, each prose beside its transcript. */
 .m-steps {
   display: grid;
-  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .m-step {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-  gap: 32px;
-  align-items: start;
-  padding: 24px 0;
-  border-top: 1px solid var(--m-border);
-}
-.m-step:first-child {
-  border-top: 0;
-  padding-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .m-step-text {
@@ -549,10 +733,17 @@
 }
 
 .m-step-n {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--m-border-strong);
+  border-radius: 999px;
   font-family: var(--m-mono);
-  font-size: 13px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
   color: var(--m-muted);
+  translate: 0 -1px;
 }
 
 .m-step-text p {
@@ -563,20 +754,25 @@
   color: var(--m-muted);
 }
 
-@media (max-width: 820px) {
-  .m-step {
+.m-step .m-term {
+  flex: 1;
+}
+
+@media (max-width: 900px) {
+  .m-steps {
     grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
+    gap: 40px;
   }
 }
 
-/* Short titled facts: the agent rules and the security model. */
+/* Short titled facts. */
 .m-facts {
   display: grid;
   gap: 28px;
   margin: 0;
   padding: 0;
   list-style: none;
+  align-content: start;
 }
 
 .m-fact {
@@ -594,7 +790,7 @@
 .m-facts-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 24px;
-  margin-top: 40px;
+  margin-top: 48px;
 }
 
 @media (max-width: 920px) {
@@ -608,110 +804,353 @@
   }
 }
 
-/* Agents: rules on the left, audit on the right. */
+/* 02 Agents: a session on the left, the guarantees on the right. */
 .m-agent-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 48px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 56px;
   align-items: start;
 }
 
-.m-audit {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 24px;
-  border: 1px solid var(--m-border);
-  border-radius: var(--m-radius-lg);
+@media (max-width: 900px) {
+  .m-agent-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 40px;
+  }
 }
 
-.m-audit > p {
-  margin: 0 0 8px;
-  font-size: 14px;
-  line-height: 1.65;
+.m-session {
+  margin: 0;
+  border: 1px solid var(--m-border);
+  border-radius: var(--m-radius-lg);
+  background: var(--m-card);
+  box-shadow: var(--elevation-overlay);
+  overflow: hidden;
+}
+
+.m-session-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px 24px;
+  font-family: var(--m-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  font-variant-ligatures: none;
+}
+
+.m-session-body p {
+  margin: 0;
+}
+
+.m-session-you {
+  display: flex;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--m-radius);
+  background: var(--m-hover);
+  color: var(--m-fg);
+}
+
+.m-session-mark {
   color: var(--m-muted);
 }
 
-.m-audit .m-term {
-  background: var(--m-bg);
+.m-session-call,
+.m-session-agent {
+  display: flex;
+  gap: 10px;
+  color: var(--m-fg);
 }
 
-@media (max-width: 820px) {
-  .m-agent-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 32px;
-  }
-  .m-audit {
-    padding: 18px;
-  }
+/* The agent's own words are prose, so they read in the interface face. */
+.m-session-agent {
+  font-family: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
-/* Security: plaintext on one side, ciphertext on the other. */
-.m-flow {
+.m-session-agent code {
+  font-size: 0.88em;
+}
+
+.m-session-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: 0.62em;
+  border-radius: 999px;
+  background: var(--m-muted);
+}
+.m-session-call .m-session-dot {
+  background: var(--diff-add);
+}
+
+.m-session-body .m-session-out {
+  margin: 4px 0 0 2px;
+  padding-left: 16px;
+  border-left: 1px solid var(--m-border-strong);
+  color: var(--m-muted);
+}
+
+/* 03 Security: two zones and the line between them. */
+.m-boundary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 16px;
+  align-items: stretch;
 }
 
-.m-flow-box {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  padding: 18px 20px;
+.m-zone {
+  padding: 28px;
   border: 1px solid var(--m-border);
   border-radius: var(--m-radius-lg);
   background: var(--m-card);
 }
 
-.m-flow-box code {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--m-mono);
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--m-fg);
-  font-variant-ligatures: none;
+.m-zone-server {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--m-border-strong);
 }
 
-.m-flow-box:last-child code {
+.marketing .m-zone-label {
+  margin: 0 0 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--m-fg);
+}
+
+.marketing .m-chain {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.marketing .m-chain li {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--m-border);
+}
+.marketing .m-chain li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.marketing .m-chain-k {
+  font-family: var(--m-mono);
+  font-size: 13px;
+  color: var(--m-fg);
+}
+
+.marketing .m-chain-v {
+  font-size: 13px;
   color: var(--m-muted);
 }
 
-.m-flow-label {
-  margin-bottom: 6px;
-  font-size: 12px;
+.m-line {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+}
+.m-line::before {
+  content: "";
+  position: absolute;
+  inset: -12px auto;
+  left: 50%;
+  width: 0;
+  border-left: 1px dashed var(--brand);
+}
+.m-line span {
+  position: relative;
+  padding: 8px 0;
+  background: var(--m-bg);
+  writing-mode: vertical-rl;
+  rotate: 180deg;
+  font-family: var(--m-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--brand);
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .m-boundary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .m-line {
+    width: auto;
+    height: 64px;
+  }
+  .m-line::before {
+    inset: 0 auto;
+    left: 50%;
+  }
+  .m-line span {
+    writing-mode: horizontal-tb;
+    rotate: none;
+    padding: 0 10px;
+  }
+  .m-zone {
+    padding: 20px;
+  }
+}
+
+/* 04 Audit: a band with text beside the transcript. */
+.m-band {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 56px;
+  align-items: center;
+}
+.m-band .m-section-lead {
+  margin-top: 18px;
+}
+
+@media (max-width: 900px) {
+  .m-band {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+}
+
+/* 05 Compare. */
+.m-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--m-border);
+  border-radius: var(--m-radius-lg);
+}
+
+.m-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.m-table th,
+.m-table td {
+  padding: 16px 20px;
+  text-align: left;
+  vertical-align: top;
+  border-top: 1px solid var(--m-border);
+}
+
+.m-table thead th,
+.m-table thead td {
+  border-top: 0;
+  font-size: 13px;
   font-weight: 500;
   color: var(--m-muted);
 }
 
-.m-flow-arrow {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--m-mono);
-  font-size: 12px;
-  color: var(--brand);
-}
-.m-flow-arrow::after {
-  content: "";
-  width: 72px;
-  height: 1px;
-  background: linear-gradient(to right, var(--m-border-strong), var(--brand));
+.m-table tbody th {
+  font-weight: 500;
+  color: var(--m-fg);
+  width: 22%;
 }
 
-@media (max-width: 640px) {
-  .m-flow {
+.m-table tbody td {
+  color: var(--m-muted);
+}
+
+/* Klef's column sits on the card tone, the way a selected row does. */
+.m-table .m-table-us {
+  background: var(--m-card);
+  color: var(--m-fg);
+}
+.m-table thead .m-table-us {
+  color: var(--m-fg);
+}
+
+/* 06 FAQ: heading on the left, answers on the right. */
+.m-faq {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  gap: 56px;
+}
+
+.m-faq .m-section-head {
+  margin-bottom: 0;
+}
+
+.m-faq-list {
+  border-top: 1px solid var(--m-border);
+}
+
+.m-faq-item {
+  border-bottom: 1px solid var(--m-border);
+}
+
+.m-faq-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 56px;
+  padding: 14px 0;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+.m-faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+/* A plus that turns into a minus. */
+.m-faq-icon {
+  position: relative;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  color: var(--m-muted);
+}
+.m-faq-icon::before,
+.m-faq-icon::after {
+  content: "";
+  position: absolute;
+  inset: 5.5px 0 auto;
+  height: 1px;
+  background: currentColor;
+  transition: rotate var(--duration-base) var(--ease-out);
+}
+.m-faq-icon::after {
+  rotate: 90deg;
+}
+.m-faq-item[open] .m-faq-icon::after {
+  rotate: 0deg;
+}
+
+.m-faq-item p {
+  margin: 0;
+  padding: 0 32px 22px 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--m-muted);
+}
+
+.m-faq-item p a {
+  color: var(--m-fg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--m-border-strong);
+}
+
+@media (max-width: 900px) {
+  .m-faq {
     grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-  }
-  .m-flow-arrow::after {
-    width: 1px;
-    height: 20px;
-    background: linear-gradient(to bottom, var(--m-border-strong), var(--brand));
+    gap: 32px;
   }
 }
 
@@ -720,33 +1159,40 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   width: 100%;
   max-width: var(--m-width);
   margin: 0 auto;
-  padding: 88px 24px 104px;
+  padding: 128px 24px 136px;
   border-top: 1px solid var(--m-border);
   text-align: center;
+  background: radial-gradient(40% 60% at 50% 100%, var(--m-ember-glow), transparent 70%);
+}
+
+.m-closing h2 {
+  font-size: clamp(32px, 5vw, 56px);
 }
 
 .m-closing p {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   max-width: 34rem;
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1.65;
   color: var(--m-muted);
 }
 
 @media (max-width: 720px) {
   .m-closing {
-    padding: 56px 16px 72px;
+    padding: 80px 16px 96px;
   }
 }
 
 /* --- agent prompts (inside the agents section) ---------------------------- */
 
 .marketing-agent {
-  margin-top: 64px;
+  margin-top: 80px;
+  padding-top: 48px;
+  border-top: 1px solid var(--m-border);
 }
 
 .marketing-agent-title {
@@ -930,15 +1376,36 @@
 }
 
 .marketing-page h1 {
-  margin: 0 0 12px;
-  font-size: clamp(30px, 4.6vw, 40px);
-  line-height: 1.1;
-  letter-spacing: -0.03em;
+  margin: 0 0 16px;
+  font-size: clamp(32px, 5vw, 48px);
+  line-height: 1.06;
+  letter-spacing: -0.034em;
   font-weight: 600;
 }
 
+/* A figure under the lead, such as the trust boundary on /security. */
+.marketing-page-intro {
+  margin: 40px 0 8px;
+}
+.marketing-page-intro .m-boundary {
+  grid-template-columns: minmax(0, 1fr);
+}
+.marketing-page-intro .m-line {
+  width: auto;
+  height: 56px;
+}
+.marketing-page-intro .m-line::before {
+  inset: 0 auto;
+  left: 50%;
+}
+.marketing-page-intro .m-line span {
+  writing-mode: horizontal-tb;
+  rotate: none;
+  padding: 0 10px;
+}
+
 .marketing-page-updated {
-  margin: 0 0 18px;
+  margin: 12px 0 0;
   font-size: 13px;
   color: var(--m-muted);
 }
