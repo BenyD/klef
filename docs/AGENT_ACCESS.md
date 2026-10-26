@@ -4,8 +4,8 @@ How a CLI and, later, an MCP server reach the vault without weakening the
 zero-knowledge contract.
 
 **Status:** phases 1 to 3 shipped, plus browser sign-in, which was not in the
-original plan, and the unlock agent from §6 with `push --all` / `pull --all`.
-`klef diff` and the MCP server are not built.
+original plan, the unlock agent from §6 with `push --all` / `pull --all`, and
+`sync` / `diff` / `restore`. The MCP server is not built.
 See [What shipped](#what-shipped) for the current state and
 [What is left](#what-is-left) for the rest.
 
@@ -24,6 +24,8 @@ diverged it is marked inline.
 | CLI | `src/cli/` — `login`, `logout`, `status`, `link`, `pull`, `push`, `unlock`, `lock` |
 | Unlock agent | `src/cli/agent.ts`, `agent-client.ts`, `agent-spawn.ts`, `socket-dir.ts`, `vault-key.ts` |
 | Multi-file sync | `files` in `.klef.json` (`src/cli/project-config.ts`), `push --all`, `pull --all` |
+| Two-way sync | `sync`, `diff`, `restore`; `src/cli/sync-plan.ts` decides, `project-sync.ts` carries it out, `sync-state.ts` remembers |
+| Default files | `link` records `.env.local` and `.env.production` (`src/cli/default-files.ts`) |
 | Published package | `@klefsh/cli`, one bundled file, zero required dependencies |
 | Browser sign-in | `db/migrations/0013_device_authorizations.sql`, `src/api/device.ts`, `/cli` |
 | Agent prompts | Landing page, and per-file from the app's toolbar |
@@ -36,7 +38,6 @@ it, but not yet run by hand against production.
 
 ## What is left
 
-- **`klef diff`** — compare local against stored without writing either.
 - **The MCP server** — §9 below, the piece this document was written for.
 - **The unlock agent on Windows** — named pipes with an ACL. `klef unlock`
   refuses there today, and `pull` / `push` prompt as before.
@@ -257,6 +258,9 @@ klef list [--json]               # what is in the vault; read-only, names only
 klef link                        # bind cwd to a workspace/project (.klef.json, committed)
 klef pull [--file <name>|--all]  # write .env from vault
 klef push [--file <name>|--all]  # read .env, encrypt, upload as new version
+klef sync [--dry-run]            # pull or push each listed file, whichever side changed
+klef diff [--file <name>|--all]  # local vs stored, by key, writing nothing
+klef restore [dir]               # pull every linked checkout under dir (new machine)
 klef unlock                      # TTY passphrase prompt → starts klef-agent
 klef lock                        # stop the agent, forgetting the key
 ```
@@ -268,15 +272,16 @@ does not; `--all` covers every file in `.klef.json`'s `files` list and, without
 an agent, still prompts only once. `push --all` shows every file's summary and
 asks one confirmation; `-y` skips it, as for a single file.
 
-Not built yet — designed here, tracked in §11:
-
-```
-klef diff                        # local vs stored, summary only
-```
-
-The split matters in a document aimed at agents: a command list read as the
-present tense is a command list someone plans against. §11 has the phasing,
-but nobody should have to reach §11 to find out what runs today.
+`sync` needs to know which side changed, which the two copies alone cannot
+say. Each machine keeps a record per local file in
+`~/.config/klef/sync-state.json`: the vault version it last matched, and its
+mtime and size at that moment. No hash of the contents: a digest of a short
+env file is a guessable fingerprint of its values, and "edited since?" needs
+only mtime and size. The decision table is in `src/cli/sync-plan.ts`; every
+case that cannot be decided safely is a conflict, and a conflict writes
+nothing to either side. A new machine has no records, so a local file there
+that differs from the vault is a conflict rather than a guess; `restore`
+only pulls, and leaves those for `sync`.
 
 `list --json` is the read-only surface an agent should reach for. Until the MCP
 server in §9 exists, it is the only structured output Klef offers, and it
@@ -288,8 +293,8 @@ no ciphertext, nothing that needs the vault unlocked.
 
 > No Klef command ever writes a secret value to stdout or stderr.
 
-`klef pull` prints `wrote 14 variables to .env`. `klef diff`, once built, will
-print `3 added, 1 changed, 0 removed`. There is no `klef get VAR` and no `--print`
+`klef pull` prints `wrote 14 variables to .env`. `klef diff` prints one line
+per differing key, `~ API_KEY  value differs`: the key's name, never its value. There is no `klef get VAR` and no `--print`
 flag, because either one is a loaded gun pointed at a context window. If a human
 genuinely needs to eyeball a value, that is what the web app is for.
 
@@ -345,7 +350,9 @@ helpfully `cat`-ing the `.env` it just fetched.
 **Key names: open question.** `DATABASE_URL` is not a secret, and showing names
 makes diffs far more useful. But names leak vendor topology (`STRIPE_*`,
 `OPENAI_*`). Proposal: names shown by default, `exposeKeyNames: false` to
-suppress. Flagging for a decision rather than assuming.
+suppress. Flagging for a decision rather than assuming. *(The CLI's `diff` and
+`sync` show names: a conflict cannot be settled without knowing which keys
+moved. The MCP default is still open.)*
 
 ## 10. Threat model additions
 
@@ -373,7 +380,7 @@ browser flow does not have:
    agent, which was folded into this phase in the plan and turned out to be
    separable. ~~**Unlock agent**~~ — shipped later on its own, with
    `unlock` / `lock`, lock state in `status`, and `push --all` / `pull --all`.
-3. **CLI: `push` / `diff`** — `push` shipped; `diff` is not built.
+3. ~~**CLI: `push` / `diff`**~~ — shipped, with `sync` and `restore` on top.
 4. **MCP server** — not built. Still the right place for it: the dangerous
    decisions are all behind it now.
 

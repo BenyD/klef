@@ -102,6 +102,23 @@ export class KlefApi {
   }
 
   /**
+   * Create an empty env file in a project. Names and the environment label are
+   * plaintext by design; the contents arrive afterwards as an encrypted
+   * version, like any other save.
+   */
+  createFile(
+    projectId: string,
+    name: string,
+    environment: string | null,
+  ): Promise<{ id: string; name: string }> {
+    return this.request("/api/files", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ projectId, name, environment }),
+    });
+  }
+
+  /**
    * Add a version. Saves are append-only server-side: a new row becomes the
    * current one and every earlier version stays, so a bad push is recoverable
    * from the web app rather than destructive.
