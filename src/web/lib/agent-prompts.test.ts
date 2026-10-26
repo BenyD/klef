@@ -90,12 +90,23 @@ describe("agent prompts", () => {
     }
   });
 
-  it("tells the sync prompt's agent that klef cannot diff yet", () => {
-    const sync = AGENT_PROMPTS.find((p) => p.id === "sync");
-    expect(sync, "the sync prompt should exist").toBeDefined();
-    // Without `diff`, "are these the same?" is unanswerable without opening
-    // the file — so the prompt has to say ask, not guess.
-    expect(promptText(sync!)).toMatch(/no \\`diff\\` command yet|ask me/i);
+  // The point of the connect prompt is that it is pasted once per repo, not
+  // once per session: it has to end in the instructions being installed, and
+  // only with the user's say-so.
+  it("has the connect prompt install agent instructions once, with consent", () => {
+    const connect = AGENT_PROMPTS.find((p) => p.id === "connect");
+    expect(connect, "the connect prompt should exist").toBeDefined();
+    const text = promptText(connect!);
+    expect(text).toContain("npx @klefsh/cli setup");
+    expect(text).toMatch(/ask me first/i);
+    expect(text).toMatch(/once I say yes, rerun with `--yes`/);
+    expect(text).toMatch(/give me\s+`npx @klefsh\/cli unlock` to run myself/);
+  });
+
+  it("uses no em dashes", () => {
+    for (const prompt of AGENT_PROMPTS) {
+      expect(promptText(prompt), prompt.id).not.toContain("\u2014");
+    }
   });
 
   it("checks git tracking rather than trusting .gitignore alone", () => {
@@ -151,14 +162,20 @@ describe("pnpmScriptsIn", () => {
 describe("filePullPrompt", () => {
   const target = { workspace: "Beny's Team", project: "Lensdrop", file: ".env.local" };
 
-  it("names the file and links it in one command", () => {
+  it("names the file and sets the project up in one command", () => {
     const out = filePullPrompt(target);
     expect(out).toContain(".env.local");
-    expect(out).toContain("npx @klefsh/cli link 'Beny'\\''s Team' 'Lensdrop' '.env.local'");
+    expect(out).toContain(
+      "npx @klefsh/cli setup --workspace 'Beny'\\''s Team' --project 'Lensdrop'",
+    );
   });
 
-  it("hands pull back rather than having the agent run it", () => {
-    expect(filePullPrompt(target)).toMatch(/give me .*pull.* to run myself/);
+  it("hands unlock back rather than having the agent run it", () => {
+    expect(filePullPrompt(target)).toMatch(/give me .*unlock.* to run\s+myself/);
+  });
+
+  it("asks before writing agent instructions", () => {
+    expect(filePullPrompt(target)).toMatch(/ask me\. Only once I say yes, rerun it with --yes/);
   });
 
   it("carries the secret-safety rule, like every other prompt", () => {

@@ -168,8 +168,8 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
   }, [file.id, dek]);
 
   /**
-   * A prompt for pulling this file with the CLI, already carrying the names
-   * the agent would otherwise have to list the vault and ask about. The names
+   * A prompt for setting a repo up with this file's project, already carrying
+   * the names the agent would otherwise have to list the vault and ask about. The names
    * are plaintext in Klef by design and already sit in .klef.json, so this
    * puts nothing new in the reader's clipboard.
    */
@@ -182,7 +182,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
       }),
     );
     toast.success("Agent prompt copied", {
-      description: "Paste it into Claude Code, Cursor, or whatever you use.",
+      description: "Paste it into Claude Code or Cursor once. Later sessions in that repo already know Klef.",
     });
   }
 
