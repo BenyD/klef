@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { command } from "../invocation.ts";
 import { requireApi } from "../session.ts";
 import { readProjectConfig } from "../project-file.ts";
 import { allFiles, type ProjectConfig } from "../project-config.ts";
-import { confirmOrFail, requireVault, unlockedVault } from "../common.ts";
+import { confirmOrFail, requireVault, shellArg, unlockedVault } from "../common.ts";
 import { CliError, done, emit, say, style, warn } from "../ui.ts";
 import { confirm } from "../prompt.ts";
 import type { ParsedArgs } from "../args.ts";
@@ -40,7 +41,12 @@ export async function restore(
   prompt?: (question: string) => Promise<string>,
   ask: (question: string) => Promise<boolean> = confirm,
 ): Promise<number> {
-  const root = path.resolve(cwd, args.positionals[0] ?? ".");
+  // Real paths, so a checkout reached through a symlink (macOS's /tmp is
+  // /private/tmp) matches what this machine recorded when it last synced.
+  const root = await realpath(path.resolve(cwd, args.positionals[0] ?? ".")).catch(() =>
+    path.resolve(cwd, args.positionals[0] ?? "."),
+  );
+  const here = await realpath(cwd).catch(() => cwd);
   const shown = (dir: string) => path.relative(root, dir) || ".";
 
   const projects: { dir: string; config: ProjectConfig }[] = [];
@@ -107,9 +113,15 @@ export async function restore(
     throw new CliError(
       "conflict",
       `Restored what could be pulled. ${needSync.length === 1 ? "1 checkout needs" : `${needSync.length} checkouts need`} a sync to settle the rest.`,
-      { next: needSync.map((dir) => command(`sync -C ${shown(dir) === "." ? "." : path.relative(cwd, dir) || "."}`)), data },
+      { next: needSync.map((dir) => command(`sync -C ${shellArg(cdPath(here, dir))}`)), data },
     );
   }
   emit(data);
   return problems.length ? 1 : 0;
+}
+
+/** A directory to pass to -C: relative when that is short, absolute when not. */
+function cdPath(from: string, dir: string): string {
+  const rel = path.relative(from, dir) || ".";
+  return rel.split(path.sep).filter((part) => part === "..").length > 2 ? dir : rel;
 }

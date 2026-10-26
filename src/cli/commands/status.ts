@@ -104,8 +104,10 @@ export async function status(
 
   for (const [label, value] of rows) say(`${label.padEnd(8)}  ${value}`);
   if (next.length) {
+    const width = Math.max(...next.map((n) => n.command.length));
     say();
-    for (const n of next) say(`${style.dim("Next:")} ${cmd(n.command)}${n.description ? style.dim(`  ${n.description}`) : ""}`);
+    say("Next");
+    for (const n of next) say(`  ${cmd(n.command.padEnd(width))}  ${style.dim(n.description ?? "")}`.trimEnd());
   }
   return 0;
 }

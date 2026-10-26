@@ -3,7 +3,7 @@
 //
 // Entry point. Dispatch, and the one place errors become exit codes.
 
-import { statSync } from "node:fs";
+import { realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { parseArgs, hasFlag, flagValue, type ParsedArgs } from "./args.ts";
 import {
@@ -70,7 +70,8 @@ function resolveCwd(args: ParsedArgs): string {
     // Reported below.
   }
   if (!isDir) throw new CliError("usage", `--cwd: ${dir} is not a directory.`);
-  return resolved;
+  // The real path, as process.cwd() would give, so sync records match.
+  return realpathSync(resolved);
 }
 
 function help(args: ParsedArgs): number {

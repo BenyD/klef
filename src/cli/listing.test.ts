@@ -80,7 +80,7 @@ describe("listFiles", () => {
 
 describe("linkArgs", () => {
   it("produces a pasteable argument list", () => {
-    expect(linkArgs(listFiles(TREE)[0]!)).toBe("'Maxapp GmbH' 'Ewig' '.env.local'");
+    expect(linkArgs(listFiles(TREE)[0]!)).toBe("'Maxapp GmbH' Ewig .env.local");
   });
 });
 
@@ -153,7 +153,7 @@ describe("formatListing", () => {
         },
       ],
     };
-    expect(render(unsaved)).toContain("klef link 'Solo' 'site' '.env.local'");
+    expect(render(unsaved)).toContain("klef link Solo site .env.local");
   });
 
   it("prefers a name without an apostrophe over one with", () => {
@@ -195,7 +195,7 @@ describe("formatListing", () => {
         },
       ],
     };
-    expect(render(mixed)).toContain("klef link 'Maxapp GmbH' 'Ewig' '.env.local'");
+    expect(render(mixed)).toContain("klef link 'Maxapp GmbH' Ewig .env.local");
   });
 
   it("still quotes correctly when every candidate needs it", () => {
@@ -219,7 +219,7 @@ describe("formatListing", () => {
         },
       ],
     };
-    expect(render(spaced)).toContain("klef link 'Beny'\\''s Team' 'beny.one' '.env'");
+    expect(render(spaced)).toContain("klef link 'Beny'\\''s Team' beny.one .env");
   });
 
   it("leaves no trailing whitespace on an unannotated file", () => {
@@ -247,7 +247,7 @@ describe("formatListing", () => {
   });
 
   it("takes the first pullable entry when none needs an escape", () => {
-    expect(render(TREE)).toContain("klef link 'Maxapp GmbH' 'Ewig' '.env.local'");
+    expect(render(TREE)).toContain("klef link 'Maxapp GmbH' Ewig .env.local");
   });
 
   it("points at the machine-readable form", () => {

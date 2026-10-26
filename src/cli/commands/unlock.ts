@@ -105,7 +105,7 @@ export async function unlock(
   });
 
   done(`Unlocked. Locks after ${describeLockAfter(minutes)} without use`);
-  note(`${cmd(command("lock"), true)} locks it now.`);
+  note(`Lock it sooner with ${cmd(command("lock"), true)}.`);
   emit({ unlocked: true, alreadyUnlocked: false, locksInSeconds: minutes * 60 });
   return 0;
 }

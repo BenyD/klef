@@ -85,8 +85,8 @@ export async function confirmOrFail(
   ask: (question: string) => Promise<boolean>,
 ): Promise<boolean> {
   if (args.flags.has("yes")) return true;
-  const needYes = new CliError("confirmation_required", `${question.replace(/\?$/, "")}: needs a yes.`, {
-    hint: "Nobody is at a terminal to answer. Ask the user, then rerun with --yes:",
+  const needYes = new CliError("confirmation_required", `${command(name)} needs a yes before it changes anything.`, {
+    hint: "Nobody can answer here. Ask the user, then rerun with --yes:",
     next: [rerun(name, args, ["--yes"])],
   });
   if (!canConfirm()) throw needYes;
