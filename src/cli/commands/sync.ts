@@ -11,7 +11,7 @@ import { applySync, describePending, inspectProject, planMerges, type FileSync }
 import type { SyncAction } from "../sync-plan.ts";
 import { shellQuote } from "../../shared/shell.ts";
 import { confirmOrFail, requireConfig, requireVault, unlockedVault } from "../common.ts";
-import { CliError, done, emit, say, style, type NextStep } from "../ui.ts";
+import { CliError, done, emit, EXIT, say, style, type NextStep } from "../ui.ts";
 
 const SYNC_ACTIONS: ReadonlySet<SyncAction> = new Set(["in-sync", "pull", "push", "create", "merge"]);
 
@@ -45,6 +45,15 @@ export async function sync(
   const report = (extra: Record<string, unknown> = {}) => ({ dryRun, files: files.map((f) => fileJson(f, cwd)), ...extra });
 
   const conflicts = files.filter((f) => f.decision.action === "conflict");
+  if (conflicts.length && dryRun) {
+    // Read-only: a conflict is part of the answer, not a failure, so a
+    // dry run reports it and exits 0 (5 with --exit-code), and a pipeline
+    // reading its --json keeps working.
+    for (const line of describeConflicts(conflicts, cwd)) say(line);
+    say("Dry run: nothing written.");
+    emit(report({ conflicts: conflicts.length }));
+    return hasFlag(args, "exit-code") ? EXIT.conflict : EXIT.ok;
+  }
   if (conflicts.length) {
     for (const line of describeConflicts(conflicts, cwd)) say(line);
     const one = conflicts.length === 1;

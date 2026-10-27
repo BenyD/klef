@@ -22,6 +22,8 @@ export interface ProjectConfig {
    * vault file called "mobile.env.local" can live at apps/mobile/.env.local.
    */
   files?: FileEntry[];
+  /** The oldest CLI this link expects, e.g. "0.7.0" (min-version.ts). */
+  minVersion?: string;
 }
 
 export interface FileEntry {
@@ -71,6 +73,12 @@ export function parseProjectConfig(raw: string): ProjectConfig {
       : null,
   };
   if (obj.files !== undefined) config.files = parseFiles(obj.files);
+  if (obj.minVersion !== undefined) {
+    if (typeof obj.minVersion !== "string" || !/^\d+\.\d+\.\d+$/.test(obj.minVersion)) {
+      throw new ConfigError(`${CONFIG_FILENAME}: "minVersion" must be a version like "0.7.0"`);
+    }
+    config.minVersion = obj.minVersion;
+  }
   return config;
 }
 

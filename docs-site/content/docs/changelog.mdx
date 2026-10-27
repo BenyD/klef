@@ -13,6 +13,14 @@ Klef's web app deploys continuously from `main`; the CLI is versioned on npm as 
 - `klef set NAME`: sets one variable in the local file, the value typed at the terminal with echo off, never on the command line.
 - `klef recover NAME --from <version>` and `klef list --versions`: bring one key back from an earlier vault version.
 
+## Unreleased
+
+- `klef setup` ends with each file's state and what to run next, instead of "Every file is already here".
+- `minVersion` in `.klef.json`, written by `link` and `setup`: an older CLI refuses with `outdated` and points at `npx @klefsh/cli@latest`. No network call.
+- `sync --dry-run` and `diff` are read-only answers: a conflict exits 0 unless `--exit-code`.
+- `klef scan` lists env files `.klef.json` does not cover; `klef link --add <path>` adds one.
+- `diff` reports commented-out `# KEY=` lines as declared, unset.
+
 ## CLI 0.6.0
 
 Published to npm as `@klefsh/cli@0.6.0`:
