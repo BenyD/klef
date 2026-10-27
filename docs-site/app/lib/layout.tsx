@@ -3,7 +3,8 @@ import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import { GITHUB } from "./source";
 
 // The woven asterisk, as in src/web/components/KlefMark.tsx: three loops,
-// each cut by the ones drawn after it so the weave works in currentColor.
+// each cut by the ones drawn after it so the weave works in currentColor,
+// the top loop in ember.
 const LOOP = { x: 38, y: 12, width: 24, height: 76, rx: 12 };
 const ANGLES = [0, 60, 120];
 
@@ -23,14 +24,19 @@ function Mark() {
       </defs>
       {ANGLES.map((a, i) => (
         <g key={a} mask={i < ANGLES.length - 1 ? `url(#${id}-${i})` : undefined}>
-          <rect {...LOOP} stroke="currentColor" strokeWidth="9" transform={`rotate(${a} 50 50)`} />
+          <rect
+            {...LOOP}
+            stroke={i === ANGLES.length - 1 ? "var(--primary)" : "currentColor"}
+            strokeWidth="9"
+            transform={`rotate(${a} 50 50)`}
+          />
         </g>
       ))}
     </svg>
   );
 }
 
-/** The Klef tile, the wordmark, then "Docs". The tile matches the favicon. */
+/** The Klef tile, the wordmark, then "Docs". The mark matches the marketing header. */
 function Title() {
   return (
     <span className="klef-title">
