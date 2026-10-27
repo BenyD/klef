@@ -82,13 +82,13 @@ The same with or without `--json`, and stable across minor versions. `klef help 
 | 1 | Failure: network, server, or something unexpected |
 | 2 | Usage error, or a confirmation was needed and nobody could answer |
 | 3 | Not signed in, or the token was rejected |
-| 4 | Locked: the passphrase is needed and there is no terminal |
+| 4 | Locked: this device needs unlocking (`klef login` in the browser, or `klef unlock`) |
 | 5 | Conflict: both sides changed; nothing was written |
 | 6 | Not found: not linked here, or no such workspace, project or file |
 | 10 | Differences found, only with `--exit-code` (`diff`, `audit`) |
 | 130 | Interrupted (Ctrl-C) |
 
-Declining a confirmation at the terminal exits 1 and writes nothing.
+Declining a confirmation at the terminal exits 1. `push`, `restore` and `setup` then write nothing. `sync` still makes its pulls, each of which replaces a file nobody has edited since it last matched the vault, and pushes nothing.
 
 ## For agents
 
