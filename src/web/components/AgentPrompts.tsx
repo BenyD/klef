@@ -1,108 +1,14 @@
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Check, Copy } from "lucide-react";
 import { siClaude, siCursor, siGithubcopilot, type SimpleIcon } from "simple-icons";
-import {
-  AGENT_PROMPTS,
-  DEFAULT_PROMPT,
-  promptText,
-  type AgentPrompt,
-} from "../lib/agent-prompts.ts";
+import { DEFAULT_PROMPT, promptText, type AgentPrompt } from "../lib/agent-prompts.ts";
+
+// The landing page's way of handing a coding agent its first task: a button
+// that copies the onboarding prompt from lib/agent-prompts.ts. The prompts
+// stay there so their safety rule is tested; this file only copies one.
 
 /**
- * Copy-paste prompts for coding agents.
- *
- * SSR-safe for the prerender: the first tab renders on the server, and the
- * only browser API (the clipboard) is touched inside a click handler.
- */
-/** Stable across tab changes, because only one panel is ever in the DOM. */
-const PANEL_ID = "agent-prompt-panel";
-
-export function AgentPrompts() {
-  const [activeId, setActiveId] = useState(AGENT_PROMPTS[0]?.id ?? "");
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const activeIndex = Math.max(
-    0,
-    AGENT_PROMPTS.findIndex((p) => p.id === activeId),
-  );
-  const active = AGENT_PROMPTS[activeIndex] as AgentPrompt;
-
-  /**
-   * role="tab" promises arrow-key navigation, so it has to be implemented:
-   * arrows move and wrap, Home/End jump to the ends, and focus follows the
-   * selection. Paired with the roving tabindex below, which keeps the tab strip
-   * a single stop in the page's tab order rather than one stop per tab.
-   */
-  function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    const last = AGENT_PROMPTS.length - 1;
-    let next: number | null = null;
-
-    if (event.key === "ArrowRight") next = activeIndex === last ? 0 : activeIndex + 1;
-    else if (event.key === "ArrowLeft") next = activeIndex === 0 ? last : activeIndex - 1;
-    else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = last;
-    if (next === null) return;
-
-    event.preventDefault();
-    const target = AGENT_PROMPTS[next];
-    if (!target) return;
-    setActiveId(target.id);
-    tabRefs.current[next]?.focus();
-  }
-
-  return (
-    <div className="marketing-agent" id="prompts">
-      <div className="marketing-agent-head">
-        <div>
-          <h3>Or start from a prompt</h3>
-          <p>Paste one into Claude Code or Cursor.</p>
-        </div>
-        <CopyPromptButton prompt={active} className="m-icon-btn m-icon-btn-band marketing-agent-copy" />
-      </div>
-
-      <div>
-        <div className="marketing-agent-tabs" role="tablist" aria-label="Agent prompts">
-          {AGENT_PROMPTS.map((prompt, index) => (
-            <button
-              key={prompt.id}
-              type="button"
-              role="tab"
-              id={`agent-tab-${prompt.id}`}
-              aria-selected={prompt.id === active.id}
-              // One panel is rendered at a time, so every tab controls that
-              // same element. Pointing at a per-tab id would dangle for
-              // whichever tab isn't currently selected.
-              aria-controls={PANEL_ID}
-              tabIndex={prompt.id === active.id ? 0 : -1}
-              ref={(el) => {
-                tabRefs.current[index] = el;
-              }}
-              className="marketing-agent-tab"
-              onClick={() => setActiveId(prompt.id)}
-              onKeyDown={onTabKeyDown}
-            >
-              {prompt.label}
-            </button>
-          ))}
-        </div>
-
-        <div
-          role="tabpanel"
-          id={PANEL_ID}
-          aria-labelledby={`agent-tab-${active.id}`}
-          className="marketing-agent-panel"
-        >
-          <p className="marketing-agent-desc">{active.description}</p>
-          <pre className="marketing-agent-prompt">{promptText(active)}</pre>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Copies a prompt to the clipboard. Shared by the hero pill and the prompt
- * panel, which differ only in styling, so the feedback and the failure
- * handling cannot drift between the two. The feedback is the glyph alone: it
+ * Copies a prompt to the clipboard. The feedback is the glyph alone: it
  * turns into a check that pops in (the span is re-keyed so the animation
  * replays), and the label, if any, stays put.
  */

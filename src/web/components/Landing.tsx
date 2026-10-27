@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { GitHubIcon, MarketingLayout } from "./MarketingLayout.tsx";
-import { AgentPrompts, OnboardAgentPill } from "./AgentPrompts.tsx";
+import { OnboardAgentPill } from "./AgentPrompts.tsx";
 import { FrameworkIcon } from "./FrameworkIcon.tsx";
 import { PixelField } from "./PixelField.tsx";
 import { Reveal } from "./Reveal.tsx";
@@ -251,9 +251,11 @@ function Window({ id, className, front, children }: { id: number; className: str
 
 /**
  * The app's sidebar as it is: workspace switcher, the search field, the two
- * fixed rows, then the project tree with files in mono.
+ * fixed rows, the project tree with files in mono, and the user row at the
+ * foot. `compact` is for the hero's small windows: fewer tree rows, so the
+ * column still ends at the window's edge.
  */
-function Sidebar() {
+function Sidebar({ compact = false }: { compact?: boolean }) {
   return (
     <aside className="m-app-side">
       <div className="m-app-ws">
@@ -291,18 +293,22 @@ function Sidebar() {
         </li>
         <li className="m-app-file">.env.local</li>
         <li className="m-app-file m-app-active">.env.production</li>
-        <li className="m-app-file m-app-add">
-          <Plus />
-          New file
-        </li>
+        {!compact && (
+          <li className="m-app-file m-app-add">
+            <Plus />
+            New file
+          </li>
+        )}
         <li>
           <FrameworkIcon framework="vite" className="m-app-mark" />
           klef
         </li>
-        <li>
-          <FrameworkIcon framework="astro" className="m-app-mark" />
-          portfolio
-        </li>
+        {!compact && (
+          <li>
+            <FrameworkIcon framework="astro" className="m-app-mark" />
+            portfolio
+          </li>
+        )}
       </ul>
       <div className="m-app-user">
         <span className="m-app-avatar">B</span>
@@ -341,7 +347,7 @@ function AppHead({ children }: { children: ReactNode }) {
 function VaultCard() {
   return (
     <>
-      <Sidebar />
+      <Sidebar compact />
       <div className="m-app-panel">
         <AppHead>
           <b className="m-app-crumb m-mono">
@@ -381,7 +387,7 @@ function VaultCard() {
 function CompareCard() {
   return (
     <>
-      <Sidebar />
+      <Sidebar compact />
       <div className="m-app-panel">
         <AppHead>
           <b className="m-app-crumb">Compare environments</b>
@@ -544,10 +550,6 @@ function Agents() {
                 <p>Setup writes a Claude Code skill and a Cursor rule into the repo.</p>
               </li>
             </ul>
-          </Reveal>
-
-          <Reveal delay={120}>
-            <AgentPrompts />
           </Reveal>
         </div>
       </section>
