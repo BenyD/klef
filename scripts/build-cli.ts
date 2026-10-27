@@ -39,8 +39,12 @@ const ALLOWED_EXTERNALS = new Set(["@napi-rs/keyring"]);
  * app's dependency tree.
  */
 function assertNoStrayImports(code: string): void {
+  // The lookbehind keeps a string that merely says "from" or "import" (a flag
+  // name, a command name) from reading as an import statement, and a real
+  // `from` always has whitespace before its specifier, unlike prose that
+  // happens to end a string with the word.
   const specifiers = [
-    ...code.matchAll(/(?:from|import)\s*\(?\s*["']([^"']+)["']/g),
+    ...code.matchAll(/(?<![\w$."'])(?:from\s+|import\s*\(?\s*)["']([^"']+)["']/g),
   ].map((m) => m[1]!);
 
   const stray = [
