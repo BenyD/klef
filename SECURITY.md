@@ -43,7 +43,10 @@ Klef has two gates and they are remembered separately.
 
 - **Sign-in** is a Better Auth session cookie (`HttpOnly`, `Secure`,
   `SameSite=Lax`) that lasts 30 days and slides forward when used, at most
-  once a day. It reaches ciphertext and plaintext names, never a value.
+  once a day. It reaches ciphertext and plaintext names, never a value. To
+  spare a database lookup on every request, a signed copy of the session is
+  cached in a second cookie for 5 minutes, so a session revoked from another
+  device keeps working on this one for up to 5 minutes.
 - **Unlock** needs the passphrase or an enrolled passkey. To spare a prompt on
   every reload, the browser keeps the unwrapped data key in IndexedDB as a
   non-extractable `CryptoKey`: page scripts can ask it to decrypt but cannot

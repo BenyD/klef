@@ -4,7 +4,6 @@ import { ArrowUp, Menu, X } from "lucide-react";
 import { KlefMark } from "./KlefMark.tsx";
 import { ThemeGlyph } from "./ThemeToggle.tsx";
 import { useThemeSwitch } from "../lib/use-theme-switch.ts";
-import "../styles/marketing.css";
 
 const GITHUB = "https://github.com/BenyD/klef";
 
