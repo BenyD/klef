@@ -9,7 +9,7 @@ Every command also takes the [global flags](/docs/cli/#global-flags): `--json`, 
 
 ### klef setup
 
-Runs every step a repo needs and skips the ones already done, so it is safe to rerun: sign in, link this directory to a project, write instructions for Claude Code and Cursor, unlock, and pull the files that are not on disk yet.
+Runs every step a repo needs and skips the ones already done, so it is safe to rerun: sign in, link this directory to a project, write instructions for Claude Code and Cursor, unlock, and pull the files that are not on disk yet. It ends with a names-only `klef audit` of the deploy platforms set up here, as one line of counts per scope; a platform whose CLI is missing or signed out is left out.
 
 ```bash
 klef setup [claude|cursor|claude-md|agents|all] [flags]
@@ -337,7 +337,7 @@ JSON `data`: `{ linked, gitRepository, unlisted: [ { path, ignored } ], listed: 
 
 ### klef audit
 
-Lists the key names Vercel, GitHub Actions or Cloudflare Workers hold that your local files lack, and the reverse. Read-only, names only, through your own `vercel`, `gh` and `wrangler` sign-ins. A platform that is not set up here, or whose CLI is missing or signed out, is reported and the rest still run. See [Auditing](/docs/guides/audit/).
+Lists the key names Vercel, GitHub Actions or Cloudflare Workers hold that your local files lack, and the reverse. GitHub secrets are compared with what `.github/workflows` references, every Worker in the repo (each `wrangler.json`, `wrangler.jsonc` or `wrangler.toml`) is audited on its own, and an environment with nothing set is one "unused environment" line. Read-only, names only, through your own `vercel`, `gh` and `wrangler` sign-ins. A platform that is not set up here, or whose CLI is missing or signed out, is reported and the rest still run. See [Auditing](/docs/guides/audit/).
 
 ```bash
 klef audit [vercel|github|cloudflare] [flags]
@@ -352,7 +352,7 @@ klef audit                  # every platform set up in this directory
 klef audit vercel --json    # one platform, for an agent
 ```
 
-JSON `data`: `{ targets: [ { platform, environment, label, file, status, reason, onlyOnPlatform, onlyLocal, both } ] }`. `status` is `ok`, `no-local-file`, `skipped` (not set up here) or `unavailable` (the tool failed; `reason` says why).
+JSON `data`: `{ targets: [ { platform, environment, label, file, compareTo, worker, status, reason, onlyOnPlatform, onlyLocal, both } ] }`. `compareTo` is `file` (a local env file) or `workflows` (GitHub, where `onlyLocal` is referenced but not set and `onlyOnPlatform` is set but never referenced). `worker` is a Worker's directory. `status` is `ok`, `no-local-file`, `empty` (nothing set there), `skipped` (not set up here) or `unavailable` (the tool failed; `reason` says why).
 
 ## New machine
 

@@ -225,6 +225,26 @@ describe("klef setup (everything)", () => {
     expect(pulled).toEqual([".env.production->.env.production", ".env.local->.env.local"]);
   });
 
+  it("ends with the deploy platforms' names compared, as counts only", async () => {
+    const audit = async () => [
+      { platform: "vercel" as const, environment: "production", label: "Vercel Production", file: ".env.production", compareTo: "file" as const, status: "ok" as const, reason: null, onlyOnPlatform: ["OLD_KEY"], onlyLocal: [], both: ["A"] },
+      { platform: "vercel" as const, environment: "development", label: "Vercel Development", file: ".env.local", compareTo: "file" as const, status: "empty" as const, reason: "x", onlyOnPlatform: [], onlyLocal: [], both: [] },
+      { platform: "github" as const, environment: null, label: "GitHub Actions secrets", file: ".github/workflows", compareTo: "workflows" as const, status: "skipped" as const, reason: "gh is not installed" },
+    ];
+    expect(await run("setup", yes, { audit })).toBe(0);
+    const text = output.join("\n");
+    expect(text).toContain("Deploy platforms (names only)");
+    expect(text).toContain("Vercel Production: 1 only there");
+    expect(text).toContain("Vercel Development: unused environment");
+    expect(text).not.toContain("OLD_KEY");
+    expect(text).not.toContain("GitHub");
+  });
+
+  it("finishes even when the audit fails", async () => {
+    expect(await run("setup", yes, { audit: async () => { throw new Error("boom"); } })).toBe(0);
+    expect(output.join("\n")).not.toContain("Deploy platforms");
+  });
+
   it("skips every finished step on a second run, and never overwrites a local file", async () => {
     expect(await run("setup")).toBe(0);
     const unlock = vi.fn(async () => 0);
