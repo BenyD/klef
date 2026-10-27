@@ -18,6 +18,7 @@ import { pull } from "./commands/pull.ts";
 import { push } from "./commands/push.ts";
 import { unlock } from "./commands/unlock.ts";
 import { lock } from "./commands/lock.ts";
+import { logout } from "./commands/logout.ts";
 import { NoTerminalError } from "./prompt.ts";
 
 // pull, push and unlock end to end against an in-memory API: real crypto, real
@@ -200,7 +201,7 @@ describe("pull --all", () => {
     await expect(pull(parseArgs(["pull", "--all"]), env, cwd, noTerminal)).rejects.toMatchObject({
       code: "locked",
       exitCode: 4,
-      next: [{ command: "klef unlock" }],
+      next: [{ command: "klef login" }, { command: "klef unlock" }],
     });
     await expect(stat(path.join(cwd, ".env.local"))).rejects.toThrow();
   });
@@ -265,6 +266,11 @@ describe("push --all", () => {
 });
 
 describe("unlock, then push and pull", () => {
+  // The unlock agent: what `unlock` uses when remembering is off.
+  beforeEach(() => {
+    env.KLEF_NO_REMEMBER = "1";
+  });
+
   it("asks once at unlock, then not at all", async () => {
     const prompt = counting();
     expect(await unlock(parseArgs(["unlock"]), env, prompt, startInProcess)).toBe(0);
@@ -332,5 +338,73 @@ describe("unlock, then push and pull", () => {
   it("refuses a wrong passphrase without starting anything", async () => {
     await expect(unlock(parseArgs(["unlock"]), env, counting("wrong"), startInProcess)).rejects.toThrow();
     expect(await agentStatus(env.KLEF_AGENT_SOCK!)).toBeNull();
+  });
+});
+
+describe("remembered on this device", () => {
+  const keyFile = () => path.join(env.KLEF_CONFIG_DIR!, "vault-key.json");
+
+  it("remembers the key after one passphrase, and never asks again", async () => {
+    await seedVersions();
+    const prompt = counting();
+    expect(await pull(parseArgs(["pull"]), env, cwd, prompt)).toBe(0);
+    expect(prompt.calls).toBe(1);
+    expect((await stat(keyFile())).mode & 0o777).toBe(0o600);
+    // No agent is running: the key file alone opens the vault.
+    expect(await agentStatus(env.KLEF_AGENT_SOCK!)).toBeNull();
+
+    await writeLocal();
+    await writeFile(path.join(cwd, ".env.production"), `${FILES[".env.production"]}NEW=1\n`);
+    expect(await push(parseArgs(["push", "--all", "-y"]), env, cwd, never, yes)).toBe(0);
+    expect(await stored(".env.production")).toBe(`${FILES[".env.production"]}NEW=1\n`);
+  });
+
+  it("is what unlock does, with no agent", async () => {
+    expect(await unlock(parseArgs(["unlock"]), env, counting(), startInProcess)).toBe(0);
+    expect(agent).toBeNull();
+    expect(output).toContain("✓ Unlocked on this device");
+    await seedVersions();
+    expect(await pull(parseArgs(["pull"]), env, cwd, never)).toBe(0);
+    expect(await unlock(parseArgs(["unlock"]), env, never, startInProcess)).toBe(0);
+    expect(output).toContain("✓ Already unlocked on this device");
+  });
+
+  it("still uses the agent for a time-limited unlock", async () => {
+    expect(await unlock(parseArgs(["unlock", "--for", "1h"]), env, counting(), startInProcess)).toBe(0);
+    expect(agent).not.toBeNull();
+    await expect(stat(keyFile())).rejects.toThrow();
+  });
+
+  it("is forgotten by lock and by logout", async () => {
+    await seedVersions();
+    await pull(parseArgs(["pull"]), env, cwd, counting());
+    expect(await lock(env)).toBe(0);
+    expect(output).toContain("✓ Locked. The key is forgotten on this device");
+    await expect(stat(keyFile())).rejects.toThrow();
+
+    await pull(parseArgs(["pull"]), env, cwd, counting());
+    await logout(env);
+    await expect(stat(keyFile())).rejects.toThrow();
+  });
+
+  it("is not kept when remembering is off", async () => {
+    await seedVersions();
+    env.KLEF_NO_REMEMBER = "1";
+    const prompt = counting();
+    await pull(parseArgs(["pull"]), env, cwd, prompt);
+    await pull(parseArgs(["pull"]), env, cwd, prompt);
+    expect(prompt.calls).toBe(2);
+    await expect(stat(keyFile())).rejects.toThrow();
+  });
+
+  it("is ignored for another vault, and forgotten when it stops decrypting", async () => {
+    await seedVersions();
+    await pull(parseArgs(["pull"]), env, cwd, counting());
+    // A key file that claims this vault but holds another key.
+    const record = JSON.parse(await readFile(keyFile(), "utf8"));
+    record.key = Buffer.alloc(32, 7).toString("base64");
+    await writeFile(keyFile(), JSON.stringify(record));
+    await expect(pull(parseArgs(["pull"]), env, cwd, never)).rejects.toThrow(/no longer opens the vault/);
+    await expect(stat(keyFile())).rejects.toThrow();
   });
 });

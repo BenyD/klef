@@ -17,6 +17,8 @@ import {
   openToken,
   type SealedToken,
 } from "../shared/device-seal.ts";
+import { isSealedVaultKey, openVaultKey } from "../shared/device-unlock.ts";
+import type { Bytes } from "../shared/encoding.ts";
 
 export class DeviceLoginError extends CliError {
   constructor(message: string) {
@@ -70,8 +72,12 @@ async function post(url: string, body: unknown): Promise<Response> {
 export interface DeviceLogin {
   userCode: string;
   verificationUri: string;
-  /** Resolves with the access token once approved. */
-  collect: () => Promise<string>;
+  /**
+   * Resolves once approved: the access token, and the vault key's raw bytes
+   * when the browser also unlocked this CLI (null when it did not). `userId`
+   * opens the key: it is sealed to this login's user code and the approver.
+   */
+  collect: () => Promise<{ token: string; openVaultKey: (userId: string) => Promise<Bytes | null> }>;
 }
 
 /**
@@ -95,7 +101,7 @@ export async function beginDeviceLogin(
   const deadline = Date.now() + started.expiresIn * 1000;
   const intervalMs = Math.max(started.interval * 1000, DEVICE_POLL_INTERVAL_MS);
 
-  async function collect(): Promise<string> {
+  async function collect(): Promise<{ token: string; openVaultKey: (userId: string) => Promise<Bytes | null> }> {
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, intervalMs));
 
@@ -114,11 +120,24 @@ export async function beginDeviceLogin(
         throw new DeviceLoginError(`Login failed (${poll.status}).`);
       }
 
-      const body = (await poll.json()) as { sealedToken?: unknown };
+      const body = (await poll.json()) as { sealedToken?: unknown; sealedVaultKey?: unknown };
       if (!isSealedToken(body.sealedToken)) {
         throw new DeviceLoginError("The server sent a token this machine can't open.");
       }
-      return openSealed(privateKey, body.sealedToken);
+      const token = await openSealed(privateKey, body.sealedToken);
+      const sealedKey = isSealedVaultKey(body.sealedVaultKey) ? body.sealedVaultKey : null;
+      return {
+        token,
+        async openVaultKey(userId: string) {
+          if (!sealedKey) return null;
+          try {
+            return await openVaultKey(privateKey, publicJwk, sealedKey, { userCode: started.userCode, userId });
+          } catch {
+            // Sealed for someone or something else: sign in, but stay locked.
+            return null;
+          }
+        },
+      };
     }
     throw new DeviceLoginError("That code expired. Run `klef login` again.");
   }

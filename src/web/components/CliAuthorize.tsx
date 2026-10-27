@@ -2,14 +2,20 @@ import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from
 import { useSearchParams } from "react-router";
 import { Check, Terminal, TriangleAlert } from "lucide-react";
 import { apiFetch } from "../api-fetch.ts";
+import { fetchVault } from "../vault-api.ts";
 import { normalizeUserCode } from "../../shared/device-code.ts";
+import type { DeviceJwk } from "../../shared/device-seal.ts";
+import { getPrfSecret, PasskeyPrfError } from "../lib/passkey-prf.ts";
+import { preferredMethod, sealVaultKeyForCli, WrongPassphraseForCliError } from "../lib/cli-unlock.ts";
 import { KlefMark } from "./KlefMark.tsx";
 import { CanvasField } from "./PixelField.tsx";
 import { ThemeToggle } from "./ThemeToggle.tsx";
 import { Button } from "./ui/button.tsx";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card.tsx";
+import { Checkbox } from "./ui/checkbox.tsx";
 import { Input } from "./ui/input.tsx";
 import { Label } from "./ui/label.tsx";
+import { PasswordInput } from "./ui/password-input.tsx";
 
 /**
  * Approving a `klef login` from the browser.
@@ -22,49 +28,87 @@ import { Label } from "./ui/label.tsx";
  * Same canvas and card as the sign-in page, since it is the next thing a
  * terminal sends you to. Reached with ?code= prefilled by the CLI, or typed
  * by hand.
+ *
+ * "Also unlock the CLI on this device" hands the CLI the vault key, end to
+ * end: the page recovers it from a passkey or the passphrase (the tab's own
+ * key cannot be exported, by design), seals it to the public key the CLI sent,
+ * and the server only relays the sealed blob. See lib/cli-unlock.ts.
  */
 type Pending =
   | { state: "idle" }
   | { state: "loading" }
-  | { state: "found"; userCode: string; label: string }
+  | { state: "found"; userCode: string; label: string; publicJwk: DeviceJwk }
   | { state: "error"; message: string }
-  | { state: "approved" }
+  | { state: "approved"; unlocked: boolean }
   | { state: "denied" };
 
-export function CliAuthorize() {
+/** How this account can unlock, learned once the request is found. */
+type UnlockOffer = { available: false } | { available: true; method: "passkey" | "passphrase" };
+
+/** What the page reaches outside itself for; the dev preview stands these in. */
+export interface CliAuthorizeApi {
+  fetch: typeof apiFetch;
+  vault: typeof fetchVault;
+  prf: typeof getPrfSecret;
+}
+
+const REAL_API: CliAuthorizeApi = { fetch: apiFetch, vault: fetchVault, prf: getPrfSecret };
+
+export function CliAuthorize({ userId, api = REAL_API }: { userId: string; api?: CliAuthorizeApi }) {
   const [params] = useSearchParams();
   const prefilled = params.get("code") ?? "";
   const [typed, setTyped] = useState(prefilled);
   const [pending, setPending] = useState<Pending>({ state: "idle" });
   const [busy, setBusy] = useState(false);
+  const [offer, setOffer] = useState<UnlockOffer>({ available: false });
+  const [unlockToo, setUnlockToo] = useState(true);
+  const [method, setMethod] = useState<"passkey" | "passphrase">("passphrase");
+  const [passphrase, setPassphrase] = useState("");
+  const [unlockError, setUnlockError] = useState<string | null>(null);
 
-  const look = useCallback(async (raw: string) => {
-    const code = normalizeUserCode(raw);
-    if (!code) {
-      setPending({ state: "error", message: "That code doesn't look right." });
-      return;
-    }
-    setPending({ state: "loading" });
-    try {
-      const res = await apiFetch(`/api/cli/device/pending/${encodeURIComponent(code)}`);
-      const body = (await res.json()) as
-        | { ok: true; userCode: string; label: string }
-        | { ok: false; error: string };
-      if (!res.ok || !body.ok) {
-        setPending({
-          state: "error",
-          message: body.ok ? "Something went wrong." : body.error,
-        });
+  const look = useCallback(
+    async (raw: string) => {
+      const code = normalizeUserCode(raw);
+      if (!code) {
+        setPending({ state: "error", message: "That code doesn't look right." });
         return;
       }
-      setPending({ state: "found", userCode: body.userCode, label: body.label });
-    } catch (err) {
-      setPending({
-        state: "error",
-        message: err instanceof Error ? err.message : "Something went wrong.",
-      });
-    }
-  }, []);
+      setPending({ state: "loading" });
+      try {
+        const res = await api.fetch(`/api/cli/device/pending/${encodeURIComponent(code)}`);
+        const body = (await res.json()) as
+          | { ok: true; userCode: string; label: string; publicJwk: DeviceJwk }
+          | { ok: false; error: string };
+        if (!res.ok || !body.ok) {
+          setPending({
+            state: "error",
+            message: body.ok ? "Something went wrong." : body.error,
+          });
+          return;
+        }
+        setPending({ state: "found", userCode: body.userCode, label: body.label, publicJwk: body.publicJwk });
+        // Offer to unlock the CLI too, the way this account can unlock: a
+        // passkey when one is set up for it, the passphrase otherwise. No vault
+        // yet means nothing to hand over.
+        try {
+          const vault = await api.vault();
+          if (vault.exists && vault.keyMaterial) {
+            const preferred = preferredMethod(vault.passkeyWraps);
+            setOffer({ available: true, method: preferred });
+            setMethod(preferred);
+          }
+        } catch {
+          setOffer({ available: false });
+        }
+      } catch (err) {
+        setPending({
+          state: "error",
+          message: err instanceof Error ? err.message : "Something went wrong.",
+        });
+      }
+    },
+    [api],
+  );
 
   useEffect(() => {
     if (prefilled) void look(prefilled);
@@ -73,24 +117,51 @@ export function CliAuthorize() {
   async function decide(deny: boolean) {
     if (pending.state !== "found") return;
     setBusy(true);
+    setUnlockError(null);
     try {
-      const res = await apiFetch("/api/cli/device/approve", {
+      let sealedVaultKey = null;
+      const unlocking = !deny && offer.available && unlockToo;
+      if (unlocking) {
+        try {
+          sealedVaultKey = await sealVaultKeyForCli(
+            method === "passkey" ? { kind: "passkey" } : { kind: "passphrase", passphrase },
+            { publicJwk: pending.publicJwk, userCode: pending.userCode, userId },
+            { vault: api.vault, prf: api.prf },
+          );
+        } catch (err) {
+          // Nothing was approved; the user can retry, switch method, or
+          // approve without unlocking.
+          if (err instanceof PasskeyPrfError && err.code === "cancelled") return;
+          setUnlockError(
+            err instanceof WrongPassphraseForCliError
+              ? "That passphrase didn't unlock your vault."
+              : err instanceof PasskeyPrfError
+                ? err.message
+                : "That couldn't unlock your vault. Try the passphrase, or approve without unlocking.",
+          );
+          return;
+        } finally {
+          setPassphrase("");
+        }
+      }
+      const res = await api.fetch("/api/cli/device/approve", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ userCode: pending.userCode, deny }),
+        body: JSON.stringify({ userCode: pending.userCode, deny, sealedVaultKey }),
       });
       const body = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !body.ok) {
         setPending({ state: "error", message: body.error ?? "Something went wrong." });
         return;
       }
-      setPending({ state: deny ? "denied" : "approved" });
+      setPending(deny ? { state: "denied" } : { state: "approved", unlocked: sealedVaultKey !== null });
     } finally {
       setBusy(false);
     }
   }
 
   const asking = pending.state === "idle" || pending.state === "error" || pending.state === "loading";
+  const unlocking = offer.available && unlockToo;
 
   return (
     <main className="klef-screen klef-canvas bg-sidebar flex min-h-svh flex-col items-center justify-center gap-6 px-4 py-10">
@@ -111,7 +182,9 @@ export function CliAuthorize() {
           </CardTitle>
           <CardDescription>
             {pending.state === "approved"
-              ? "Your terminal is signed in."
+              ? pending.unlocked
+                ? "Your terminal is signed in and unlocked."
+                : "Your terminal is signed in."
               : pending.state === "denied"
                 ? "Nothing was created."
                 : "A terminal wants to sign in as you."}
@@ -121,7 +194,9 @@ export function CliAuthorize() {
         <CardContent className="flex flex-col gap-4">
           {pending.state === "approved" && (
             <Result icon={<Check className="size-4" />} title="Approved">
-              You can close this tab.
+              {pending.unlocked
+                ? "It keeps the key on that device. You can close this tab."
+                : "You can close this tab."}
             </Result>
           )}
 
@@ -170,6 +245,63 @@ export function CliAuthorize() {
               <p className="text-muted-foreground text-sm">
                 Approve only if this matches the code in your terminal.
               </p>
+
+              {offer.available && (
+                <div className="flex flex-col gap-3 rounded-lg border p-3">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="unlock-cli"
+                      checked={unlockToo}
+                      onCheckedChange={(checked) => setUnlockToo(checked === true)}
+                    />
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor="unlock-cli">Also unlock the CLI on this device</Label>
+                      <p className="text-muted-foreground text-xs">
+                        Sync runs there without your passphrase until you run{" "}
+                        <code className="font-mono">klef lock</code>. The key is
+                        sealed to that terminal.
+                      </p>
+                    </div>
+                  </div>
+                  {unlockToo && method === "passphrase" && (
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="cli-passphrase">Master passphrase</Label>
+                      <PasswordInput
+                        id="cli-passphrase"
+                        autoComplete="current-password"
+                        aria-invalid={!!unlockError}
+                        value={passphrase}
+                        onChange={(e) => setPassphrase(e.target.value)}
+                      />
+                      {offer.method === "passkey" && (
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground self-start text-xs underline underline-offset-2"
+                          onClick={() => setMethod("passkey")}
+                        >
+                          Use your passkey instead
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {unlockToo && method === "passkey" && (
+                    <div className="flex flex-col gap-1">
+                      <p className="text-muted-foreground text-xs">
+                        You'll confirm with your passkey when you approve.
+                      </p>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-foreground self-start text-xs underline underline-offset-2"
+                        onClick={() => setMethod("passphrase")}
+                      >
+                        Use your passphrase instead
+                      </button>
+                    </div>
+                  )}
+                  {unlockError && <p className="text-destructive text-sm">{unlockError}</p>}
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -179,13 +311,16 @@ export function CliAuthorize() {
                 >
                   Deny
                 </Button>
-                <Button className="flex-1" disabled={busy} onClick={() => void decide(false)}>
-                  {busy ? "Approving..." : "Approve"}
+                <Button
+                  className="flex-1"
+                  disabled={busy || (unlocking && method === "passphrase" && passphrase === "")}
+                  onClick={() => void decide(false)}
+                >
+                  {busy ? "Approving..." : unlocking ? "Approve and unlock" : "Approve"}
                 </Button>
               </div>
               <p className="text-muted-foreground text-xs leading-relaxed">
-                The token can fetch your encrypted files. Reading them still
-                needs your passphrase, which stays on your machine.
+                On its own the token reaches ciphertext and names only.
               </p>
             </>
           )}

@@ -430,3 +430,30 @@ export async function rotateRecoveryKey(
 
   return { recoveryKey: recovery.display, wrappedDekRecovery };
 }
+
+// --- the raw DEK, for another of the user's own devices --------------------
+//
+// The live DEK is non-extractable, so a device that needs the key itself (the
+// CLI remembering it, or a browser handing it to the CLI at sign-in) recovers
+// the bytes from a wrapping it can open, exactly as an unlock does, and uses
+// them at once. Callers seal or store them and then zero the array; nothing
+// here changes what the server stores.
+
+/** The DEK's raw bytes from the passphrase. Throws on a wrong passphrase. */
+export async function dekBytesWithPassphrase(
+  passphrase: string,
+  kdfParams: KdfParams,
+  wrappedDek: WrappedKey,
+): Promise<Bytes> {
+  return dekBytesWithKekBytes(await deriveKekBytes(passphrase, kdfParams), wrappedDek);
+}
+
+/** The DEK's raw bytes from an already-derived KEK (the CLI derives it once for unlock). */
+export async function dekBytesWithKekBytes(kekBytes: Bytes, wrappedDek: WrappedKey): Promise<Bytes> {
+  return unwrapKeyBytes(await importAesKey(kekBytes), wrappedDek);
+}
+
+/** The DEK's raw bytes from a passkey's PRF secret. */
+export async function dekBytesWithPrfSecret(prfSecret: Bytes, wrappedDekPasskey: WrappedKey): Promise<Bytes> {
+  return unwrapKeyBytes(await derivePasskeyWrappingKey(prfSecret), wrappedDekPasskey);
+}

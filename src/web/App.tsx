@@ -27,6 +27,7 @@ const CliAuthorize = lazyPage(() =>
 );
 const VaultArea = lazyPage(() => import("./VaultArea.tsx").then((m) => m.VaultArea));
 const ToastLab = lazyPage(() => import("./components/ToastLab.tsx").then((m) => m.ToastLab));
+const CliLab = lazyPage(() => import("./components/CliLab.tsx").then((m) => m.CliLab));
 const DesignLab = lazyPage(() => import("./components/DesignLab.tsx").then((m) => m.DesignLab));
 
 const MARKETING: Record<string, { preload: () => Promise<void> }> = {
@@ -132,7 +133,7 @@ function CliRoute() {
   if (!session) {
     return <Navigate to="/auth" replace state={{ from: `${pathname}${search}` }} />;
   }
-  return <CliAuthorize />;
+  return <CliAuthorize userId={session.user.id} />;
 }
 
 /** /docs is a static site beside the SPA; see lib/docs-route.ts. */
@@ -190,6 +191,9 @@ export function App() {
             <Route path="/dev/design" element={<DesignLab />} />
           )}
           {import.meta.env.DEV && <Route path="/dev/splash" element={<Splash />} />}
+          {import.meta.env.DEV && (
+            <Route path="/dev/cli" element={<CliLab />} />
+          )}
           {/* Workspace home: klef.sh/<workspace-slug>. Marketing routes above
               win first; reserved slugs are rejected at workspace creation. */}
           <Route path="/:wsSlug" element={<AppArea />} />
