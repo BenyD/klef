@@ -14,7 +14,7 @@ export interface ParsedArgs {
 }
 
 /** Flags that take a value, so `--file .env` consumes the next argument. */
-const VALUE_FLAGS = new Set(["file", "path", "project", "workspace", "environment", "for", "cwd"]);
+const VALUE_FLAGS = new Set(["file", "path", "project", "workspace", "environment", "for", "cwd", "only"]);
 
 /**
  * Commands whose arguments are another command line. Flag parsing stops at

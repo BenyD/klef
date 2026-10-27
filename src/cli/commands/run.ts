@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { spawn } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import { constants as osConstants } from "node:os";
 import { StringDecoder } from "node:string_decoder";
-import { command as suggested } from "../invocation.ts";
-import { requireApi } from "../session.ts";
-import type { CurrentVersion } from "../api.ts";
-import { resolveTarget } from "../resolve.ts";
-import { requireConfig, requireVault, unlockedVault } from "../common.ts";
-import { CliError, emit, note, uiMode, warn } from "../ui.ts";
-import { syncTargets } from "../targets.ts";
 import { flagValue, hasFlag, type ParsedArgs } from "../args.ts";
-import { envValues } from "../env-values.ts";
+import { requireConfig, requireVault, unlockedVault } from "../common.ts";
+import { envEntries } from "../dotenv-values.ts";
+import { command } from "../invocation.ts";
+import type { ProjectConfig } from "../project-config.ts";
 import { createRedactor, REDACTED, redactable } from "../redact.ts";
+import { resolveTarget } from "../resolve.ts";
+import { requireApi } from "../session.ts";
+import { syncTargets } from "../targets.ts";
+import { CliError, emit, note, uiMode, warn } from "../ui.ts";
+import { resolveWritePath } from "../write-path.ts";
 
 /**
  * How long a partial line is held before it is forwarded anyway. A prompt
@@ -21,12 +23,12 @@ import { createRedactor, REDACTED, redactable } from "../redact.ts";
  */
 const IDLE_FLUSH_MS = 100;
 
-/** What the command touches outside the vault, replaceable in tests. */
+/** What the command touches outside the files, replaceable in tests. */
 export interface RunDeps {
   /** Where the child's forwarded output goes. */
   stdout: (text: string) => void;
   stderr: (text: string) => void;
-  /** Where SIGINT and SIGTERM arrive, to pass on to the child. */
+  /** Where SIGTERM and SIGHUP arrive, to pass on to the child. */
   signals: Pick<NodeJS.EventEmitter, "on" | "off">;
 }
 
@@ -38,17 +40,30 @@ export function defaultRunDeps(): RunDeps {
   };
 }
 
+/** One file's variables, and where they came from. */
+interface Loaded {
+  file: string;
+  source: "local" | "vault";
+  values: Map<string, string>;
+}
+
 /**
- * Run a command with the vault's variables in its environment, and nothing on
- * disk. The env file is decrypted in memory, parsed as dotenv would, merged
- * over this process's environment (the file wins), and handed to the child.
- * The child's stdout and stderr pass through this process, which replaces
- * every secret value it finds with a marker, so a key the app prints never
- * reaches the terminal, the log, or the coding agent that ran this.
+ * Run a command with an env file's variables in its environment, so nothing
+ * (and no agent) has to open the file to use what is in it: starting the
+ * app, running the tests, pointing a one-off query at DATABASE_URL.
  *
- * The exit code is the child's; SIGINT and SIGTERM are passed on to it.
- * Under --json the child's output goes to stderr, so stdout still carries
- * exactly one object.
+ * The local file is read by default, which needs no unlock; `--from-vault`
+ * decrypts the vault's copy in memory instead, so nothing need be on disk.
+ * `--all` merges every file `.klef.json` lists, a later file winning a
+ * shared key; `--only` passes just the named keys. The file wins over a
+ * variable already set in the environment.
+ *
+ * klef itself prints no value, and the command's stdout and stderr pass
+ * back through this process, which replaces every value it handed over with
+ * a marker, so a key the app logs never reaches the terminal, the log, or
+ * the coding agent that ran this. `--no-redact` gives the command the
+ * terminal back, unmasked, and warns. The exit code is the command's own;
+ * under --json its output goes to stderr, so stdout carries one object.
  */
 export async function run(
   args: ParsedArgs,
@@ -59,68 +74,103 @@ export async function run(
 ): Promise<number> {
   const [program, ...programArgs] = args.positionals;
   if (!program) {
-    throw new CliError("usage", "Say what to run, after --.", { next: [suggested("run -- npm run dev")] });
+    throw new CliError("usage", "Say what to run, after --.", { next: [command("run -- npm run dev")] });
   }
-  if (hasFlag(args, "path")) throw new CliError("usage", "run writes no file, so it takes no --path.");
 
   const config = await requireConfig(cwd);
   const targets = syncTargets(config, { all: hasFlag(args, "all"), file: flagValue(args, "file"), path: null });
+  const loaded = hasFlag(args, "from-vault")
+    ? await vaultValues(env, config, targets.map((t) => t.file), prompt)
+    : await localValues(cwd, targets.map((t) => ({ file: t.file, path: t.path ?? t.file })));
 
-  const api = await requireApi(env);
-  const tree = await api.tree();
-  const resolved = targets.map((target) => resolveTarget(tree, { ...config, file: target.file }));
-  for (const file of resolved) {
-    if (!file.currentVersionId) {
-      throw new CliError("not_found", `${file.fileName} has no saved version yet, so there is nothing to run with.`, {
-        hint: "Push it first, or save it in the web app.",
-        next: [suggested(`push --file ${file.fileName}`)],
+  const merged = new Map<string, string>();
+  for (const { values } of loaded) for (const [key, value] of values) merged.set(key, value);
+
+  const only = flagValue(args, "only");
+  let selected = merged;
+  if (only !== null) {
+    const names = only.split(",").map((n) => n.trim()).filter(Boolean);
+    const missing = names.filter((n) => !merged.has(n));
+    if (missing.length) {
+      const where = loaded.map((l) => l.file).join(", ");
+      throw new CliError("not_found", `Not in ${where}: ${missing.join(", ")}.`, {
+        hint: "Names are case-sensitive. `klef diff` lists the keys a file has.",
       });
     }
-  }
-
-  const keyMaterial = await requireVault(api);
-  const versions: CurrentVersion[] = [];
-  for (const file of resolved) {
-    const { version } = await api.currentVersion(file.fileId);
-    if (!version) {
-      throw new CliError("server", "The current version disappeared between listing and fetching it.", {
-        hint: "Something saved at the same moment. Run it again.",
-      });
-    }
-    versions.push(version);
-  }
-
-  // Ciphertext only up to here. The plaintext below lives in this process
-  // and the child's environment, and nowhere else.
-  const cipher = await unlockedVault(keyMaterial, env, prompt);
-  const variables = new Map<string, string>();
-  const files: { file: string; variables: number; version: string }[] = [];
-  for (const [i, file] of resolved.entries()) {
-    const values = envValues(await cipher.decrypt(versions[i]!.blob));
-    for (const [key, value] of values) variables.set(key, value);
-    files.push({ file: file.fileName, variables: values.size, version: versions[i]!.id });
+    selected = new Map(names.map((n) => [n, merged.get(n)!]));
   }
 
   const redact = !hasFlag(args, "no-redact");
   if (!redact) {
     warn("Output is not redacted: a value the command prints will show, and reach whatever is reading this.", "no_redact");
   }
-  const names = files.map((f) => f.file).join(", ");
-  const count = `${variables.size} ${variables.size === 1 ? "variable" : "variables"}`;
-  note(`Running ${program} with ${count} from ${names}${redact ? `; a value in its output shows as ${REDACTED}` : ""}`);
+  const from = loaded.map((l) => l.file).join(", ");
+  const count = `${selected.size} ${selected.size === 1 ? "variable" : "variables"}`;
+  note(`klef: ${count} from ${from}${redact ? `; a value in the output shows as ${REDACTED}` : ""}`);
 
-  const result = await spawnRedacted(program, programArgs, {
+  const result = await spawnChild(program, programArgs, {
     cwd,
-    env: { ...env, ...Object.fromEntries(variables) },
-    secrets: redact ? redactable(variables.values()) : null,
+    env: { ...env, ...Object.fromEntries(selected) },
+    secrets: redact ? redactable(selected.values()) : null,
     // Under --json stdout is the JSON object's, so the child's goes to stderr.
     stdout: uiMode().json ? deps.stderr : deps.stdout,
     stderr: deps.stderr,
     signals: deps.signals,
   });
 
-  emit({ files, exitCode: result.exitCode, redactions: result.redactions, redacted: redact });
+  emit({
+    files: loaded.map((l) => ({ file: l.file, source: l.source, variables: l.values.size })),
+    variables: selected.size,
+    exitCode: result.exitCode,
+    redactions: result.redactions,
+    redacted: redact,
+  });
   return result.exitCode;
+}
+
+/** Each file as it is on disk, at the path `.klef.json` gives it. */
+async function localValues(cwd: string, files: { file: string; path: string }[]): Promise<Loaded[]> {
+  const out: Loaded[] = [];
+  for (const { file, path } of files) {
+    let text: string;
+    try {
+      text = await readFile(resolveWritePath(cwd, path), "utf8");
+    } catch (err) {
+      if (err instanceof CliError) throw err;
+      throw new CliError("not_found", `Can't read ${path} here.`, {
+        hint: "Pull it first, or use the vault's copy with --from-vault:",
+        next: [command("pull"), command("run --from-vault -- <command>")],
+      });
+    }
+    out.push({ file, source: "local", values: envEntries(text) });
+  }
+  return out;
+}
+
+/** Each file's current version, decrypted in memory. Fails before decrypting anything. */
+async function vaultValues(
+  env: NodeJS.ProcessEnv,
+  config: ProjectConfig,
+  files: string[],
+  prompt?: (question: string) => Promise<string>,
+): Promise<Loaded[]> {
+  const api = await requireApi(env);
+  const tree = await api.tree();
+  const resolved = files.map((file) => resolveTarget(tree, { ...config, file }));
+  const versions = [];
+  for (const file of resolved) {
+    const { version } = await api.currentVersion(file.fileId);
+    if (!version) throw new CliError("not_found", `${file.fileName} has no saved version in the vault yet.`);
+    versions.push(version);
+  }
+  // Ciphertext only up to here. The plaintext below lives in this process
+  // and the child's environment, and nowhere else.
+  const cipher = await unlockedVault(await requireVault(api), env, prompt);
+  const out: Loaded[] = [];
+  for (const [i, file] of resolved.entries()) {
+    out.push({ file: file.fileName, source: "vault", values: envEntries(await cipher.decrypt(versions[i]!.blob)) });
+  }
+  return out;
 }
 
 interface SpawnOptions {
@@ -136,9 +186,13 @@ interface SpawnOptions {
 /**
  * Spawn the child and wait for it. With secrets to mask, its output is piped
  * through a redactor per stream; without, it inherits this process's streams
- * (and so keeps a terminal, colours and all).
+ * (and so keeps a terminal, colours and all). stdin is always the child's.
+ *
+ * Ctrl-C reaches the child from the terminal already, so klef only ignores
+ * SIGINT and lets the child decide how to stop; SIGTERM and SIGHUP sent to
+ * klef alone are passed on.
  */
-function spawnRedacted(
+function spawnChild(
   program: string,
   programArgs: string[],
   options: SpawnOptions,
@@ -151,26 +205,24 @@ function spawnRedacted(
       stdio: piped ? ["inherit", "pipe", "pipe"] : "inherit",
     });
 
-    const forwarders: { signal: NodeJS.Signals; handler: () => void }[] = (["SIGINT", "SIGTERM"] as const).map(
-      (signal) => ({ signal, handler: () => void child.kill(signal) }),
-    );
-    for (const { signal, handler } of forwarders) options.signals.on(signal, handler);
+    const handlers: { signal: NodeJS.Signals; handler: () => void }[] = [
+      { signal: "SIGINT", handler: () => {} },
+      { signal: "SIGTERM", handler: () => void child.kill("SIGTERM") },
+      { signal: "SIGHUP", handler: () => void child.kill("SIGHUP") },
+    ];
+    for (const { signal, handler } of handlers) options.signals.on(signal, handler);
+    const finish = () => {
+      for (const { signal, handler } of handlers) options.signals.off(signal, handler);
+    };
 
     const streams = piped
-      ? [
-          pipe(child.stdout!, options.secrets!, options.stdout),
-          pipe(child.stderr!, options.secrets!, options.stderr),
-        ]
+      ? [pipe(child.stdout!, options.secrets!, options.stdout), pipe(child.stderr!, options.secrets!, options.stderr)]
       : [];
-
-    const finish = () => {
-      for (const { signal, handler } of forwarders) options.signals.off(signal, handler);
-    };
 
     child.on("error", (err: NodeJS.ErrnoException) => {
       finish();
-      const why = err.code === "ENOENT" ? "command not found" : err.message;
-      reject(new CliError("usage", `Could not run ${program}: ${why}.`));
+      if (err.code === "ENOENT") reject(new CliError("not_found", `${program}: command not found.`));
+      else reject(err);
     });
 
     // "close" rather than "exit": the stdio streams have ended by then, so

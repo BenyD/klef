@@ -28,7 +28,7 @@ diverged it is marked inline.
 | Two-way sync | `sync`, `diff`, `restore`; `src/cli/sync-plan.ts` decides, `project-sync.ts` carries it out, `sync-state.ts` remembers |
 | Default files | `link` records `.env.local` and `.env.production` (`src/cli/default-files.ts`) |
 | Platform audit | `klef audit [vercel\|github\|cloudflare] [--json]`: key names only, read-only (`src/cli/audit.ts`) |
-| Run without a file | `klef run -- <command>`: the file decrypted in memory and injected into the child's environment, values masked in its output (`src/cli/commands/run.ts`, `redact.ts`, `env-values.ts`) |
+| Run with the variables | `klef run [--from-vault] -- <command>`: the file (local, or decrypted in memory) injected into the child's environment, values masked in its output (`src/cli/commands/run.ts`, `redact.ts`, `dotenv-values.ts`) |
 | Machine output | `--json` on every command: one envelope with `ok`, `data` or `error.code` + `next`; fixed exit codes (`src/cli/ui.ts`, `klef help json`, `klef help exit-codes`) |
 | Published package | `@klefsh/cli`, one bundled file, zero required dependencies |
 | Browser sign-in | `db/migrations/0013_device_authorizations.sql`, `src/api/device.ts`, `/cli` |

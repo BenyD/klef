@@ -11,14 +11,16 @@ import { NoTerminalError } from "./prompt.ts";
 import { REDACTED } from "./redact.ts";
 import { resetUi, setUiMode } from "./ui.ts";
 
-// `klef run` end to end: real crypto, a fake network, and a real child
-// process (node itself). The child gets the values; what comes back out of
-// it does not carry them.
+// `klef run` end to end: real files, real crypto, a fake network, and a real
+// child process (node itself). The child gets the values; what comes back
+// out of it does not carry them, and klef's own output never does.
 
 const PASSPHRASE = "correct horse battery staple";
 const SECRET = "sk_live_do_not_print_me_0123456789";
+const VAULT_SECRET = "sk_live_from_the_vault_9876543210";
 const OTHER = "whsec_also_never_printed";
-const LOCAL = `# App\nAPI_KEY=${SECRET}\nPORT=3000\nQUOTED="hello world"\nDEBUG=false\n`;
+const LOCAL = `# App\nAPI_KEY="${SECRET} # not a comment"\nPORT=3000 # comment\nQUOTED="hello world"\nDEBUG=false\nEMPTY=\n`;
+const VAULT_LOCAL = `API_KEY=${VAULT_SECRET}\nPORT=4000\n`;
 const PROD = `API_KEY=${OTHER}\nREGION=eu-west-1\n`;
 
 let vault: VaultSetupResult;
@@ -96,9 +98,10 @@ beforeEach(async () => {
     KLEF_AGENT_SOCK: path.join(root, ".agent", "agent.sock"),
     KLEF_CONFIG_DIR: path.join(root, ".config"),
     PORT: "1",
+    KEEP: "from-parent",
   };
   files = new Map();
-  await save(".env.local", LOCAL);
+  await save(".env.local", VAULT_LOCAL);
   await save(".env.production", PROD);
   await writeFile(
     path.join(cwd, ".klef.json"),
@@ -107,9 +110,11 @@ beforeEach(async () => {
       project: "lensdrop",
       file: ".env.local",
       environment: null,
-      files: [{ file: ".env.local" }, { file: ".env.production" }],
+      files: [{ file: ".env.local" }, { file: ".env.production" }, { file: "prod.env", path: "config/.env.production" }],
     }),
   );
+  await writeFile(path.join(cwd, ".env.local"), LOCAL);
+  await writeFile(path.join(cwd, ".env.production"), PROD);
   console_ = [];
   stdout = "";
   stderr = "";
@@ -127,23 +132,24 @@ afterEach(async () => {
   resetUi();
   await rm(root, { recursive: true, force: true });
   for (const text of [console_.join("\n"), stdout, stderr]) {
-    expect(text).not.toContain(SECRET);
-    expect(text).not.toContain(OTHER);
+    for (const secret of [SECRET, VAULT_SECRET, OTHER]) expect(text).not.toContain(secret);
   }
 });
 
 describe("run", () => {
-  it("gives the command the file's variables, unquoted, with the file winning over the environment", async () => {
+  it("gives the command the local file's variables, decoded, over the parent's environment", async () => {
     const code = await klefRun(
-      `console.log([process.env.API_KEY === ${JSON.stringify(SECRET)}, process.env.PORT, process.env.QUOTED === "hello world", process.env.DEBUG].join("|"))`,
+      `console.log([process.env.API_KEY === ${JSON.stringify(`${SECRET} # not a comment`)}, process.env.PORT, process.env.QUOTED === "hello world", process.env.DEBUG, process.env.EMPTY === "", process.env.KEEP].join("|"))`,
     );
     expect(code).toBe(0);
-    expect(stdout).toBe("true|3000|true|false\n");
+    expect(stdout).toBe("true|3000|true|false|true|from-parent\n");
+    expect(console_).toEqual([`klef: 5 variables from .env.local; a value in the output shows as ${REDACTED}`]);
   });
 
-  it("writes no file", async () => {
+  it("writes nothing", async () => {
+    const before = await readdir(cwd);
     await klefRun("");
-    expect(await readdir(cwd)).toEqual([".klef.json"]);
+    expect(await readdir(cwd)).toEqual(before);
   });
 
   it("redacts a value the command prints, on either stream, and counts it", async () => {
@@ -184,20 +190,22 @@ describe("run", () => {
     expect(await klefRun("process.kill(process.pid, 'SIGKILL')")).toBe(137);
   });
 
-  it("passes SIGTERM on to the command", async () => {
+  it("passes SIGTERM on to the command, and ignores SIGINT itself", async () => {
     deps.stdout = (t) => {
       stdout += t;
-      if (stdout.includes("ready")) signals.emit("SIGTERM");
+      if (stdout.includes("ready")) {
+        signals.emit("SIGINT");
+        signals.emit("SIGTERM");
+      }
     };
     const code = await klefRun(
       `process.on("SIGTERM", () => process.exit(9)); console.log("ready"); setInterval(() => {}, 1000)`,
     );
     expect(code).toBe(9);
-    expect(signals.listenerCount("SIGTERM")).toBe(0);
-    expect(signals.listenerCount("SIGINT")).toBe(0);
+    for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) expect(signals.listenerCount(signal)).toBe(0);
   });
 
-  it("takes another file with --file", async () => {
+  it("takes another listed file with --file, at its local path", async () => {
     await klefRun(
       `console.log(process.env.REGION === "eu-west-1", process.env.API_KEY === ${JSON.stringify(OTHER)}, process.env.PORT)`,
       ["--file", ".env.production"],
@@ -205,12 +213,45 @@ describe("run", () => {
     expect(stdout).toBe("true true 1\n");
   });
 
+  it("says when the local file is not here, and how to get it", async () => {
+    await expect(run(parseArgs(["run", "--file", "prod.env", "--", "true"]), env, cwd, prompt, deps)).rejects.toMatchObject({
+      code: "not_found",
+      message: "Can't read config/.env.production here.",
+      next: [{ command: "klef pull" }, { command: "klef run --from-vault -- <command>" }],
+    });
+  });
+
+  it("decrypts the vault's copy with --from-vault, writing nothing", async () => {
+    const before = await readdir(cwd);
+    const code = await klefRun(
+      `console.log(process.env.API_KEY === ${JSON.stringify(VAULT_SECRET)}, process.env.PORT)`,
+      ["--from-vault"],
+    );
+    expect(code).toBe(0);
+    expect(stdout).toBe("true 4000\n");
+    expect(await readdir(cwd)).toEqual(before);
+  });
+
   it("merges every file with --all, the later file winning", async () => {
+    await mkdir(path.join(cwd, "config"));
+    await writeFile(path.join(cwd, "config/.env.production"), "REGION=us-east-1\n");
     await klefRun(
-      `console.log(process.env.PORT, process.env.REGION === "eu-west-1", process.env.API_KEY === ${JSON.stringify(OTHER)})`,
+      `console.log(process.env.PORT, process.env.REGION === "us-east-1", process.env.API_KEY === ${JSON.stringify(OTHER)})`,
       ["--all"],
     );
     expect(stdout).toBe("3000 true true\n");
+  });
+
+  it("passes only the keys --only names", async () => {
+    await klefRun(`console.log(process.env.PORT, process.env.API_KEY === undefined, process.env.KEEP)`, ["--only", "PORT"]);
+    expect(stdout).toBe("3000 true from-parent\n");
+  });
+
+  it("refuses --only names the file does not have, naming them and nothing else", async () => {
+    await expect(run(parseArgs(["run", "--only", "PORT,NOPE", "--", "true"]), env, cwd, prompt, deps)).rejects.toMatchObject({
+      code: "not_found",
+      message: "Not in .env.local: NOPE.",
+    });
   });
 
   it("prints one JSON object with the exit code and the redaction count, the output going to stderr", async () => {
@@ -223,7 +264,8 @@ describe("run", () => {
       ok: true,
       command: "run",
       data: {
-        files: [{ file: ".env.local", variables: 4, version: "v1" }],
+        files: [{ file: ".env.local", source: "local", variables: 5 }],
+        variables: 5,
         exitCode: 3,
         redactions: 1,
         redacted: true,
@@ -246,10 +288,16 @@ describe("run", () => {
     });
   });
 
-  it("stops with locked, exit 4, when nobody can unlock, before running anything", async () => {
+  it("prints nothing of its own under --quiet", async () => {
+    setUiMode({ quiet: true });
+    await klefRun("");
+    expect(console_).toEqual([]);
+  });
+
+  it("stops with locked, exit 4, when --from-vault needs an unlock nobody can give", async () => {
     const noTerminal = () => Promise.reject(new NoTerminalError());
     await expect(
-      run(parseArgs(["run", "--", process.execPath, "-e", "console.log('ran')"]), env, cwd, noTerminal, deps),
+      run(parseArgs(["run", "--from-vault", "--", process.execPath, "-e", "console.log('ran')"]), env, cwd, noTerminal, deps),
     ).rejects.toMatchObject({
       code: "locked",
       exitCode: 4,
@@ -265,15 +313,10 @@ describe("run", () => {
     });
   });
 
-  it("says when the command cannot be found", async () => {
-    await expect(
-      run(parseArgs(["run", "--", "klef-no-such-program-xyz"]), env, cwd, prompt, deps),
-    ).rejects.toMatchObject({ code: "usage", message: "Could not run klef-no-such-program-xyz: command not found." });
-  });
-
-  it("refuses --path, which has no file to point at", async () => {
-    await expect(run(parseArgs(["run", "--path", "x", "--", "true"]), env, cwd, prompt, deps)).rejects.toMatchObject({
-      code: "usage",
+  it("reports a command that does not exist", async () => {
+    await expect(run(parseArgs(["run", "--", "klef-no-such-program-xyz"]), env, cwd, prompt, deps)).rejects.toMatchObject({
+      code: "not_found",
+      message: "klef-no-such-program-xyz: command not found.",
     });
   });
 });

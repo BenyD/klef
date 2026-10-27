@@ -120,7 +120,10 @@ async function main(args: ParsedArgs): Promise<number> {
     throw new CliError(
       "usage",
       `Unknown flag ${shown} for ${spec.name}.${bad.suggestion ? ` Did you mean --${bad.suggestion}?` : ""}`,
-      { next: [suggested(`help ${spec.name}`)] },
+      {
+        hint: spec.name === "run" ? "Put the command to run after --, so its flags are its own:" : undefined,
+        next: [suggested(spec.name === "run" ? "run -- <command> [args...]" : `help ${spec.name}`)],
+      },
     );
   }
 

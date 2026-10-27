@@ -7,8 +7,8 @@ Klef's web app deploys continuously from `main`; the CLI is versioned on npm as 
 
 ## Unreleased
 
-- **`klef run`.** Runs a command with the vault's variables in its environment and no `.env` on disk: `klef run -- npm run dev`. The file is decrypted in memory, and every secret value the command prints is replaced by `[klef:redacted]` on its way out, so a key an app logs never reaches the terminal or a coding agent. `--file`, `--all`, `--no-redact`, the command's own exit code, and `--json`. The agent instructions `klef setup` writes now prefer it over `pull`.
 - **Sign in once, unlocked.** Approving `klef login` in the browser can also unlock the CLI: the page asks for your passkey or passphrase and sends the vault key sealed to that terminal, end to end. The CLI keeps it in the OS keychain, so pull, push, sync, diff and restore never ask for the passphrase on that device, in your terminal or in a coding agent. `klef unlock` does the same from a terminal; `klef lock` and `klef logout` forget the key; `klef login --no-remember` keeps none. `klef status` says how the vault is unlocked.
+- **`klef run`.** `klef run [--file X] [--all] [--only KEY,KEY] [--from-vault] -- <command>` runs a command with an env file's variables in its environment, so an agent can use a value without opening the file; `--from-vault` decrypts in memory, so nothing need be on disk. The command's output comes back with every value replaced by `[klef:redacted]`, so a key an app logs never reaches the terminal or a coding agent; `--no-redact` passes it through, with a warning. The exit code is the command's own, and `--json` reports it with the redaction count. The instructions `klef setup` writes now point agents at it.
 
 ## CLI 0.6.0
 
