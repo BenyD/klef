@@ -129,7 +129,7 @@ async function build(): Promise<Node> {
               lineHeight: 1,
               marginTop: 28,
             },
-            "Klef",
+            "klef",
           ),
           h(
             "div",
@@ -140,7 +140,7 @@ async function build(): Promise<Node> {
               lineHeight: 1.2,
               marginTop: 30,
             },
-            "Every .env file, on every machine.",
+            "Your .env files, in sync on every Mac.",
           ),
           h(
             "div",

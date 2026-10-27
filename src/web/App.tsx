@@ -8,6 +8,7 @@ import { VaultProvider } from "./vault-session.tsx";
 import { useVault } from "./vault-context.ts";
 import { Landing } from "./components/Landing.tsx";
 import { Security } from "./components/Security.tsx";
+import { Compare } from "./components/Compare.tsx";
 import { Terms } from "./components/Terms.tsx";
 import { Privacy } from "./components/Privacy.tsx";
 import { Why } from "./components/Why.tsx";
@@ -26,6 +27,7 @@ import { Toaster } from "./components/ui/sonner.tsx";
 
 const TITLES: Record<string, string> = {
   "/": "Klef - End-to-end encrypted .env sync",
+  "/compare": "Compare - Klef",
   "/security": "Security - Klef",
   "/terms": "Terms - Klef",
   "/privacy": "Privacy - Klef",
@@ -177,6 +179,7 @@ export function App() {
       <ThemeFavicon />
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/compare" element={<Compare />} />
         <Route path="/security" element={<Security />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />

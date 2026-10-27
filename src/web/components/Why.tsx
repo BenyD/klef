@@ -7,9 +7,9 @@ export function Why() {
   return (
     <MarketingLayout>
       <main className="marketing-single m-wrap">
-        <div className="m-card">
-          <article className="m-panel marketing-page">
-            <p className="m-eyebrow">About</p>
+        <div>
+          <article className="marketing-page">
+            <p className="m-label">About</p>
             <h1>Why Klef</h1>
             <p className="marketing-page-lead">
               A short note on why this exists, from the person who built it.
