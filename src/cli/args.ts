@@ -16,6 +16,14 @@ export interface ParsedArgs {
 /** Flags that take a value, so `--file .env` consumes the next argument. */
 const VALUE_FLAGS = new Set(["file", "path", "project", "workspace", "environment", "for", "cwd", "add", "as", "from", "only"]);
 
+/**
+ * Commands whose arguments are another command line. Flag parsing stops at
+ * the first positional, so `klef run npm start --port 3000` hands `--port`
+ * to npm rather than rejecting it as a flag klef does not know. `--` still
+ * works, and is the unambiguous form the docs show.
+ */
+const PASSTHROUGH_COMMANDS = new Set(["run"]);
+
 /** Short flags, as the long names commands check for. */
 const SHORT: Record<string, string> = {
   h: "help",
@@ -73,8 +81,15 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       continue;
     }
 
-    if (command === null) command = arg;
-    else positionals.push(arg);
+    if (command === null) {
+      command = arg;
+      continue;
+    }
+    positionals.push(arg);
+    if (PASSTHROUGH_COMMANDS.has(command)) {
+      positionals.push(...argv.slice(i + 1).filter((a): a is string => a !== undefined));
+      break;
+    }
   }
 
   return { command, positionals, flags };

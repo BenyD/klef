@@ -19,7 +19,7 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
   );
 }
 
-/** The wordmark with the woven asterisk; the top loop in ember. */
+/** The wordmark with the Strand mark; the last strand in ember. */
 export function Brand({ onClick }: { onClick?: () => void }) {
   return (
     <Link to="/" className="m-brand" onClick={onClick}>

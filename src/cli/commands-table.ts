@@ -165,13 +165,41 @@ export const COMMANDS: CommandSpec[] = [
     summary: "Write the vault's copy of env files here",
     description:
       "Writes each file at mode 0600 and reports how many variables it holds; never a value. " +
-      "Overwrites the local copy: `klef sync` is the safe choice when this one may have been edited.",
+      "Overwrites the local copy: `klef sync` is the safe choice when this one may have been edited. " +
+      "To run something with the variables and no file on disk, see `klef run`.",
     flags: [FILE, PATH, ALL],
     examples: [
       ["klef pull --all", "Every file listed in .klef.json"],
       ["klef pull --file .env.production", "One file"],
     ],
     json: "{ files: [ { file, path, variables, version } ] }",
+  },
+  {
+    name: "run",
+    group: "Everyday",
+    args: "[flags] -- <command> [args...]",
+    summary: "Run a command with an env file's variables, without opening the file",
+    description:
+      "Starts the command with the linked file's variables (or --file's) in its environment, " +
+      "read from the local file, or decrypted from the vault in memory with --from-vault, so " +
+      "nothing need be on disk. The file wins over a variable already set. The command's " +
+      "output comes back through klef with every value replaced by [klef:redacted], so a key " +
+      "the app logs never reaches the terminal or an agent; --no-redact passes it through as " +
+      "it is. The exit code is the command's own. Values are decoded as dotenv loaders do; " +
+      "there is no ${VAR} expansion inside the file. Under --json the output goes to stderr.",
+    flags: [
+      { name: "file", value: "name", description: "Which env file (default: the linked one)" },
+      ALL,
+      { name: "only", value: "KEY,KEY", description: "Pass only these variables" },
+      { name: "from-vault", description: "Use the vault's copy instead of the local file (needs the vault unlocked)" },
+      { name: "no-redact", description: "Forward the output as it is, values included (warns)" },
+    ],
+    examples: [
+      ["klef run -- npm run dev", "The app, with .env.local loaded and its output redacted"],
+      ["klef run --only DATABASE_URL -- sh -c 'psql \"$DATABASE_URL\" -c \"select 1\"'", "One variable in a query; single quotes so your shell does not expand it first"],
+      ["klef run --file .env.production --from-vault -- node scripts/check.js", "The vault's production values, nothing on disk"],
+    ],
+    json: "{ files: [ { file, source, variables } ], variables, exitCode, redactions, redacted }  source: local | vault",
   },
   {
     name: "push",
@@ -201,30 +229,6 @@ export const COMMANDS: CommandSpec[] = [
       ["klef diff --all --exit-code", "Exit 10 if anything differs, for scripts"],
     ],
     json: "{ files: [ { file, path, state, reason, onlyLocal, onlyVault, changed, declaredUnsetLocal, declaredUnsetVault } ] }",
-  },
-  {
-    name: "run",
-    group: "Everyday",
-    args: "-- <command> [args...]",
-    summary: "Run a command with an env file's variables, without opening the file",
-    description:
-      "Starts the command with the linked file's variables (or --file's) in its environment, " +
-      "read from the local file, or decrypted from the vault with --from-vault. stdin, stdout, " +
-      "stderr and the exit code pass straight through, unmasked: klef prints no value, but the " +
-      "command gets them all and can print any of them. To use a variable inside the command, " +
-      "wrap it in sh -c '...' so your own shell does not expand $NAME before klef runs. Values " +
-      "are decoded as dotenv loaders do; there is no ${VAR} expansion inside the file.",
-    flags: [
-      { name: "file", value: "name", description: "Which env file (default: the linked one)" },
-      { name: "only", value: "KEY,KEY", description: "Pass only these variables" },
-      { name: "from-vault", description: "Use the vault's copy instead of the local file (needs the vault unlocked)" },
-    ],
-    examples: [
-      ["klef run -- npm run dev", "The app, with .env.local loaded"],
-      ["klef run --only DATABASE_URL -- sh -c 'psql \"$DATABASE_URL\" -c \"select 1\"'", "One variable in a query; single quotes so your shell does not expand it first"],
-      ["klef run --file .env.production --from-vault -- node scripts/check.js", "The vault's production values"],
-    ],
-    json: "(passes the command's output through; --json is not supported)",
   },
   {
     name: "set",
@@ -482,7 +486,9 @@ export function rootHelp(cli: string, version: string): string {
 }
 
 export function commandHelp(spec: CommandSpec, cli: string): string {
-  const usageFlags = spec.flags.length ? " [flags]" : "";
+  // A command whose args say where the flags go (run: before the `--`) lays
+  // its own usage out.
+  const usageFlags = spec.flags.length && !spec.args?.includes("[flags]") ? " [flags]" : "";
   const lines = [
     spec.description ?? spec.summary,
     "",
