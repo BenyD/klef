@@ -1,0 +1,54 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+/* The app's own colour tokens, then Fumadocs' shadcn theme, which maps its
+   --color-fd-* variables onto those same names. No new colours. */
+@import "../../src/web/styles/tokens.css";
+@import "fumadocs-ui/css/shadcn.css";
+@import "fumadocs-ui/css/preset.css";
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+}
+
+/* Brand ember for the current sidebar item and links, as in the app. The
+   search dialog's backdrop is the app's scrim: dimmed, never blurred. */
+:root,
+.dark {
+  --color-fd-primary: var(--brand);
+  --color-fd-overlay: var(--scrim);
+}
+.bg-fd-overlay {
+  backdrop-filter: none;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+.klef-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.klef-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.klef-mark svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+.klef-docs-label {
+  color: var(--muted-foreground);
+  font-weight: 500;
+}

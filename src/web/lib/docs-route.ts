@@ -1,5 +1,5 @@
-// The docs at /docs are a separate static site (docs-site/, built by Astro
-// into dist/client/docs), not an SPA route. Cloudflare serves them before the
+// The docs at /docs are a separate static site (docs-site/, prerendered by
+// React Router into dist/client/docs), not an SPA route. Cloudflare serves them before the
 // SPA fallback on a full load, so the SPA only sees /docs when a router Link
 // navigated there client-side. Then it has to hand over with a real page
 // load. If the page that was hard-loaded is itself /docs, the static files
