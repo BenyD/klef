@@ -67,10 +67,8 @@ export function AuthPage() {
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
-      <Link to="/" aria-label="Klef home">
-        <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-lg">
-          <KlefMark className="size-5" />
-        </div>
+      <Link to="/" aria-label="Klef home" className="text-foreground">
+        <KlefMark className="size-9" accent="var(--primary)" />
       </Link>
 
       <Card className="w-full max-w-sm">
