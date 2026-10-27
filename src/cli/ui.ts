@@ -46,6 +46,7 @@ export type ErrorCode =
   | "network"
   | "server"
   | "unsupported"
+  | "outdated"
   | "internal";
 
 const EXIT_FOR: Record<ErrorCode, number> = {
@@ -64,6 +65,7 @@ const EXIT_FOR: Record<ErrorCode, number> = {
   network: EXIT.error,
   server: EXIT.error,
   unsupported: EXIT.error,
+  outdated: EXIT.error,
   internal: EXIT.error,
 };
 

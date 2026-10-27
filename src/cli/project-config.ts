@@ -28,6 +28,8 @@ export interface ProjectConfig {
    * "cloudflare:workers/image": "workers/image/.dev.vars" }.
    */
   audit?: Record<string, string>;
+  /** The oldest CLI this link expects, e.g. "0.7.0" (min-version.ts). */
+  minVersion?: string;
 }
 
 export interface FileEntry {
@@ -83,6 +85,12 @@ export function parseProjectConfig(raw: string): ProjectConfig {
       throw new ConfigError(`${CONFIG_FILENAME}: "audit" must map scopes to file paths, like {"vercel:preview": ".env.preview"}`);
     }
     config.audit = audit as Record<string, string>;
+  }
+  if (obj.minVersion !== undefined) {
+    if (typeof obj.minVersion !== "string" || !/^\d+\.\d+\.\d+$/.test(obj.minVersion)) {
+      throw new ConfigError(`${CONFIG_FILENAME}: "minVersion" must be a version like "0.7.0"`);
+    }
+    config.minVersion = obj.minVersion;
   }
   return config;
 }
