@@ -32,7 +32,7 @@ Along with signing in, linking and pulling, setup offers to write instructions f
 | Claude Code, always loaded | `CLAUDE.md` | When asked |
 | Other agents | `AGENTS.md` | When asked |
 
-The instructions tell the agent how this repo's env files are synced (status, sync, pull, push, unlock), to prefer `klef run` over `klef pull` when it needs to start the app or run the tests, how to read the CLI's `--json` errors, and that it must never read or print a secret value. Commit them with the repo so every later session starts out knowing.
+The instructions tell the agent how this repo's env files are synced (status, sync, pull, push, unlock), how to use a value without reading it (`klef run`, whose output is redacted), how to read the CLI's `--json` errors, and that it must never read or print a secret value. Commit them with the repo so every later session starts out knowing.
 
 Choose the files with targets:
 
@@ -43,7 +43,9 @@ klef setup all                 # all four
 klef setup claude --global     # the skill for every project, in ~/.claude
 ```
 
-Rerun setup any time to refresh them. In `CLAUDE.md` and `AGENTS.md`, which hold your own instructions too, setup only ever rewrites its own block between `<!-- klef:start ... -->` and `<!-- klef:end -->`.
+`--global` goes with `claude` or `claude-md` only (`~/.claude/skills/klef/SKILL.md` or a block in `~/.claude/CLAUDE.md`); Cursor rules and `AGENTS.md` are read per repository, so `klef setup --global` on its own is refused.
+
+Rerun setup any time to refresh them. In `CLAUDE.md` and `AGENTS.md`, which hold your own instructions too, setup only ever rewrites its own block between `<!-- klef:start ... -->` and `<!-- klef:end -->`. A `SKILL.md` or `klef.mdc` that klef did not write is left alone and reported as skipped.
 
 ## The agent prompt in the app
 
@@ -73,8 +75,9 @@ The CLI never waits on a prompt an agent cannot answer. It detects Claude Code, 
 | --- | --- | --- |
 | `locked`, `no_terminal` | 4 | Runs `klef login` and asks you to approve it in the browser (or to run `klef unlock` yourself), and waits |
 | `confirmation_required` | 2 | Says what will change, gets your yes in the chat, then runs the `next` command, which adds `--yes` |
-| `conflict` | 5 | Shows you the key names in `data` and lets you choose; `next` holds the pull and push that settle it |
+| `conflict` | 5 | Shows you the key names in `data` and lets you choose; `next` holds the pull and push that keep one side whole, and `klef sync --merge --dry-run` shows what merging by key would give each side. A key whose value differs on both sides is yours to settle, with `klef set NAME`, which prompts you and not the agent |
 | `not_signed_in`, `not_linked` | 3, 6 | Runs `klef setup`, which opens the browser for you to approve |
+| `outdated` | 1 | The repo's `.klef.json` asks for a newer CLI; reruns the command as `npx @klefsh/cli@latest ...` |
 
 Nothing is written when a command stops this way. The full list of codes is in [JSON output and exit codes](/docs/cli/json/).
 

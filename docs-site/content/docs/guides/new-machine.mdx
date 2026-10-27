@@ -31,7 +31,7 @@ Because each repo commits its `.klef.json`, a new machine only needs your repos 
 
 ## What restore does
 
-`restore` walks the directory for `.klef.json` files and lists every checkout it found with the vault project it asks for. It decrypts nothing until you confirm. A cloned repo can name any workspace and project, so look at the list before you say yes.
+`restore` walks the directory for `.klef.json` files, up to four levels deep, skipping hidden directories, `node_modules` and build output, and lists every checkout it found with the vault project it asks for. It decrypts nothing until you confirm. A cloned repo can name any workspace and project, so look at the list before you say yes.
 
 Then it pulls each checkout's files. Restore **only pulls**:
 
