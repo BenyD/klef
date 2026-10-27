@@ -23,9 +23,13 @@ A network error, not a problem with your data; nothing was changed. Check your c
 
 ## CLI
 
-### "The vault is locked, and only a person at a terminal can unlock it"
+### "The vault is locked on this device"
 
-The command needed your passphrase but was not run from a terminal it can prompt on, for example when an agent or a script ran it (exit 4, `locked`). Run `klef unlock` yourself in a terminal; later commands, from anywhere, use the unlock agent until it locks. On Windows, where there is no unlock agent yet, run the command yourself.
+This device has not been unlocked yet, or was locked with `klef lock` (exit 4, `locked`). Run `klef login` and approve it in the browser with **Also unlock the CLI on this device** ticked, or run `klef unlock` yourself in a terminal. Either way the key is kept on this device and later commands, from anywhere, stop asking.
+
+### "The key remembered on this device no longer opens the vault"
+
+The vault was reset or replaced since this device was unlocked. The old key was forgotten; unlock again with `klef login` or `klef unlock`.
 
 ### "... needs a yes before it changes anything"
 

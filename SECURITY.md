@@ -33,9 +33,11 @@ that could exfiltrate keys from the browser.
 - Plaintext written to disk by `klef pull`. That is the point of the command;
   the file is written `0600` and the CLI will tell you if it is tracked by git,
   but after that it is an ordinary file on your machine.
-- Anything a process running as you can do while the CLI is unlocked, which is
-  the same trade `ssh-agent` makes. After `klef unlock`, any process running
-  as your user can ask the unlock agent to decrypt or encrypt until it locks.
+- Anything a process running as you can do on a device where the CLI is
+  unlocked. Once a device is unlocked (at `klef login` or with `klef unlock`),
+  the vault key is kept in its OS keychain until `klef lock`, so any process
+  running as your user there can decrypt the vault. See "The CLI's remembered
+  key" below for why that is the right default, and how to opt out.
 
 ## Staying signed in and staying unlocked
 
@@ -98,11 +100,11 @@ added later is browser-only until someone deliberately opens it.
   that spawned the CLI cannot supply or observe it, and there is no flag to
   leak into `ps` or shell history. If it ends up on a stream whose echo it
   cannot disable, it refuses to prompt rather than printing what you type.
-- **It cannot run unattended.** Every decrypt needs a human to have typed the
-  passphrase at a terminal: either for this command, or into `klef unlock`
-  within its idle window (15 minutes unless `--for` asked for longer, at most
-  7 days). That is what makes it safe to hand to a
-  coding agent: the agent orchestrates, a person unlocks.
+- **A person unlocks each device.** A device decrypts only after a person
+  approved `klef login` in the browser with their passkey or passphrase, or
+  typed the passphrase into `klef unlock` at a terminal. Nothing an agent or a
+  script can do substitutes for that step; once it is done, the device stays
+  unlocked until `klef lock`. The agent orchestrates, a person unlocks.
 - **`pull` and `push` stay inside the working directory.** Absolute paths and
   `../` escapes are refused, so an agent that can be talked into running either
   cannot choose where plaintext lands or which file gets uploaded.
@@ -150,11 +152,64 @@ Actions and Cloudflare Workers hold. It is built to be safe to hand an agent:
   stderr is shown, never its stdout, and any `NAME=value` in that line is
   redacted.
 
+## Unlocking the CLI at sign-in
+
+Approving `klef login` can also unlock the CLI ("Also unlock the CLI on this
+device", ticked by default). The design keeps every property above:
+
+- **The browser's key stays non-extractable.** The tab cannot read the key it
+  holds, so the approval page recovers the DEK's bytes the way an unlock does,
+  from a passkey's PRF secret or the passphrase (both typed or touched in the
+  browser, never sent anywhere), seals them, and zeroes them.
+- **Sealed to the CLI, end to end.** The CLI generates a P-256 key pair for
+  each login and sends only the public half. The page seals the DEK to it
+  (ECDH with an ephemeral key, HKDF-SHA-256 with its own `info`, AES-256-GCM).
+  The server stores the sealed blob beside the sealed token; without the CLI's
+  private key, which never leaves the CLI, it is opaque to the server, the
+  operator and anyone reading the database.
+- **Bound to this approval.** The ciphertext's additional data binds the user
+  code shown on both screens, the approving user's id, and the CLI's public
+  key. Opened against any other code, user or device, it fails to decrypt.
+  The device code would be the natural binding, but the browser never sees it
+  (the server keeps only its hash), so the user code and user id stand in.
+- **Single use, short-lived.** It is returned once, on the CLI's collecting
+  poll, and cleared in the same update; an uncollected one is wiped with the
+  request's token when the request expires (10 minutes).
+- **The code comparison matters more.** Someone who got their own `klef login`
+  approved by you would now receive your key as well as a token. The page
+  shows the code and the requesting machine and says to check them; unlocking
+  needs your passkey or passphrase as a deliberate second step.
+
+## The CLI's remembered key
+
+Once a device is unlocked, the CLI keeps the DEK in the OS keychain (macOS
+Keychain, Windows Credential Manager, libsecret), or a `0600` file in the
+config directory where there is none, and imports it as a non-extractable
+`CryptoKey` each time it is used. `pull`, `push`, `sync`, `diff` and
+`restore` then never ask for the passphrase on that device, which is what lets
+a coding agent work without a person typing anything into a terminal.
+
+- **The trade-off.** Anyone who can run commands as this user on this machine
+  can decrypt the vault. That is the reach they already have over the `.env`
+  files `pull` wrote there, which are the same secrets in plaintext. It is not
+  a server-side weakening: a leaked access token, or the server's whole
+  database, still decrypts nothing, because neither ever holds the key.
+- **Scoped.** One key per server, tagged with a fingerprint of the vault's
+  recovery wrapping, which a passphrase change leaves alone (the DEK does not
+  change) and a new vault replaces. A key for another vault is passed over; a
+  key that fails to decrypt is forgotten.
+- **Forgotten** by `klef lock` and `klef logout`.
+- **Opt out** with `klef login --no-remember`, `{ "rememberKey": false }` in
+  `~/.config/klef/config.json`, or `KLEF_NO_REMEMBER=1` for one run. The
+  unlock agent (below) and `klef unlock --for` then hold the key in memory
+  only, for a while.
+
 ## The unlock agent
 
-`klef unlock` asks for the passphrase once and starts a background process
-that holds the data key so later `pull` and `push` runs do not prompt. It is
-built like `ssh-agent`:
+`klef unlock --for <time>`, or `klef unlock` with remembering turned off,
+asks for the passphrase once and starts a background process that holds the
+data key in memory, so later `pull` and `push` runs do not prompt, without
+keeping it anywhere. It is built like `ssh-agent`:
 
 - **The key lives in that process's memory only**, as a non-extractable
   `CryptoKey`. It is never written to disk, to the OS keychain, or to an
@@ -192,7 +247,9 @@ what to check.
 
 Between approval and collection the minted token is sealed to an ECDH public
 key the CLI generated, so the stored row is not a usable credential to anyone
-reading the database, including the operator. Collection is single use.
+reading the database, including the operator. Collection is single use. The
+vault key, when the browser also unlocked the CLI, travels the same way (see
+"Unlocking the CLI at sign-in").
 
 ## Handling rules the code follows
 
@@ -201,8 +258,9 @@ reading the database, including the operator. Collection is single use.
   ends (see "Staying signed in and staying unlocked").
 - No key material, passphrase, or plaintext is ever sent to the server or logged.
 - Locking clears keys from memory, in the browser and in the CLI's unlock
-  agent alike.
+  agent alike; in the CLI it also forgets the key kept in the keychain.
 - Key material is imported as non-extractable `CryptoKey` objects where the flow
   allows.
 - Access tokens are stored as SHA-256 hashes; the token itself is shown once.
-- The CLI keeps its token in the OS keychain, falling back to a `0600` file.
+- The CLI keeps its token, and once a device is unlocked its vault key, in the
+  OS keychain, falling back to `0600` files.

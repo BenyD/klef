@@ -10,6 +10,7 @@ import {
   type SealedToken,
 } from "../shared/device-seal.ts";
 import { generateDeviceCode } from "../shared/device-code.ts";
+import { openVaultKey, sealVaultKey, type SealedVaultKey } from "../shared/device-unlock.ts";
 import { bytesToBase64, utf8ToBytes } from "../shared/encoding.ts";
 
 // Approve is mounted behind a session (index.ts), so it is exercised here
@@ -54,7 +55,7 @@ async function start(app: ReturnType<typeof appForUser>, label = "macOS") {
   const { publicJwk, privateKey } = await generateSealKeypair();
   const res = await app.request("/", json({ label, publicJwk }), env);
   expect(res.status).toBe(200);
-  return { ...((await res.json()) as StartResult), privateKey };
+  return { ...((await res.json()) as StartResult), privateKey, publicJwk };
 }
 
 describe("starting a login", () => {
@@ -239,6 +240,83 @@ describe("approving", () => {
 
 // The gate that matters: a leaked access token must not be able to authorise
 // its own successors.
+describe("unlocking the CLI too", () => {
+  const dekBytes = () => crypto.getRandomValues(new Uint8Array(32));
+
+  it("shows the page the CLI's public key, to seal to", async () => {
+    await seedUser("u1");
+    const app = appForUser("u1");
+    const started = await start(app);
+    const res = await app.request(`/pending/${started.userCode}`, {}, env);
+    expect(((await res.json()) as { publicJwk: unknown }).publicJwk).toEqual(started.publicJwk);
+  });
+
+  it("relays the sealed key once, opaque to the server, and clears it", async () => {
+    await seedUser("u2");
+    const app = appForUser("u2");
+    const started = await start(app);
+    const bytes = dekBytes();
+    const binding = { userCode: started.userCode, userId: "u2" };
+    const sealedVaultKey = await sealVaultKey(started.publicJwk, bytes, binding);
+
+    expect((await app.request("/approve", json({ userCode: started.userCode, sealedVaultKey }), env)).status).toBe(200);
+    const stored = await env.DB.prepare("SELECT vault_key_sealed FROM device_authorizations WHERE user_code = ?")
+      .bind(started.userCode)
+      .first<{ vault_key_sealed: string }>();
+    expect(stored?.vault_key_sealed).toBeTruthy();
+    expect(stored!.vault_key_sealed).not.toContain(Buffer.from(bytes).toString("base64"));
+
+    const polled = await app.request("/token", json({ deviceCode: started.deviceCode }), env);
+    const body = (await polled.json()) as { sealedVaultKey: SealedVaultKey };
+    expect(await openVaultKey(started.privateKey, started.publicJwk, body.sealedVaultKey, binding)).toEqual(bytes);
+
+    const after = await env.DB.prepare("SELECT vault_key_sealed, token_sealed FROM device_authorizations WHERE user_code = ?")
+      .bind(started.userCode)
+      .first<{ vault_key_sealed: string | null; token_sealed: string | null }>();
+    expect(after).toEqual({ vault_key_sealed: null, token_sealed: null });
+    expect((await app.request("/token", json({ deviceCode: started.deviceCode }), env)).status).toBe(428);
+  });
+
+  it("approves without one, for a locked browser", async () => {
+    await seedUser("u3");
+    const app = appForUser("u3");
+    const started = await start(app);
+    await app.request("/approve", json({ userCode: started.userCode }), env);
+    const body = (await (await app.request("/token", json({ deviceCode: started.deviceCode }), env)).json()) as {
+      sealedVaultKey: unknown;
+    };
+    expect(body.sealedVaultKey).toBeNull();
+  });
+
+  it("refuses a malformed one and approves nothing", async () => {
+    await seedUser("u4");
+    const app = appForUser("u4");
+    const started = await start(app);
+    const res = await app.request("/approve", json({ userCode: started.userCode, sealedVaultKey: { v: 1, nonce: "x" } }), env);
+    expect(res.status).toBe(400);
+    expect((await app.request("/token", json({ deviceCode: started.deviceCode }), env)).status).toBe(428);
+  });
+
+  it("wipes an uncollected one when the request expires", async () => {
+    await seedUser("u5");
+    const app = appForUser("u5");
+    const started = await start(app);
+    const sealedVaultKey = await sealVaultKey(started.publicJwk, dekBytes(), { userCode: started.userCode, userId: "u5" });
+    await app.request("/approve", json({ userCode: started.userCode, sealedVaultKey }), env);
+    await env.DB.prepare("UPDATE device_authorizations SET expires_at = ? WHERE user_code = ?")
+      .bind(new Date(Date.now() - 1000).toISOString(), started.userCode)
+      .run();
+
+    // Any new login sweeps expired rows, as does polling the expired one.
+    await start(app);
+    const row = await env.DB.prepare("SELECT vault_key_sealed, token_sealed FROM device_authorizations WHERE user_code = ?")
+      .bind(started.userCode)
+      .first<{ vault_key_sealed: string | null; token_sealed: string | null }>();
+    expect(row).toEqual({ vault_key_sealed: null, token_sealed: null });
+    expect((await app.request("/token", json({ deviceCode: started.deviceCode }), env)).status).toBe(410);
+  });
+});
+
 describe("the real app's gates", () => {
   it("lets anyone start a login and poll, since the CLI has no credentials yet", async () => {
     const { publicJwk } = await generateSealKeypair();
