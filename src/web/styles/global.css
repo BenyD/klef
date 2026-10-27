@@ -344,3 +344,184 @@
     display: none;
   }
 }
+
+/* The pixel field (components/PixelField.tsx, lib/pixel-field.ts): cells on
+   a --cell grid. Each appears in a staggered burst, then breathes between
+   --floor and --peak; movers also step around a loop and blinkers switch
+   instead of breathing. Behind the landing hero and the splash. */
+@keyframes klef-px-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes klef-px-breathe {
+  from {
+    opacity: var(--floor, 0.06);
+  }
+  to {
+    opacity: var(--peak, 0.5);
+  }
+}
+@keyframes klef-px-blink {
+  0%,
+  48% {
+    opacity: var(--peak, 0.5);
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes klef-px-walk-a {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: var(--cell) 0;
+  }
+  50% {
+    translate: var(--cell) var(--cell);
+  }
+  75% {
+    translate: 0 var(--cell);
+  }
+}
+@keyframes klef-px-walk-b {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  33% {
+    translate: 0 calc(var(--cell) * -1);
+  }
+  66% {
+    translate: 0 calc(var(--cell) * -2);
+  }
+}
+@keyframes klef-px-walk-c {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: calc(var(--cell) * 2) 0;
+  }
+}
+@keyframes klef-px-walk-d {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: calc(var(--cell) * -1) var(--cell);
+  }
+  50% {
+    translate: 0 calc(var(--cell) * 2);
+  }
+  75% {
+    translate: var(--cell) var(--cell);
+  }
+}
+.klef-px-field {
+  position: relative;
+  pointer-events: none;
+  user-select: none;
+}
+.klef-px-wrap {
+  position: absolute;
+  width: var(--cell);
+  height: var(--cell);
+  opacity: 0;
+  animation: klef-px-enter 10ms steps(1, end) var(--enter, 0s) both;
+}
+.klef-px {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  opacity: var(--floor, 0.06);
+  animation-name: klef-px-breathe;
+  animation-duration: var(--dur, 8s);
+  animation-delay: var(--delay, 0s);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+.klef-px-grid {
+  border: 1px solid color-mix(in oklab, var(--foreground) 24%, transparent);
+}
+.klef-px-ghost {
+  border: 1px dashed color-mix(in oklab, var(--foreground) 30%, transparent);
+  background-image: radial-gradient(circle, color-mix(in oklab, var(--foreground) 34%, transparent) 1px, transparent 1.5px);
+  background-size: 8px 8px;
+  background-position: center;
+}
+.klef-px-ember {
+  border: 1px solid color-mix(in oklab, var(--primary) 72%, transparent);
+  background-image: radial-gradient(circle, color-mix(in oklab, var(--primary) 85%, transparent) 1px, transparent 1.5px);
+  background-size: 8px 8px;
+  background-position: center;
+}
+.klef-px-solid {
+  background: color-mix(in oklab, var(--foreground) 60%, transparent);
+}
+.klef-px-ember-solid {
+  background: color-mix(in oklab, var(--primary) 80%, transparent);
+}
+.klef-px.is-blink {
+  animation-name: klef-px-blink;
+  animation-timing-function: steps(1);
+  animation-direction: normal;
+}
+.klef-px.is-mover {
+  animation-duration: var(--dur, 8s), var(--walk-dur, 12s);
+  animation-delay: var(--delay, 0s), var(--walk-delay, 0s);
+  animation-timing-function: ease-in-out, steps(1);
+  animation-iteration-count: infinite, infinite;
+  animation-direction: alternate, normal;
+}
+.klef-px.is-mover.klef-px-walk-a {
+  animation-name: klef-px-breathe, klef-px-walk-a;
+}
+.klef-px.is-mover.klef-px-walk-b {
+  animation-name: klef-px-breathe, klef-px-walk-b;
+}
+.klef-px.is-mover.klef-px-walk-c {
+  animation-name: klef-px-breathe, klef-px-walk-c;
+}
+.klef-px.is-mover.klef-px-walk-d {
+  animation-name: klef-px-breathe, klef-px-walk-d;
+}
+@media (prefers-reduced-motion: reduce) {
+  .klef-px-wrap,
+  .klef-px {
+    animation: none;
+  }
+  .klef-px-wrap {
+    opacity: 1;
+  }
+  .klef-px {
+    opacity: 0.22;
+  }
+}
+
+/* The field on the splash: centred, with the middle masked clear so the
+   mark sits on quiet canvas. */
+.klef-splash {
+  position: relative;
+  overflow: hidden;
+}
+.klef-splash > :not(.klef-splash-field) {
+  position: relative;
+}
+.klef-splash-field {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, transparent 28%, #000 70%);
+  mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, transparent 28%, #000 70%);
+}

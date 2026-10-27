@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { Check, Terminal, TriangleAlert } from "lucide-react";
 import { apiFetch } from "../api-fetch.ts";
 import { normalizeUserCode } from "../../shared/device-code.ts";
+import { KlefMark } from "./KlefMark.tsx";
+import { ThemeToggle } from "./ThemeToggle.tsx";
 import { Button } from "./ui/button.tsx";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card.tsx";
 import { Input } from "./ui/input.tsx";
 import { Label } from "./ui/label.tsx";
 
@@ -13,9 +16,11 @@ import { Label } from "./ui/label.tsx";
  * The code is shown large and compared by eye: the terminal printed one, this
  * page shows one, and they must match. That comparison is the only thing
  * standing between this and someone talking a user into approving *their*
- * login, so the page says so rather than assuming it is obvious.
+ * login, so the page says so in one line rather than assuming it is obvious.
  *
- * Reached with ?code= prefilled by the CLI, or typed by hand.
+ * Same canvas and card as the sign-in page, since it is the next thing a
+ * terminal sends you to. Reached with ?code= prefilled by the CLI, or typed
+ * by hand.
  */
 type Pending =
   | { state: "idle" }
@@ -84,115 +89,118 @@ export function CliAuthorize() {
     }
   }
 
+  const asking = pending.state === "idle" || pending.state === "error" || pending.state === "loading";
+
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center gap-6 p-6">
-      <div className="flex flex-col gap-2">
-        <span className="bg-muted flex size-9 items-center justify-center rounded-lg">
-          <Terminal className="size-4" />
-        </span>
-        <h1 className="text-xl font-semibold">Connect the Klef CLI</h1>
-        <p className="text-muted-foreground text-sm">
-          A terminal is asking to sign in as you. Approving it creates an access
-          token that can read your encrypted files and their names. It cannot
-          decrypt anything: that still needs your master passphrase, which never
-          leaves your machine.
-        </p>
+    <main className="klef-screen bg-sidebar relative flex min-h-svh flex-col items-center justify-center gap-6 px-4 py-10">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
       </div>
 
-      {pending.state === "approved" && (
-        <Result
-          icon={<Check className="size-4" />}
-          title="Approved"
-          body="Your terminal has the token. You can close this tab."
-        />
-      )}
+      <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-lg">
+        <KlefMark className="size-5" />
+      </div>
 
-      {pending.state === "denied" && (
-        <Result
-          icon={<TriangleAlert className="size-4" />}
-          title="Denied"
-          body="Nothing was created. If that wasn't you asking, no action is needed."
-        />
-      )}
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Terminal className="text-muted-foreground size-4" aria-hidden="true" />
+            Connect the CLI
+          </CardTitle>
+          <CardDescription>
+            {pending.state === "approved"
+              ? "Your terminal is signed in."
+              : pending.state === "denied"
+                ? "Nothing was created."
+                : "A terminal wants to sign in as you."}
+          </CardDescription>
+        </CardHeader>
 
-      {(pending.state === "idle" ||
-        pending.state === "error" ||
-        pending.state === "loading") && (
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={(e: FormEvent) => {
-            e.preventDefault();
-            void look(typed);
-          }}
-        >
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="cli-code">Enter the code from your terminal</Label>
-            <Input
-              id="cli-code"
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-              placeholder="WDJB-MJHT"
-              autoComplete="off"
-              autoCapitalize="characters"
-              spellCheck={false}
-              className="text-center font-mono text-lg tracking-widest"
-            />
-          </div>
-          {pending.state === "error" && (
-            <p className="text-destructive text-sm">{pending.message}</p>
+        <CardContent className="flex flex-col gap-4">
+          {pending.state === "approved" && (
+            <Result icon={<Check className="size-4" />} title="Approved">
+              You can close this tab.
+            </Result>
           )}
-          <Button type="submit" disabled={pending.state === "loading" || !typed.trim()}>
-            {pending.state === "loading" ? "Checking..." : "Continue"}
-          </Button>
-        </form>
-      )}
 
-      {pending.state === "found" && (
-        <div className="flex flex-col gap-4">
-          <div className="bg-card flex flex-col items-center gap-1 rounded-xl border p-4">
-            <span className="text-muted-foreground text-xs">Code shown in your terminal</span>
-            <span className="font-mono text-2xl tracking-widest">{pending.userCode}</span>
-            <span className="text-muted-foreground text-xs">from {pending.label}</span>
-          </div>
-          <p className="text-muted-foreground text-sm">
-            Only approve this if that code matches the one your own terminal is
-            showing. If you didn't start this, deny it.
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1"
-              disabled={busy}
-              onClick={() => void decide(true)}
+          {pending.state === "denied" && (
+            <Result icon={<TriangleAlert className="size-4" />} title="Denied">
+              If that wasn't you, there is nothing else to do.
+            </Result>
+          )}
+
+          {asking && (
+            <form
+              className="flex flex-col gap-3"
+              onSubmit={(e: FormEvent) => {
+                e.preventDefault();
+                void look(typed);
+              }}
             >
-              Deny
-            </Button>
-            <Button className="flex-1" disabled={busy} onClick={() => void decide(false)}>
-              {busy ? "Approving..." : "Approve"}
-            </Button>
-          </div>
-        </div>
-      )}
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="cli-code">Code from your terminal</Label>
+                <Input
+                  id="cli-code"
+                  value={typed}
+                  onChange={(e) => setTyped(e.target.value)}
+                  placeholder="WDJB-MJHT"
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  className="text-center font-mono text-lg tracking-widest"
+                />
+              </div>
+              {pending.state === "error" && (
+                <p className="text-destructive text-sm">{pending.message}</p>
+              )}
+              <Button type="submit" disabled={pending.state === "loading" || !typed.trim()}>
+                {pending.state === "loading" ? "Checking..." : "Continue"}
+              </Button>
+            </form>
+          )}
+
+          {pending.state === "found" && (
+            <>
+              <div className="bg-muted/50 flex flex-col items-center gap-1 rounded-lg border px-4 py-5">
+                <span className="font-mono text-2xl tracking-widest">{pending.userCode}</span>
+                <span className="text-muted-foreground text-xs">{pending.label}</span>
+              </div>
+              <p className="text-muted-foreground text-sm">
+                Approve only if this matches the code in your terminal.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  disabled={busy}
+                  onClick={() => void decide(true)}
+                >
+                  Deny
+                </Button>
+                <Button className="flex-1" disabled={busy} onClick={() => void decide(false)}>
+                  {busy ? "Approving..." : "Approve"}
+                </Button>
+              </div>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                The token can fetch your encrypted files. Reading them still
+                needs your passphrase, which stays on your machine.
+              </p>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </main>
   );
 }
 
-function Result({
-  icon,
-  title,
-  body,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  body: string;
-}) {
+function Result({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
-    <div className="bg-card flex flex-col gap-2 rounded-xl border p-4">
+    <div className="bg-muted/50 flex flex-col gap-1 rounded-lg border px-4 py-3">
       <span className="flex items-center gap-2 text-sm font-medium">
         {icon}
         {title}
       </span>
-      <p className="text-muted-foreground text-sm">{body}</p>
+      <p className="text-muted-foreground text-sm">{children}</p>
     </div>
   );
 }
