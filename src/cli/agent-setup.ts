@@ -48,7 +48,7 @@ export function isSetupTarget(value: string): value is SetupTarget {
 /** One line for the description fields that decide when an agent loads this. */
 const SUMMARY =
   "Sync this project's .env files with the Klef vault using the klef CLI " +
-  "(status, sync, pull, push, unlock) without ever reading or printing a secret value.";
+  "(status, sync, pull, push, login) without ever reading or printing a secret value.";
 
 /**
  * The shared body. `cli` is how the user reaches the CLI ("klef" or
@@ -103,11 +103,13 @@ or \`{ "ok": false, "error": { "code", "message", "next": [...] } }\`. Act on
 exit code says the same (\`${cli} help exit-codes\`). klef never prompts an
 agent: where it would need a person, it stops with one of these codes.
 
-- **\`locked\` or \`no_terminal\` (exit 4)**: the passphrase is needed. Ask the
-  user to run \`${cli} unlock\` themselves in their own terminal, and wait. It
-  keeps the key in memory until it has gone unused for 15 minutes (or as long
-  as \`--for\` says), and after that you can run pull, push and sync. Never
-  retry in a loop; hand it to the user.
+- **\`locked\` or \`no_terminal\` (exit 4)**: this device is not unlocked
+  yet. Run \`${cli} login\` and tell the user to approve it in the browser
+  with "Also unlock the CLI on this device" ticked (one passkey touch, or
+  their passphrase, typed in the browser and never in the chat). The CLI
+  then keeps the key on this device and pull, push and sync stop asking.
+  If the user prefers, they can run \`${cli} unlock\` in their own terminal
+  instead. Either way, wait for them; never retry in a loop.
 - **\`confirmation_required\` (exit 2)**: the command writes something and
   needs a yes. Say what will change (the plan is in the output), get a yes in
   the chat, then run the \`next\` command, which adds \`--yes\`.

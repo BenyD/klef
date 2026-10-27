@@ -255,7 +255,7 @@ describe("klef setup (everything)", () => {
     ).rejects.toMatchObject({
       code: "locked",
       exitCode: 4,
-      next: [{ command: "klef unlock" }, { command: "klef pull --all" }],
+      next: [{ command: "klef login" }, { command: "klef unlock" }, { command: "klef pull --all" }],
     });
     // Agent files went in, because --yes says the user already agreed.
     expect(await exists(path.join(cwd, ".claude/skills/klef/SKILL.md"))).toBe(true);

@@ -61,7 +61,7 @@ klef sync
 You can also move one direction explicitly with `klef pull` and `klef push`.
 
 <Callout type="info">
-Run `klef unlock` once at the start of a session. A background agent holds the key in memory for 15 idle minutes, so later commands do not ask for the passphrase again.
+When you approve `klef login` in the browser, keep **Also unlock the CLI on this device** ticked. One passkey touch (or your passphrase) there, and this device stays unlocked: pull, push and sync never ask for the passphrase, in your terminal or in a coding agent, until you run `klef lock`.
 </Callout>
 
 ## Next

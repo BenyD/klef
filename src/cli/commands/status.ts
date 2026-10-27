@@ -15,6 +15,7 @@ import { resolveWritePath } from "../write-path.ts";
 import { CLI_VERSION } from "../version.ts";
 import type { VaultTree } from "../../shared/api-types.ts";
 import { cmd, emit, say, style, uiMode, type NextStep } from "../ui.ts";
+import { loadRememberedKey, type KeySource } from "../key-store.ts";
 import { homedir } from "node:os";
 import { agentSocketPath } from "../paths.ts";
 import { agentStatus } from "../agent-client.ts";
@@ -47,6 +48,7 @@ export async function status(
   let tokenStatus: TokenStatus = stored ? "unverified" : "absent";
   let email: string | null = null;
   let tree: VaultTree | null = null;
+  let remembered: KeySource | null = null;
   const config = await readProjectConfig(cwd);
 
   if (stored) {
@@ -55,6 +57,8 @@ export async function status(
       email = (await api.whoami()).user.email;
       tokenStatus = "valid";
       if (config) tree = await api.tree();
+      const vault = await api.vault();
+      if (vault.exists && vault.keyMaterial) remembered = (await loadRememberedKey(env, vault.keyMaterial))?.source ?? null;
     } catch (err) {
       tokenStatus = err instanceof UnauthorizedError ? "rejected" : tokenStatus === "valid" ? "valid" : "unverified";
     }
@@ -72,13 +76,20 @@ export async function status(
   }
 
   const files = config ? await fileStates(config, tree, cwd, env) : [];
-  const next = nextSteps({ tokenStatus, linked: config !== null, unlocked: agent !== null, files, treeKnown: tree !== null });
+  const unlockedBy = remembered ? "remembered" : agent ? "agent" : null;
+  const next = nextSteps({ tokenStatus, linked: config !== null, unlocked: unlockedBy !== null, files, treeKnown: tree !== null });
 
   emit({
     version: CLI_VERSION,
     server: base,
     account: { signedIn: tokenStatus === "valid", email, tokenSource: stored?.source ?? null, tokenStatus },
-    vault: { unlocked: agent !== null, locksInSeconds: agent ? Math.floor(agent.msLeft / 1000) : null, problem: agentProblem },
+    vault: {
+      unlocked: unlockedBy !== null,
+      unlockedBy,
+      keyStore: remembered,
+      locksInSeconds: !remembered && agent ? Math.floor(agent.msLeft / 1000) : null,
+      problem: agentProblem,
+    },
     project: config
       ? { workspace: config.workspace, project: config.project, config: CONFIG_FILENAME }
       : null,
@@ -99,7 +110,10 @@ export async function status(
     const styled = f.state === "in-sync" ? style.dim(words) : f.state === "both-changed" ? style.red(words) : style.yellow(words);
     rows.push([i === 0 ? "Files" : "", `${f.path.padEnd(width)}  ${tree || f.state !== "unknown" ? styled : style.dim("unknown (could not reach the vault)")}`]);
   });
-  if (agent) rows.push(["Vault", `${style.green("unlocked")} ${style.dim(`(locks in ${describeTimeLeft(agent.msLeft)} without use)`)}`]);
+  if (remembered) {
+    const where = remembered === "keychain" ? "key in your OS keychain" : "key in a private file";
+    rows.push(["Vault", `${style.green("unlocked on this device")} ${style.dim(`(${where}; ${command("lock")} forgets it)`)}`]);
+  } else if (agent) rows.push(["Vault", `${style.green("unlocked")} ${style.dim(`(locks in ${describeTimeLeft(agent.msLeft)} without use)`)}`]);
   else rows.push(["Vault", `locked ${style.dim(agentProblem ? `(${agentProblem})` : "(pull, push and sync ask for the passphrase)")}`]);
 
   for (const [label, value] of rows) say(`${label.padEnd(8)}  ${value}`);
@@ -167,7 +181,9 @@ function nextSteps(s: {
   const moving = s.files.filter((f) => f.state !== "in-sync" && f.state !== "absent");
   if (moving.length === 0) return [];
   const steps: NextStep[] = [];
-  if (!s.unlocked) steps.push({ command: command("unlock"), description: "a person types the passphrase once" });
+  if (!s.unlocked) {
+    steps.push({ command: command("login"), description: "the user approves in the browser, which unlocks this device" });
+  }
   if (moving.some((f) => f.state === "unknown")) steps.push({ command: command("diff --all"), description: "see which keys differ" });
   steps.push({ command: command("sync"), description: "bring the files in line" });
   return steps.slice(0, 3);
