@@ -42,7 +42,9 @@ klef setup all                 # all four
 klef setup claude --global     # the skill for every project, in ~/.claude
 ```
 
-Rerun setup any time to refresh them. In `CLAUDE.md` and `AGENTS.md`, which hold your own instructions too, setup only ever rewrites its own block between `<!-- klef:start ... -->` and `<!-- klef:end -->`.
+`--global` goes with `claude` or `claude-md` only (`~/.claude/skills/klef/SKILL.md` or a block in `~/.claude/CLAUDE.md`); Cursor rules and `AGENTS.md` are read per repository, so `klef setup --global` on its own is refused.
+
+Rerun setup any time to refresh them. In `CLAUDE.md` and `AGENTS.md`, which hold your own instructions too, setup only ever rewrites its own block between `<!-- klef:start ... -->` and `<!-- klef:end -->`. A `SKILL.md` or `klef.mdc` that klef did not write is left alone and reported as skipped.
 
 ## The agent prompt in the app
 
