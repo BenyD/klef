@@ -5,6 +5,10 @@ description: What has changed in Klef and its CLI, newest first.
 
 Klef's web app deploys continuously from `main`; the CLI is versioned on npm as [`@klefsh/cli`](https://www.npmjs.com/package/@klefsh/cli). Full history is in the [repository](https://github.com/BenyD/klef/pulls?q=is%3Apr+is%3Amerged).
 
+## Unreleased
+
+- `klef run [--file X] [--only KEY,KEY] [--from-vault] -- <command>`: runs a command with an env file's variables in its environment, so an agent can use a value without opening the file. Output and exit code pass straight through; the command itself can still print values. The instructions `klef setup` writes now point agents at it.
+
 ## CLI 0.6.0
 
 Published to npm as `@klefsh/cli@0.6.0`:

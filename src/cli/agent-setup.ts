@@ -48,7 +48,7 @@ export function isSetupTarget(value: string): value is SetupTarget {
 /** One line for the description fields that decide when an agent loads this. */
 const SUMMARY =
   "Sync this project's .env files with the Klef vault using the klef CLI " +
-  "(status, sync, pull, push, unlock) without ever reading or printing a secret value.";
+  "(status, sync, pull, push, run, unlock) without ever reading or printing a secret value.";
 
 /**
  * The shared body. `cli` is how the user reaches the CLI ("klef" or
@@ -72,6 +72,22 @@ value, which is what makes it safe for you to run.
 - Never ask the user for their master passphrase or access token, and never
   pipe or pass one to the CLI. It reads the passphrase from the terminal on
   purpose, so it cannot pass through you.
+
+### Using a value without reading it
+
+When a task needs a variable's value (testing an API key, running a query
+against \`DATABASE_URL\`, starting the app), never open the env file. Run the
+command through Klef, which puts the variables in its environment:
+
+    ${cli} run -- npm run dev
+    ${cli} run --only ANTHROPIC_API_KEY -- node scripts/check-key.js
+    ${cli} run --only DATABASE_URL -- sh -c 'psql "$DATABASE_URL" -c "select 1"'
+
+Wrap any \`$NAME\` in \`sh -c '...'\` with single quotes, so your own shell does
+not expand it (to nothing) before Klef runs. Klef prints no value, but the
+command's output reaches you unmasked: never run one that prints a variable
+(\`echo\`, \`env\`, \`printenv\`, a debug log of its config). Prefer commands that
+report success or failure, not the value.
 
 ### Which files are synced
 
