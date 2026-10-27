@@ -53,7 +53,6 @@ export function baseOptions(): BaseLayoutProps {
   return {
     nav: { title: <Title />, url: "/docs" },
     githubUrl: GITHUB,
-    links: [{ text: "Open Klef", url: "/app", external: true }],
     themeSwitch: { mode: "light-dark" },
   };
 }
