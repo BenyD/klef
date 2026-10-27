@@ -50,3 +50,8 @@ export function PixelField({
     </div>
   );
 }
+
+/** The field behind the canvas screens (splash, sign-in, unlock, CLI connect). */
+export function CanvasField() {
+  return <PixelField className="klef-canvas-field" cell={32} cols={40} rows={24} count={64} seed={5} />;
+}

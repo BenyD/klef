@@ -40,7 +40,7 @@ const STEPS: Step[] = [
   {
     label: "01 Setup",
     title: "Link the repo",
-    body: "Signs this machine in, links the checkout, teaches your agents and pulls what is missing.",
+    body: "Signs in, links the checkout, pulls what is missing.",
     lines: (
       <>
         <Cmd>npx @klefsh/cli setup</Cmd>
@@ -60,7 +60,7 @@ const STEPS: Step[] = [
   {
     label: "02 Sync",
     title: "Push and pull in one go",
-    body: "Pushes what you edited, pulls what changed. Both changed? It writes nothing and shows which keys differ.",
+    body: "Pushes your edits, pulls theirs. If both changed, it stops and shows the keys.",
     lines: (
       <>
         <Cmd>klef sync</Cmd>
@@ -78,7 +78,7 @@ const STEPS: Step[] = [
   {
     label: "03 Restore",
     title: "A new machine in one command",
-    body: "Clone your repos, confirm once, and every linked checkout gets its files back.",
+    body: "Clone your repos, confirm once, every file comes back.",
     lines: (
       <>
         <Cmd>klef restore ~/Developer</Cmd>
@@ -98,7 +98,7 @@ const STEPS: Step[] = [
   {
     label: "04 Audit",
     title: "Check the platforms",
-    body: "Compares key names on Vercel, GitHub and Cloudflare against your files. Read-only, names only.",
+    body: "Checks key names on Vercel, GitHub and Cloudflare. Names only.",
     lines: (
       <>
         <Cmd>klef audit vercel</Cmd>

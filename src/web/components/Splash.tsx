@@ -1,5 +1,5 @@
 import { KlefMark } from "./KlefMark.tsx";
-import { PixelField } from "./PixelField.tsx";
+import { CanvasField } from "./PixelField.tsx";
 
 /**
  * The loading screen, shown while a session resolves on /auth and /cli and
@@ -13,11 +13,11 @@ import { PixelField } from "./PixelField.tsx";
 export function Splash() {
   return (
     <div
-      className="klef-splash bg-sidebar flex min-h-svh flex-col items-center justify-center gap-5"
+      className="klef-splash klef-canvas bg-sidebar flex min-h-svh flex-col items-center justify-center gap-5"
       role="status"
       aria-label="Loading"
     >
-      <PixelField className="klef-splash-field" cell={32} cols={40} rows={24} count={64} seed={5} />
+      <CanvasField />
       <div className="klef-splash-mark text-foreground">
         <KlefMark className="size-10" accent="var(--primary)" />
       </div>

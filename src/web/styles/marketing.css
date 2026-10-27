@@ -256,6 +256,11 @@
   -webkit-backdrop-filter: blur(12px) saturate(1.4);
 }
 
+.m-header .m-wrap,
+.m-footer .m-wrap {
+  max-width: 1320px;
+}
+
 .m-header-inner {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -280,22 +285,18 @@
 
 .m-nav {
   display: flex;
-  gap: 2px;
 }
 
+/* Plain text links, 14px, the colour step on hover and nothing else. */
 .marketing .m-nav a {
-  padding: 7px 12px;
-  border-radius: var(--m-r);
-  font-size: 13px;
-  font-weight: 500;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 400;
   color: var(--m-muted);
-  transition:
-    color var(--duration-fast) var(--ease-quick),
-    background-color var(--duration-fast) var(--ease-quick);
+  transition: color var(--duration-fast) var(--ease-quick);
 }
 .marketing .m-nav a:hover {
   color: var(--m-fg);
-  background: var(--m-fill);
 }
 
 .m-actions {
@@ -479,6 +480,12 @@
 }
 .m-hero-copy .m-beat:nth-child(4) {
   animation-delay: 230ms;
+}
+.m-hero-copy .m-beat:nth-child(5) {
+  animation-delay: 300ms;
+}
+.m-hero-copy .m-cmd {
+  margin-top: -8px;
 }
 
 .marketing .m-eyebrow {
@@ -1318,11 +1325,13 @@
   border-top: 1px solid var(--m-line);
 }
 
+/* The wordmark on the left, four columns of 14px links under mono heads,
+   and a hairline base row set in the same mono. */
 .m-footer-grid {
   display: grid;
-  grid-template-columns: 1.6fr repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1.5fr repeat(4, minmax(0, 1fr));
   gap: 32px;
-  padding-block: 56px 48px;
+  padding-block: 64px 72px;
 }
 
 .m-footer-brand {
@@ -1333,21 +1342,28 @@
 }
 .marketing .m-footer-brand p {
   margin: 0;
-  max-width: 18rem;
+  max-width: 16rem;
   font-size: 13px;
   line-height: 1.6;
   color: var(--m-muted);
 }
 
+.marketing .m-footer-col .m-label {
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
 .m-footer-col ul {
-  margin: 14px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 18px 0 0;
   padding: 0;
   list-style: none;
 }
 .marketing .m-footer-col a {
   display: inline-block;
-  padding: 5px 0;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 21px;
   color: var(--m-muted);
   transition: color var(--duration-fast) var(--ease-quick);
 }
@@ -1363,6 +1379,10 @@
   gap: 8px 16px;
   min-height: 52px;
   border-top: 1px solid var(--m-line);
+}
+.marketing .m-footer-base .m-label {
+  font-size: 12px;
+  letter-spacing: 0.05em;
 }
 
 .m-footer-tools {
@@ -1392,14 +1412,19 @@
 @media (max-width: 860px) {
   .m-footer-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding-block: 40px 32px;
+    padding-block: 40px 40px;
   }
   .m-footer-brand {
     grid-column: 1 / -1;
   }
+  .m-footer-col ul {
+    gap: 4px;
+  }
   .marketing .m-footer-col a {
-    padding: 8px 0;
-    font-size: 14px;
+    padding: 6px 0;
+  }
+  .m-footer-mid {
+    display: none;
   }
 }
 

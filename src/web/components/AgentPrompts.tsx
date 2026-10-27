@@ -51,10 +51,7 @@ export function AgentPrompts() {
     <div className="marketing-agent" id="prompts">
       <div className="marketing-agent-head">
         <h3>Or start from a prompt</h3>
-        <p>
-          Paste one into Claude Code or Cursor. Prefer your own terminal? Run{" "}
-          <code>npx @klefsh/cli setup</code>.
-        </p>
+        <p>Paste one into Claude Code or Cursor.</p>
       </div>
 
       <div>
