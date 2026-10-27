@@ -90,4 +90,16 @@ app.all("/api/*", (c) => c.json({ ok: false, error: "Not found" }, 404));
 // honest 404 instead of the SPA shell, which scanners read as a soft-404.
 app.all("/.well-known/*", (c) => c.json({ ok: false, error: "Not found" }, 404));
 
+// The landing page. index.html is the bare app shell that /app, workspace URLs
+// and unknown paths fall back to (no landing markup to parse and throw away),
+// so the prerendered landing lives in home.html and "/" is routed here
+// (run_worker_first) to serve it. If there's no home.html, as under `pnpm dev`,
+// serve whatever the assets have for "/".
+app.on(["GET", "HEAD"], "/", async (c) => {
+  const home = await c.env.ASSETS.fetch(new URL("/home", c.req.url), {
+    method: c.req.method,
+  });
+  return home.ok ? home : c.env.ASSETS.fetch(c.req.raw);
+});
+
 export default app;

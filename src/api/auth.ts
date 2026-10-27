@@ -25,6 +25,13 @@ export interface AuthDeps {
 export const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 30;
 /** Refresh the expiry at most once a day, not on every request. */
 export const SESSION_UPDATE_AGE_SECONDS = 60 * 60 * 24;
+/**
+ * How long a signed copy of the session in a cookie stands in for the D1
+ * lookup. Every API call checks the session; without the cache each one is a
+ * database round trip. The cost: a session revoked elsewhere (signed out on
+ * another device, deleted) still works on this one for up to this long.
+ */
+export const SESSION_COOKIE_CACHE_SECONDS = 5 * 60;
 
 export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
   const url = new URL(deps.baseURL);
@@ -43,6 +50,7 @@ export function buildAuthOptions(deps: AuthDeps): BetterAuthOptions {
     session: {
       expiresIn: SESSION_EXPIRES_IN_SECONDS,
       updateAge: SESSION_UPDATE_AGE_SECONDS,
+      cookieCache: { enabled: true, maxAge: SESSION_COOKIE_CACHE_SECONDS },
     },
     socialProviders: {
       google: {
