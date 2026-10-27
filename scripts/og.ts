@@ -7,6 +7,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
+import { markTileSvg } from "../src/web/lib/strand.ts";
 import { cipherGrid } from "./og-cipher.ts";
 
 const WIDTH = 1200;
@@ -70,8 +71,9 @@ function cipherLayer(): Node {
   );
 }
 
-async function markLayer(): Promise<Node> {
-  const svg = await readFile(path.join(root, "public/favicon.svg"), "utf8");
+// The app icon, drawn from the same geometry as the favicons (scripts/icons.ts).
+function markLayer(): Node {
+  const svg = markTileSvg({ size: 84 });
   return {
     type: "img",
     props: {
@@ -118,7 +120,7 @@ async function build(): Promise<Node> {
           justifyContent: "center",
         },
         [
-          await markLayer(),
+          markLayer(),
           h(
             "div",
             {

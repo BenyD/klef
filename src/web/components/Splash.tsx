@@ -3,8 +3,8 @@ import { CanvasField } from "./PixelField.tsx";
 
 /**
  * The loading screen, shown while a session resolves on /auth and /cli and
- * while /docs hands over to the static site. The app's canvas, the woven
- * asterisk weaving itself (one loop after another, see global.css), the
+ * while /docs hands over to the static site. The app's canvas, the mark
+ * weaving itself (one strand after another, see global.css), the
  * wordmark under it, a hairline that says something is happening, and the
  * pixel field breathing around the edge. Quiet on purpose: it is on screen
  * for a few hundred milliseconds. Reduced motion shows the finished mark,

@@ -21,6 +21,7 @@
     "prerender": "vite build --config vite.prerender.config.ts --logLevel warn && node dist/prerender/prerender.js",
     "preview": "vite preview",
     "og": "node scripts/og.ts",
+    "icons": "node scripts/icons.ts",
     "deploy": "pnpm build && wrangler deploy",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && cd docs-site && react-router typegen && tsc --noEmit",
     "test": "vitest run",
