@@ -24,6 +24,8 @@ export type SyncAction =
   | "create"
   /** Both sides changed, or nothing says which did. Nothing is written. */
   | "conflict"
+  /** `sync --merge`: both sides gain each other's keys; written here and pushed. */
+  | "merge"
   /** Neither side has anything. */
   | "absent";
 

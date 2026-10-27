@@ -7,13 +7,13 @@ import { allFiles } from "../project-config.ts";
 import { confirm } from "../prompt.ts";
 import { hasFlag, type ParsedArgs } from "../args.ts";
 import { formatKeyDiff, keyDiff, type KeyDiff } from "../key-diff.ts";
-import { applySync, describePending, inspectProject, type FileSync } from "../project-sync.ts";
+import { applySync, describePending, inspectProject, planMerges, type FileSync } from "../project-sync.ts";
 import type { SyncAction } from "../sync-plan.ts";
 import { shellQuote } from "../../shared/shell.ts";
 import { confirmOrFail, requireConfig, requireVault, unlockedVault } from "../common.ts";
 import { CliError, done, emit, EXIT, say, style, type NextStep } from "../ui.ts";
 
-const SYNC_ACTIONS: ReadonlySet<SyncAction> = new Set(["in-sync", "pull", "push", "create"]);
+const SYNC_ACTIONS: ReadonlySet<SyncAction> = new Set(["in-sync", "pull", "push", "create", "merge"]);
 
 /**
  * Bring every file in `.klef.json` and the vault into line, whichever side
@@ -38,7 +38,9 @@ export async function sync(
   const ctx = { api, tree, cipher, env };
   const dryRun = hasFlag(args, "dry-run");
 
+  const merging = hasFlag(args, "merge");
   const files = await inspectProject(ctx, cwd, config, allFiles(config));
+  if (merging) await planMerges(ctx, files);
   for (const line of describePlan(files, cwd)) say(line);
   const report = (extra: Record<string, unknown> = {}) => ({ dryRun, files: files.map((f) => fileJson(f, cwd)), ...extra });
 
@@ -58,12 +60,23 @@ export async function sync(
     throw new CliError(
       "conflict",
       `${one ? "1 file needs" : `${conflicts.length} files need`} a decision. Nothing was written.`,
-      { hint: "Keep one side of each, then sync again:", next: resolutions(conflicts), data: report() },
+      {
+        hint: merging ? "Settle those keys, then sync again:" : "Keep one side of each, or merge them by key, then sync again:",
+        next: resolutions(conflicts, merging),
+        data: report(),
+      },
     );
   }
 
-  const pushes = files.filter((f) => f.decision.action === "push" || f.decision.action === "create");
-  const pulls = files.filter((f) => f.decision.action === "pull");
+  const merges = files.filter((f) => f.decision.action === "merge");
+  for (const file of merges) for (const line of describeMerge(file)) say(line);
+  const pushes = files.filter(
+    (f) =>
+      f.decision.action === "push" ||
+      f.decision.action === "create" ||
+      (f.decision.action === "merge" && f.merge!.text !== f.vault!.text),
+  );
+  const pulls = files.filter((f) => f.decision.action === "pull" || (f.decision.action === "merge" && f.merge!.text !== f.local!.text));
   if (dryRun) {
     say(pulls.length + pushes.length ? "Dry run: nothing written." : "Nothing to do.");
     emit(report());
@@ -71,7 +84,9 @@ export async function sync(
   }
 
   if (pushes.length) {
-    for (const file of pushes) say(`Push ${style.bold(file.entry.file)}: ${describePending(file)}`);
+    for (const file of pushes) {
+      if (file.decision.action !== "merge") say(`Push ${style.bold(file.entry.file)}: ${describePending(file)}`);
+    }
     const question = pushes.length === 1 ? "Push?" : `Push ${pushes.length} files?`;
     if (!(await confirmOrFail(question, "sync", args, ask))) {
       // Pulls are still safe to make: each one replaces a file nobody has
@@ -99,6 +114,10 @@ function fileJson(file: FileSync, cwd: string): Record<string, unknown> {
   if (file.decision.action === "conflict" && file.local && file.vault) {
     out.keys = keyDiff(file.local.text, file.vault.text) satisfies KeyDiff;
   }
+  if (file.merge) {
+    const { conflicts, fromVault, fromLocal, removedHere, removedThere } = file.merge;
+    out.merge = { conflicts, fromVault, fromLocal, removedHere, removedThere, base: file.baseline ? "last-synced" : "none" };
+  }
   return out;
 }
 
@@ -114,10 +133,30 @@ export function describePlan(files: FileSync[], cwd: string): string[] {
   });
 }
 
+/** What a merge brings each side, by key name. */
+export function describeMerge(file: FileSync): string[] {
+  const m = file.merge!;
+  const width = Math.max(0, ...[...m.fromVault, ...m.fromLocal, ...m.removedHere, ...m.removedThere].map((k) => k.length));
+  const row = (sign: string, key: string, what: string) => `  ${sign} ${key.padEnd(width)}  ${style.dim(what)}`;
+  return [
+    ...m.fromVault.map((k) => row("+", k, "to here, from the vault")),
+    ...m.removedHere.map((k) => row("-", k, "removed here (deleted in the vault)")),
+    ...m.fromLocal.map((k) => row("+", k, "to the vault, from here")),
+    ...m.removedThere.map((k) => row("-", k, "removed in the vault (deleted here)")),
+  ];
+}
+
 /** The key-level diff of each conflict. Names, never values. */
 export function describeConflicts(conflicts: FileSync[], cwd: string): string[] {
   const lines: string[] = [];
   for (const file of conflicts) {
+    if (file.merge?.conflicts.length) {
+      lines.push("", `${path.relative(cwd, file.destination)}: these keys differ on both sides:`);
+      lines.push(...file.merge.conflicts.map((k) => `  ~ ${k}`));
+      const gains = describeMerge(file);
+      if (gains.length) lines.push("Once they are settled, the merge brings:", ...gains);
+      continue;
+    }
     if (file.local && file.vault) {
       lines.push("", `${path.relative(cwd, file.destination)} against the vault:`);
       lines.push(...formatKeyDiff(keyDiff(file.local.text, file.vault.text), file.local.text, file.vault.text));
@@ -127,8 +166,16 @@ export function describeConflicts(conflicts: FileSync[], cwd: string): string[] 
 }
 
 /** The two ways out of each conflict, as commands. */
-function resolutions(conflicts: FileSync[]): NextStep[] {
+function resolutions(conflicts: FileSync[], merging: boolean): NextStep[] {
   const out: NextStep[] = [];
+  if (!merging && conflicts.some((f) => f.local && f.vault)) {
+    out.push({ command: command("sync --merge --dry-run"), description: "see what a key-by-key merge would do" });
+  }
+  for (const file of conflicts) {
+    for (const key of file.merge?.conflicts ?? []) {
+      out.push({ command: command(`set ${key} --file ${quoteIfNeeded(file.entry.file)}`), description: `settle ${key} here, then sync --merge again` });
+    }
+  }
   for (const file of conflicts) {
     const flag = `--file ${quoteIfNeeded(file.entry.file)}`;
     if (file.vault) out.push({ command: command(`pull ${flag}`), description: `take the vault's ${file.entry.file}` });
