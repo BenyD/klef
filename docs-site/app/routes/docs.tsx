@@ -2,6 +2,7 @@ import type { Route } from "./+types/docs";
 import { use } from "react";
 import { useFumadocsLoader } from "fumadocs-core/source/client";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
+import { ArrowUpRight } from "lucide-react";
 import {
   DocsBody,
   DocsDescription,
@@ -56,11 +57,21 @@ function Content({ path, url, markdownUrl }: { path: string; url: string; markdo
   );
 }
 
+/** The way into the product, in the sidebar's footer row beside GitHub and the theme switch. */
+function OpenKlef() {
+  return (
+    <a href="/app" className="klef-open" target="_blank" rel="noreferrer">
+      Open Klef
+      <ArrowUpRight aria-hidden="true" />
+    </a>
+  );
+}
+
 export default function Page({ loaderData }: Route.ComponentProps) {
   const { pageTree, path, url, markdownUrl } = useFumadocsLoader(loaderData);
 
   return (
-    <DocsLayout {...baseOptions()} tree={pageTree}>
+    <DocsLayout {...baseOptions()} tree={pageTree} sidebar={{ footer: <OpenKlef /> }}>
       <Content path={path} url={url} markdownUrl={markdownUrl} />
     </DocsLayout>
   );
