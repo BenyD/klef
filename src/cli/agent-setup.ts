@@ -48,7 +48,7 @@ export function isSetupTarget(value: string): value is SetupTarget {
 /** One line for the description fields that decide when an agent loads this. */
 const SUMMARY =
   "Sync this project's .env files with the Klef vault using the klef CLI " +
-  "(status, sync, pull, push, login) without ever reading or printing a secret value.";
+  "(status, sync, pull, push, run, login) without ever reading or printing a secret value.";
 
 /**
  * The shared body. `cli` is how the user reaches the CLI ("klef" or
@@ -72,6 +72,13 @@ value, which is what makes it safe for you to run.
 - Never ask the user for their master passphrase or access token, and never
   pipe or pass one to the CLI. It reads the passphrase from the terminal on
   purpose, so it cannot pass through you.
+- To start the app, run the tests, or run any script that needs the
+  variables, prefer \`${cli} run -- <command>\` over pulling: it puts the
+  variables straight into that command's environment, writes nothing to
+  disk, and replaces any secret value the command prints with
+  \`[klef:redacted]\` before it reaches you. Pull only when a file on disk
+  is really needed (a tool that reads \`.env\` itself and cannot take the
+  environment).
 
 ### Which files are synced
 
@@ -90,6 +97,7 @@ unlocked, each file's state (\`in-sync\`, \`edited-here\`, \`changed-in-vault\`,
 ### Commands
 
     ${cli} status --json         # the one call to start with
+    ${cli} run -- npm run dev    # run with the variables, no file, output redacted
     ${cli} sync --dry-run --json # what a sync would do, writing nothing
     ${cli} sync --yes            # pull or push each file, whichever side changed
     ${cli} diff --all --json     # which keys differ (names, never values)

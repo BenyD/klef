@@ -139,9 +139,33 @@ klef pull --all                     # every file listed in .klef.json
 klef pull --file .env.production    # one file
 ```
 
-With `--all`, every file is checked before anything is written, so it writes all of them or none.
+With `--all`, every file is checked before anything is written, so it writes all of them or none. To run something with the variables and no file on disk, use [`klef run`](/docs/cli/run/).
 
 JSON `data`: `{ files: [ { file, path, variables, version } ] }`
+
+### klef run
+
+Runs a command with the vault's variables in its environment and no file on disk. The env file is decrypted in memory, parsed as dotenv would, and merged over the current environment (the file wins). The command's output is forwarded with every secret value replaced by `[klef:redacted]`, and its exit code is passed through. Ctrl-C and SIGTERM are passed on to it. See [klef run](/docs/cli/run/) for the rules.
+
+```bash
+klef run [flags] -- <command...>
+```
+
+| Flag | Does |
+| --- | --- |
+| `--file <name>` | One env file in the vault, by name |
+| `--all` | Every file listed in `.klef.json`, merged, the later file winning a shared key |
+| `--no-redact` | Forward the output as it is, values included (warns) |
+
+```bash
+klef run -- npm run dev                          # the linked file's variables, output redacted
+klef run --file .env.production -- node build.js  # another file
+klef run --all -- pnpm test                       # every file in .klef.json
+```
+
+Under `--json` the command's output goes to stderr, so stdout carries one object.
+
+JSON `data`: `{ files: [ { file, variables, version } ], exitCode, redactions, redacted }`
 
 ### klef push
 

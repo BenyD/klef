@@ -24,6 +24,7 @@ import { link } from "./commands/link.ts";
 import { list } from "./commands/list.ts";
 import { pull } from "./commands/pull.ts";
 import { push } from "./commands/push.ts";
+import { run } from "./commands/run.ts";
 import { unlock } from "./commands/unlock.ts";
 import { lock } from "./commands/lock.ts";
 import { audit } from "./commands/audit.ts";
@@ -48,6 +49,7 @@ const RUN: Record<string, Run> = {
   list: (args, env) => list(args, env),
   pull: (args, env, cwd) => pull(args, env, cwd),
   push: (args, env, cwd) => push(args, env, cwd),
+  run: (args, env, cwd) => run(args, env, cwd),
   sync: (args, env, cwd) => sync(args, env, cwd),
   diff: (args, env, cwd) => diff(args, env, cwd),
   audit: (args, env, cwd) => audit(args, env, cwd),
