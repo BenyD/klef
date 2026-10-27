@@ -94,7 +94,8 @@ report success or failure, not the value.
 \`.klef.json\` (safe to read and commit: names only) links this directory to a
 project in the vault. \`file\` is the default env file, and the optional
 \`files\` list is everything \`--all\` covers, each with the local \`path\` it
-lives at.
+lives at. If it sets \`minVersion\` and a command says the CLI is older than
+that, run it as \`npx @klefsh/cli@latest <command>\` instead.
 
 ### Start with status
 

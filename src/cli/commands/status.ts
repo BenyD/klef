@@ -6,12 +6,9 @@ import { loadToken } from "../credentials.ts";
 import { apiBaseUrl } from "../paths.ts";
 import { readProjectConfig } from "../project-file.ts";
 import type { ParsedArgs } from "../args.ts";
-import { stat } from "node:fs/promises";
 import { allFiles, CONFIG_FILENAME, type ProjectConfig } from "../project-config.ts";
-import { findFile } from "../resolve.ts";
-import { loadSyncState } from "../sync-state.ts";
-import { quickState, QUICK_STATE_WORDS, type QuickState } from "../sync-plan.ts";
-import { resolveWritePath } from "../write-path.ts";
+import { QUICK_STATE_WORDS } from "../sync-plan.ts";
+import { fileStates, type FileState } from "../file-states.ts";
 import { CLI_VERSION } from "../version.ts";
 import type { VaultTree } from "../../shared/api-types.ts";
 import { cmd, emit, say, style, uiMode, type NextStep } from "../ui.ts";
@@ -124,45 +121,6 @@ export async function status(
     for (const n of next) say(`  ${cmd(n.command.padEnd(width))}  ${style.dim(n.description ?? "")}`.trimEnd());
   }
   return 0;
-}
-
-interface FileState {
-  file: string;
-  path: string;
-  local: boolean;
-  inVault: boolean;
-  state: QuickState;
-}
-
-async function fileStates(
-  config: ProjectConfig,
-  tree: VaultTree | null,
-  cwd: string,
-  env: NodeJS.ProcessEnv,
-): Promise<FileState[]> {
-  const state = await loadSyncState(env);
-  const out: FileState[] = [];
-  for (const entry of allFiles(config)) {
-    let destination: string;
-    try {
-      destination = resolveWritePath(cwd, entry.path);
-    } catch {
-      continue; // An unsafe path is reported by the commands that would use it.
-    }
-    const info = await stat(destination).catch(() => null);
-    const local = info ? { mtimeMs: info.mtimeMs, size: info.size } : null;
-    let found = null;
-    try {
-      found = tree ? findFile(tree, { ...config, file: entry.file }) : null;
-    } catch {
-      found = null; // The project itself is gone; every file reads as not in the vault.
-    }
-    const quick = tree
-      ? quickState({ local, vaultVersionId: found?.currentVersionId ?? null, baseline: state[destination] ?? null })
-      : "unknown";
-    out.push({ file: entry.file, path: entry.path, local: local !== null, inVault: Boolean(found?.currentVersionId), state: quick });
-  }
-  return out;
 }
 
 /** What to run next, most useful first. Never more than three. */
