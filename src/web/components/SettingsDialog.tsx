@@ -213,7 +213,7 @@ export function SettingsDialog({
                 separate sections: auth is not unlock. */}
             <SettingsPage
               title="Security"
-              description="How you sign in, and how your vault unlocks and locks."
+              description="Passkeys, your passphrase and tokens."
             >
               <PasskeysSection />
               <VaultSection />
@@ -713,8 +713,7 @@ function WorkspaceIconDialog({
               size="md"
             />
             <p className="text-muted-foreground min-w-0 text-sm">
-              Paste a link or upload an image. It loads straight from its own
-              site, so Klef never stores a copy elsewhere.
+              Paste a link or upload an image.
             </p>
           </div>
           <div className="grid gap-2">
@@ -970,8 +969,7 @@ function PasskeyRow({
               Master passphrase
             </Label>
             <p className="text-muted-foreground text-xs">
-              The passphrase from the unlock screen, not your account
-              password. Your device asks for the passkey right after.
+              Your unlock passphrase, not your account password.
             </p>
             <PasswordInput
               id={`passkey-unlock-${passkey.id}`}

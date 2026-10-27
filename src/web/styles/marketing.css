@@ -370,7 +370,7 @@
 @keyframes m-rise {
   from {
     opacity: 0;
-    translate: 0 10px;
+    translate: 0 14px;
   }
   to {
     opacity: 1;
@@ -387,6 +387,44 @@
   }
 }
 
+@keyframes m-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes m-pop {
+  0% {
+    opacity: 0;
+    scale: 0.7;
+  }
+  60% {
+    opacity: 1;
+    scale: 1.08;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+/* Sections fade up as they scroll into view (components/Reveal.tsx adds
+   the classes, so without JavaScript nothing is ever hidden). */
+.m-reveal {
+  opacity: 0;
+  translate: 0 12px;
+  transition:
+    opacity 480ms var(--ease-out),
+    translate 480ms var(--ease-out);
+}
+.m-reveal.is-in {
+  opacity: 1;
+  translate: 0 0;
+}
+
 /* --- hero ------------------------------------------------------------------------ */
 
 .m-hero {
@@ -395,26 +433,23 @@
   border-bottom: 1px solid var(--m-line);
 }
 
-/* A dot grid on a 24px pitch, strongest behind the product and gone behind
-   the copy, with a few squares sitting on it. */
+/* A dot grid on the field's 32px pitch, strongest behind the product and
+   gone behind the copy, with the pixel field sat on it. */
 .m-grid {
   position: absolute;
   inset: 0;
+  overflow: hidden;
   pointer-events: none;
   background-image: radial-gradient(var(--m-line-strong) 1px, transparent 1.2px);
-  background-size: 24px 24px;
-  background-position: 12px 12px;
+  background-size: 32px 32px;
+  background-position: 16px 16px;
   -webkit-mask-image: radial-gradient(ellipse 60% 85% at 72% 50%, #000 10%, transparent 72%);
   mask-image: radial-gradient(ellipse 60% 85% at 72% 50%, #000 10%, transparent 72%);
 }
-.m-px {
+.m-grid .m-hero-field {
   position: absolute;
-  width: 24px;
-  height: 24px;
-  background: var(--m-fill-strong);
-}
-.m-px-ember {
-  background: var(--m-tint-strong);
+  left: 34%;
+  top: 16px;
 }
 
 .m-hero-grid {
@@ -431,7 +466,19 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 24px;
-  animation: m-rise 600ms var(--ease-out) both;
+}
+/* The copy arrives in beats, 90ms apart. */
+.m-hero-copy .m-beat {
+  animation: m-rise 680ms var(--ease-out) both;
+}
+.m-hero-copy .m-beat:nth-child(2) {
+  animation-delay: 90ms;
+}
+.m-hero-copy .m-beat:nth-child(3) {
+  animation-delay: 160ms;
+}
+.m-hero-copy .m-beat:nth-child(4) {
+  animation-delay: 230ms;
 }
 
 .marketing .m-eyebrow {
@@ -462,7 +509,7 @@
   background: linear-gradient(var(--m-tint-strong), var(--m-tint-strong)) no-repeat 0 0 / 100% 100%;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
-  animation: m-highlight 520ms var(--ease-out) 420ms both;
+  animation: m-highlight 520ms var(--ease-out) 560ms both;
 }
 
 .marketing .m-hero-lead {
@@ -483,7 +530,7 @@
 
 .m-stage {
   position: relative;
-  height: 440px;
+  height: 392px;
 }
 
 /* A window: hairline, the app's radius, floating. */
@@ -495,6 +542,45 @@
   box-shadow: var(--elevation-modal);
   animation: m-rise 560ms var(--ease-out) both;
 }
+.m-shot-body {
+  height: 100%;
+}
+
+/* The stack: three windows of one size, each in a slot. Slot 0 is in front;
+   the others sit up and to the right behind it. Changing slot slides a window
+   to its new place; the one leaving the front fades first. */
+.m-stage .m-shot {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 84%;
+  height: 300px;
+  /* Opacity only: a keyframe that set translate would pin the slot. */
+  animation-name: m-fade;
+  transition:
+    translate 520ms var(--ease-out),
+    opacity 240ms var(--ease-quick);
+}
+.m-stage .m-slot-0 {
+  z-index: 3;
+  translate: 0 0;
+  animation-delay: 200ms;
+}
+.m-stage .m-slot-1 {
+  z-index: 2;
+  translate: 52px -44px;
+  animation-delay: 120ms;
+}
+.m-stage .m-slot-2 {
+  z-index: 1;
+  translate: 104px -88px;
+  animation-delay: 40ms;
+}
+.m-stage .m-shot-leaving {
+  opacity: 0;
+  translate: 0 10px;
+}
+
 .m-shot-bar {
   display: flex;
   align-items: center;
@@ -519,27 +605,14 @@
   color: var(--m-muted);
 }
 
-.m-stage .m-shot-term {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 64%;
-  animation-delay: 80ms;
-}
-
 /* The app shell: canvas, sidebar, inset content panel. */
-.m-stage .m-app {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 86%;
-  animation-delay: 180ms;
-}
 .m-app {
-  display: grid;
-  grid-template-columns: 152px minmax(0, 1fr);
   background: var(--m-soft);
   font-size: 12px;
+}
+.m-app .m-shot-body {
+  display: grid;
+  grid-template-columns: 152px minmax(0, 1fr);
 }
 .m-app-side {
   display: flex;
@@ -656,6 +729,9 @@
   border-radius: 999px;
   background: var(--m-ok);
 }
+.m-app-status-quiet::before {
+  background: var(--m-line-strong);
+}
 .m-app-foot {
   margin-top: auto;
   padding: 8px 12px;
@@ -695,6 +771,28 @@
 .m-vault .m-masked {
   color: var(--m-muted);
   letter-spacing: 0.12em;
+}
+.m-compare th:not(:first-child),
+.m-compare td:not(:first-child) {
+  text-align: center;
+}
+.m-chk {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--m-ok) 14%, transparent);
+  color: var(--m-ok);
+  animation: m-pop 420ms var(--ease-spring) both;
+  animation-delay: var(--d);
+}
+.m-chk svg {
+  width: 11px;
+  height: 11px;
+}
+.m-none {
+  color: var(--m-line-strong);
 }
 
 /* Transcripts. */
@@ -758,19 +856,20 @@
     mask-image: radial-gradient(ellipse 80% 60% at 50% 80%, #000 10%, transparent 75%);
   }
   .m-stage {
-    height: auto;
+    height: 300px;
   }
-  .m-stage .m-shot-term {
-    display: none;
+  .m-stage .m-shot {
+    width: 100%;
+    translate: 0 0;
   }
-  .m-stage .m-app {
-    position: relative;
-    width: auto;
+  .m-stage .m-slot-1,
+  .m-stage .m-slot-2 {
+    visibility: hidden;
   }
 }
 
 @media (max-width: 520px) {
-  .m-app {
+  .m-app .m-shot-body {
     grid-template-columns: minmax(0, 1fr);
   }
   .m-app-side {
@@ -1721,12 +1820,16 @@
 
 /* Reduced motion: nothing rises and the highlight is simply there. */
 @media (prefers-reduced-motion: reduce) {
-  .m-hero-copy,
+  .m-hero-copy .m-beat,
   .m-hl,
   .m-shot,
   .m-vault tbody tr,
+  .m-chk,
   .m-term .t-line,
   .marketing-page {
     animation: none;
+  }
+  .m-stage .m-shot {
+    transition: none;
   }
 }
