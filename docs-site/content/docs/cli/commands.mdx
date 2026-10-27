@@ -229,6 +229,33 @@ klef diff --all --exit-code  # exit 10 if anything differs, for scripts
 
 JSON `data`: `{ files: [ { file, path, state, reason, onlyLocal, onlyVault, changed } ] }`. `state` uses the same words as `sync`'s `action`.
 
+### klef run
+
+Runs a command with an env file's variables in its environment, so nothing, and no coding agent, has to open the file to use what is in it: testing an API key, a one-off query against `DATABASE_URL`, starting the app. It reads the local file by default, which needs no unlock; `--from-vault` decrypts the vault's copy instead.
+
+```bash
+klef run [flags] -- <command> [args...]
+```
+
+| Flag | Does |
+| --- | --- |
+| `--file <name>` | Which env file (default: the linked one) |
+| `--only <KEY,KEY>` | Pass only these variables |
+| `--from-vault` | Use the vault's copy instead of the local file (needs the vault unlocked) |
+
+```bash
+klef run -- npm run dev                                                   # the app, with .env.local loaded
+klef run --only DATABASE_URL -- sh -c 'psql "$DATABASE_URL" -c "select 1"'  # one variable in a query
+klef run --file .env.production --from-vault -- node scripts/check.js     # the vault's production values
+```
+
+- **Put the command after `--`**, so its flags are its own. Without it, klef reports the first one as an unknown flag.
+- **Use `sh -c '...'` with single quotes** for a command that mentions `$NAME`. Otherwise your own shell expands it, to nothing, before klef runs.
+- **stdin, stdout, stderr and the exit code pass straight through**, unmasked. klef prints one line of its own on stderr (`klef: 3 variables from .env.local`, none with `-q`) and no value. **The command it runs gets every value and can print any of them**: never run one that echoes a variable, such as `echo`, `env`, `printenv` or a debug log of its config.
+- Values are decoded the way dotenv loaders read them: quotes removed, inline ` #` comments dropped. There is no `${VAR}` expansion inside the file. File values take precedence over variables already set in your environment.
+
+`--json` is not supported: the output is the command's own.
+
 ## Unlock
 
 ### klef unlock
