@@ -99,8 +99,8 @@ export function CliAuthorize() {
         <ThemeToggle />
       </div>
 
-      <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-lg">
-        <KlefMark className="size-5" />
+      <div className="text-foreground">
+        <KlefMark className="size-9" accent="var(--primary)" />
       </div>
 
       <Card className="w-full max-w-sm">

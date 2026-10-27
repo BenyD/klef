@@ -514,12 +514,14 @@
 .klef-canvas {
   position: relative;
   overflow: hidden;
-}
-.klef-canvas > :not(.klef-canvas-field) {
-  position: relative;
+  /* Its own stacking context, so the field can sit at z-index -1 under
+     every child without touching how the children are positioned: the
+     corner controls stay absolute. */
+  isolation: isolate;
 }
 .klef-canvas-field {
   position: absolute;
+  z-index: -1;
   left: 50%;
   top: 50%;
   translate: -50% -50%;
