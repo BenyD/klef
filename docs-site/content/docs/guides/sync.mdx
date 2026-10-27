@@ -82,6 +82,27 @@ $ klef sync
 
 Each machine keeps `~/.config/klef/sync-state.json` (mode `0600`). For each local file it records the vault version the file last matched, and the file's modification time and size at that moment. Not a hash of the contents: a hash of a short env file would be a guessable fingerprint of its values, and "edited since?" needs only the time and size.
 
+### Merging instead of choosing a side
+
+A conflict offers to keep one side whole, which drops any key only the other side has. When both sides added keys, merge them by key instead:
+
+```bash
+klef sync --merge --dry-run   # what each side would gain
+klef sync --merge
+```
+
+On a first sync on this machine, each side gains the keys only the other has. After that, the merge is three-way, against the version this machine last synced: whichever side changed a key wins, and a key one side deleted stays deleted. A key whose value differs on both sides still stops the merge, by name. Settle it with `klef set NAME`, which prompts you for the value, then merge again.
+
+### Bringing back one key
+
+If a whole-file push already dropped a key, take it back from an earlier version, without touching anything else:
+
+```bash
+klef list --versions                            # newest first: ids and dates
+klef recover PROBE_GALLERY_ID --from 3f9a2c1b   # into the local file
+klef push
+```
+
 ## Checking without syncing
 
 ```bash

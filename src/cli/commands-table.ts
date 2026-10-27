@@ -139,15 +139,21 @@ export const COMMANDS: CommandSpec[] = [
       "A file edited here since it last matched the vault is pushed; one changed in the vault is " +
       "pulled over the untouched local copy. If both changed, or this machine never synced a file " +
       "that differs, nothing is written and the differing keys are listed (names, never values). " +
-      "Pushes ask first.",
-    flags: [{ name: "dry-run", short: "n", description: "Show what would happen, and do none of it" }],
+      "With --merge, such a file is merged by key instead: on a first sync each side gains the " +
+      "keys only the other has; after that, against the last-synced version, so a key deleted on " +
+      "one side stays deleted. It stops only on keys whose values differ. Pushes ask first.",
+    flags: [
+      { name: "dry-run", short: "n", description: "Show what would happen, and do none of it" },
+      { name: "merge", description: "Settle conflicts key by key: each side gains the other's keys" },
+    ],
     examples: [
       ["klef sync", "Bring everything in line"],
       ["klef sync --dry-run --json", "What would change, for an agent"],
+      ["klef sync --merge --dry-run", "What a key-by-key merge would bring each side"],
     ],
     json:
       "{ dryRun, files: [ { file, path, action, reason, keys?: { onlyLocal, onlyVault, changed } } ] }  " +
-      "action: in-sync | pull | push | create | conflict | absent",
+      "action: in-sync | pull | push | create | merge | conflict | absent; merge?: { conflicts, fromVault, fromLocal, removedHere, removedThere, base }",
   },
   {
     name: "pull",
@@ -213,6 +219,41 @@ export const COMMANDS: CommandSpec[] = [
     json: "(passes the command's output through; --json is not supported)",
   },
   {
+    name: "set",
+    group: "Everyday",
+    args: "<NAME>",
+    summary: "Set one variable in a local file, the value typed at the terminal",
+    description:
+      "Asks for the value with echo off, at the terminal only, like the passphrase: never from " +
+      "the command line, a pipe or a variable, so an agent cannot set one. Edits only that key's " +
+      "line in the local file (adding it if new); push or sync saves it to the vault.",
+    flags: [{ name: "file", value: "name", description: "Which env file (default: the linked one)" }],
+    examples: [
+      ["klef set STRIPE_KEY", "Type the new value; nothing is echoed"],
+      ["klef set DATABASE_URL --file .env.production", "In another listed file"],
+    ],
+    json: "{ name, file, path, added }",
+  },
+  {
+    name: "recover",
+    group: "Everyday",
+    args: "<NAME> --from <version>",
+    summary: "Bring one variable back from an earlier vault version",
+    description:
+      "For when a push replaced a file and took a key with it: copies that key's line from an " +
+      "earlier version into the local file, leaving every other line alone. The version is an id " +
+      "or the start of one, from `klef list --versions`. Writes only locally; push or sync saves it.",
+    flags: [
+      { name: "from", value: "version", description: "The version to take it from (an id or its start)" },
+      { name: "file", value: "name", description: "Which env file (default: the linked one)" },
+    ],
+    examples: [
+      ["klef list --versions", "Find the version that still had it"],
+      ["klef recover PROBE_GALLERY_ID --from 3f9a2c1b", "Bring it back here, then push"],
+    ],
+    json: "{ name, file, path, version, added }",
+  },
+  {
     name: "unlock",
     group: "Unlock",
     summary: "Unlock this device with the passphrase, once",
@@ -244,10 +285,16 @@ export const COMMANDS: CommandSpec[] = [
     name: "list",
     aliases: ["ls"],
     group: "Look around",
-    summary: "List the env files in your vault, names only",
-    flags: [],
-    examples: [["klef list --json", "For a script or an agent"]],
-    json: "{ files: [ { workspace, project, file, environment, hasVersion } ] }",
+    summary: "List the env files in your vault, or one file's versions",
+    flags: [
+      { name: "versions", description: "The linked file's versions instead, newest first (ids and dates)" },
+      { name: "file", value: "name", description: "With --versions: another file in the project" },
+    ],
+    examples: [
+      ["klef list --json", "For a script or an agent"],
+      ["klef list --versions", "Pick a version to recover a key from"],
+    ],
+    json: "{ files: [ { workspace, project, file, environment, hasVersion } ] }  --versions: { file, versions: [ { id, createdAt, isCurrent } ] }",
   },
   {
     name: "audit",
