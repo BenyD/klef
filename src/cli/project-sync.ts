@@ -14,7 +14,8 @@ import { countVariables, describePush, describeWrite } from "./output.ts";
 import type { FileEntry, ProjectConfig } from "./project-config.ts";
 import { findFile, resolveProject, type ResolvedTarget } from "./resolve.ts";
 import { decideSync, type SyncDecision } from "./sync-plan.ts";
-import { loadSyncState, recordSynced } from "./sync-state.ts";
+import { loadSyncState, recordSynced, type Baseline } from "./sync-state.ts";
+import { mergeEnv, type MergeReport } from "./env-merge.ts";
 import type { VaultCipher } from "./vault-key.ts";
 import { resolveWritePath } from "./write-path.ts";
 
@@ -28,6 +29,10 @@ export interface FileSync {
   local: LocalFile | null;
   vault: { text: string; versionId: string } | null;
   decision: SyncDecision;
+  /** What this machine last synced, if anything: the base for a merge. */
+  baseline: Baseline | null;
+  /** Set by `sync --merge` for a file whose decision became "merge". */
+  merge?: MergeReport;
 }
 
 export interface SyncContext {
@@ -68,7 +73,7 @@ export async function inspectProject(
       vault,
       baseline: state[destination] ?? null,
     });
-    out.push({ entry, destination, resolved, local, vault, decision });
+    out.push({ entry, destination, resolved, local, vault, decision, baseline: state[destination] ?? null });
   }
   return out;
 }
@@ -107,6 +112,20 @@ export async function applySync(
       await writeEnvFile(file.destination, text);
       synced.push({ file: file.destination, versionId: file.vault!.versionId });
       lines.push(describeWrite({ path: shown, variableCount: countVariables(text) }));
+    } else if (action === "merge") {
+      // Both sides gain what the other had: the merged text goes here, and
+      // to the vault as a new version unless the vault already has it.
+      const text = file.merge!.text!;
+      if (text !== file.local!.text) await writeEnvFile(file.destination, text);
+      let versionId = file.vault!.versionId;
+      if (text !== file.vault!.text) {
+        versionId = (await ctx.api.saveVersion(file.resolved!.fileId, await ctx.cipher.encrypt(text))).id;
+      }
+      synced.push({ file: file.destination, versionId });
+      const { fromVault, fromLocal, removedHere, removedThere } = file.merge!;
+      lines.push(
+        `Merged ${file.resolved!.fileName}: ${fromVault.length + removedHere.length} ${fromVault.length + removedHere.length === 1 ? "change" : "changes"} here, ${fromLocal.length + removedThere.length} to the vault${versionId !== file.vault!.versionId ? ` (version ${versionId.slice(0, 8)})` : ""}`,
+      );
     } else if (action === "push" || action === "create") {
       const summary = describePending(file);
       let fileId = file.resolved?.fileId;
@@ -125,4 +144,38 @@ export async function applySync(
 
   await recordSynced(ctx.env, synced);
   return lines;
+}
+
+/**
+ * `sync --merge`: turn each conflict that a key-level merge can settle into a
+ * "merge", and leave the rest as conflicts that name only the keys whose
+ * values differ. The base is the version this machine last synced, fetched
+ * and decrypted; without one (the first sync here) the merge takes the union.
+ */
+export async function planMerges(ctx: SyncContext, files: FileSync[]): Promise<void> {
+  for (const file of files) {
+    if (file.decision.action !== "conflict" || !file.local || !file.vault || !file.resolved) continue;
+    if (file.local.text.trim() === "") continue; // An empty file stays a conflict.
+    let base: string | null = null;
+    if (file.baseline) {
+      try {
+        const { version } = await ctx.api.version(file.resolved.fileId, file.baseline.versionId);
+        base = await ctx.cipher.decrypt(version.blob);
+      } catch {
+        base = null; // The base is gone; fall back to the union.
+      }
+    }
+    const report = mergeEnv(file.local.text, file.vault.text, base);
+    file.merge = report;
+    if (report.conflicts.length) {
+      file.decision = {
+        action: "conflict",
+        reason: `values differ on both sides: ${report.conflicts.join(", ")}`,
+      };
+    } else {
+      const here = report.fromVault.length + report.removedHere.length;
+      const there = report.fromLocal.length + report.removedThere.length;
+      file.decision = { action: "merge", reason: `merge: ${here} from the vault, ${there} from here` };
+    }
+  }
 }

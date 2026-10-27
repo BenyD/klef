@@ -22,6 +22,14 @@ export interface ProjectConfig {
    * vault file called "mobile.env.local" can live at apps/mobile/.env.local.
    */
   files?: FileEntry[];
+  /**
+   * Which local file `klef audit` compares each platform scope with, when
+   * the conventional one is not it: { "vercel:preview": "apps/web/.env.preview",
+   * "cloudflare:workers/image": "workers/image/.dev.vars" }.
+   */
+  audit?: Record<string, string>;
+  /** The oldest CLI this link expects, e.g. "0.7.0" (min-version.ts). */
+  minVersion?: string;
 }
 
 export interface FileEntry {
@@ -71,6 +79,19 @@ export function parseProjectConfig(raw: string): ProjectConfig {
       : null,
   };
   if (obj.files !== undefined) config.files = parseFiles(obj.files);
+  if (obj.audit !== undefined) {
+    const audit = obj.audit;
+    if (typeof audit !== "object" || audit === null || Array.isArray(audit) || Object.values(audit).some((v) => typeof v !== "string" || v === "")) {
+      throw new ConfigError(`${CONFIG_FILENAME}: "audit" must map scopes to file paths, like {"vercel:preview": ".env.preview"}`);
+    }
+    config.audit = audit as Record<string, string>;
+  }
+  if (obj.minVersion !== undefined) {
+    if (typeof obj.minVersion !== "string" || !/^\d+\.\d+\.\d+$/.test(obj.minVersion)) {
+      throw new ConfigError(`${CONFIG_FILENAME}: "minVersion" must be a version like "0.7.0"`);
+    }
+    config.minVersion = obj.minVersion;
+  }
   return config;
 }
 

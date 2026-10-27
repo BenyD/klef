@@ -31,9 +31,16 @@ import { sync } from "./commands/sync.ts";
 import { diff } from "./commands/diff.ts";
 import { restore } from "./commands/restore.ts";
 import { setup, defaultSetupDeps } from "./commands/setup.ts";
+import { set } from "./commands/set.ts";
+import { recover } from "./commands/recover.ts";
+import { scan } from "./commands/scan.ts";
+import { run } from "./commands/run.ts";
 import { AGENT_COMMAND } from "./agent-spawn.ts";
 import { runAgentProcess } from "./agent.ts";
 import { CLI_VERSION } from "./version.ts";
+import { checkMinVersion } from "./min-version.ts";
+import { readProjectConfig } from "./project-file.ts";
+import { shellArg } from "./common.ts";
 import { command as suggested, invocationName } from "./invocation.ts";
 import { CliError, emit, EXIT, modeFor, reportError, setUiMode, uiMode } from "./ui.ts";
 
@@ -45,7 +52,9 @@ const RUN: Record<string, Run> = {
   logout: (_args, env) => logout(env),
   status: (args, env, cwd) => status(args, env, cwd),
   link: (args, env, cwd) => link(args, env, cwd),
-  list: (args, env) => list(args, env),
+  list: (args, env, cwd) => list(args, env, cwd),
+  set: (args, env, cwd) => set(args, env, cwd),
+  recover: (args, env, cwd) => recover(args, env, cwd),
   pull: (args, env, cwd) => pull(args, env, cwd),
   push: (args, env, cwd) => push(args, env, cwd),
   sync: (args, env, cwd) => sync(args, env, cwd),
@@ -54,6 +63,8 @@ const RUN: Record<string, Run> = {
   restore: (args, env, cwd) => restore(args, env, cwd),
   unlock: (args, env) => unlock(args, env),
   lock: (_args, env) => lock(env),
+  scan: (args, env, cwd) => scan(args, env, cwd),
+  run: (args, env, cwd) => run(args, env, cwd),
 };
 
 function resolveCwd(args: ParsedArgs): string {
@@ -118,7 +129,10 @@ async function main(args: ParsedArgs): Promise<number> {
     throw new CliError(
       "usage",
       `Unknown flag ${shown} for ${spec.name}.${bad.suggestion ? ` Did you mean --${bad.suggestion}?` : ""}`,
-      { next: [suggested(`help ${spec.name}`)] },
+      {
+        hint: spec.name === "run" ? "Put the command to run after --, so its flags are its own:" : undefined,
+        next: [suggested(spec.name === "run" ? "run -- <command> [args...]" : `help ${spec.name}`)],
+      },
     );
   }
 
@@ -131,7 +145,12 @@ async function main(args: ParsedArgs): Promise<number> {
     return EXIT.ok;
   }
 
-  return RUN[spec.name]!(args, env, resolveCwd(args));
+  const cwd = resolveCwd(args);
+  // The repo's minVersion, checked before anything reads its link. A
+  // malformed .klef.json is left for the command itself to report.
+  const config = await readProjectConfig(cwd).catch(() => null);
+  checkMinVersion(CLI_VERSION, config?.minVersion, process.argv.slice(2).map(shellArg).join(" "));
+  return RUN[spec.name]!(args, env, cwd);
 }
 
 const args = parseArgs(process.argv.slice(2));
