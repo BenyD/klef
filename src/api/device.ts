@@ -10,6 +10,7 @@ import {
   normalizeUserCode,
 } from "../shared/device-code.ts";
 import { isPublicJwk, sealToken } from "../shared/device-seal.ts";
+import { isSealedVaultKey } from "../shared/device-unlock.ts";
 import { bytesToBase64, utf8ToBytes } from "../shared/encoding.ts";
 
 // Browser sign-in for the CLI.
@@ -48,6 +49,7 @@ interface DeviceRow {
   approved_at: string | null;
   denied_at: string | null;
   token_sealed: string | null;
+  vault_key_sealed: string | null;
   collected_at: string | null;
   expires_at: string;
 }
@@ -69,6 +71,15 @@ device.post("/", async (c) => {
 
   const deviceCode = generateDeviceCode();
   const now = new Date();
+
+  // Sealed material never outlives its request: a login nobody collected
+  // keeps neither its sealed token nor its sealed vault key past expiry.
+  await c.env.DB.prepare(
+    `UPDATE device_authorizations SET token_sealed = NULL, vault_key_sealed = NULL
+     WHERE expires_at <= ? AND (token_sealed IS NOT NULL OR vault_key_sealed IS NOT NULL)`,
+  )
+    .bind(now.toISOString())
+    .run();
 
   // A duplicate user code would attach someone's approval to the wrong
   // request, so retry rather than trusting 40 bits to never collide.
@@ -119,7 +130,7 @@ device.post("/token", async (c) => {
   }
 
   const row = await c.env.DB.prepare(
-    `SELECT id, public_jwk, user_id, approved_at, denied_at, token_sealed, collected_at, expires_at
+    `SELECT id, public_jwk, user_id, approved_at, denied_at, token_sealed, vault_key_sealed, collected_at, expires_at
      FROM device_authorizations WHERE device_hash = ?`,
   )
     .bind(await deviceHash(body.deviceCode))
@@ -127,6 +138,13 @@ device.post("/token", async (c) => {
 
   // Unknown and expired give the same answer on purpose: polling should tell
   // an attacker nothing about which codes exist.
+  if (row && expired(row.expires_at) && (row.token_sealed || row.vault_key_sealed)) {
+    await c.env.DB.prepare(
+      "UPDATE device_authorizations SET token_sealed = NULL, vault_key_sealed = NULL WHERE id = ?",
+    )
+      .bind(row.id)
+      .run();
+  }
   if (!row || expired(row.expires_at)) return c.json({ status: "expired" }, 410);
   if (row.denied_at) return c.json({ status: "denied" }, 403);
   if (!row.approved_at || !row.token_sealed || row.collected_at) {
@@ -134,12 +152,17 @@ device.post("/token", async (c) => {
   }
 
   await c.env.DB.prepare(
-    "UPDATE device_authorizations SET collected_at = ?, token_sealed = NULL WHERE id = ?",
+    "UPDATE device_authorizations SET collected_at = ?, token_sealed = NULL, vault_key_sealed = NULL WHERE id = ?",
   )
     .bind(new Date().toISOString(), row.id)
     .run();
 
-  return c.json({ status: "ready", sealedToken: JSON.parse(row.token_sealed) });
+  return c.json({
+    status: "ready",
+    sealedToken: JSON.parse(row.token_sealed),
+    // Present when the browser also unlocked this CLI; opaque to the server.
+    sealedVaultKey: row.vault_key_sealed ? JSON.parse(row.vault_key_sealed) : null,
+  });
 });
 
 /** What the approval page shows before anyone clicks. Session-gated. */
@@ -148,12 +171,13 @@ device.get("/pending/:userCode", async (c) => {
   if (!userCode) return c.json({ ok: false, error: "That code isn't valid." }, 404);
 
   const row = await c.env.DB.prepare(
-    `SELECT label, expires_at, approved_at, denied_at
+    `SELECT label, public_jwk, expires_at, approved_at, denied_at
      FROM device_authorizations WHERE user_code = ?`,
   )
     .bind(userCode)
     .first<{
       label: string;
+      public_jwk: string;
       expires_at: string;
       approved_at: string | null;
       denied_at: string | null;
@@ -169,7 +193,15 @@ device.get("/pending/:userCode", async (c) => {
     return c.json({ ok: false, error: "That code has already been used." }, 409);
   }
 
-  return c.json({ ok: true, userCode, label: row.label, expiresAt: row.expires_at });
+  // The CLI's public key, so the page can seal the vault key to it if the
+  // user chooses to unlock this CLI too. Public by definition.
+  return c.json({
+    ok: true,
+    userCode,
+    label: row.label,
+    expiresAt: row.expires_at,
+    publicJwk: JSON.parse(row.public_jwk) as unknown,
+  });
 });
 
 /** Approve or deny. Session-gated, so a token can never authorise a new one. */
@@ -177,6 +209,7 @@ device.post("/approve", async (c) => {
   const body = (await c.req.json().catch(() => ({}))) as {
     userCode?: unknown;
     deny?: unknown;
+    sealedVaultKey?: unknown;
   };
   const userCode =
     typeof body.userCode === "string" ? normalizeUserCode(body.userCode) : null;
@@ -214,6 +247,12 @@ device.post("/approve", async (c) => {
   if (!isPublicJwk(publicJwk)) {
     return c.json({ ok: false, error: "That request is malformed. Start again." }, 400);
   }
+  // Optional: the vault key the browser sealed to this CLI. Shape-checked and
+  // stored as given; the server cannot open it and does not try.
+  if (body.sealedVaultKey !== undefined && body.sealedVaultKey !== null && !isSealedVaultKey(body.sealedVaultKey)) {
+    return c.json({ ok: false, error: "That unlock key is malformed." }, 400);
+  }
+  const vaultKeySealed = body.sealedVaultKey ? JSON.stringify(body.sealedVaultKey) : null;
 
   // Minting and marking approved go together: a token that existed without its
   // request being closed out could be handed to a second poller.
@@ -232,11 +271,12 @@ device.post("/approve", async (c) => {
     ),
     c.env.DB.prepare(
       `UPDATE device_authorizations
-       SET user_id = ?, approved_at = ?, token_sealed = ? WHERE id = ?`,
+       SET user_id = ?, approved_at = ?, token_sealed = ?, vault_key_sealed = ? WHERE id = ?`,
     ).bind(
       c.get("user").id,
       now,
       JSON.stringify(await sealToken(publicJwk, token)),
+      vaultKeySealed,
       row.id,
     ),
   ]);

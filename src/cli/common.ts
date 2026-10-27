@@ -39,7 +39,8 @@ export async function requireVault(api: KlefApi): Promise<VaultKeyMaterial> {
 /**
  * Open the vault through the unlock agent, or by asking for the passphrase.
  * With no terminal to ask on (an agent, CI, a pipe), the answer is `locked`
- * and the one thing to do about it: a person runs `klef unlock` themselves.
+ * and the ways out: a sign-in the user approves in the browser, which unlocks
+ * this device too, or `klef unlock` typed by the user at their own terminal.
  */
 export async function unlockedVault(
   keyMaterial: VaultKeyMaterial,
@@ -50,9 +51,9 @@ export async function unlockedVault(
     return await openVault(keyMaterial, env, prompt);
   } catch (err) {
     if (!(err instanceof NoTerminalError)) throw err;
-    throw new CliError("locked", "The vault is locked, and only a person at a terminal can unlock it.", {
-      hint: "Ask the user to run this in their own terminal, then retry:",
-      next: [command("unlock")],
+    throw new CliError("locked", "The vault is locked on this device, and unlocking it needs the user.", {
+      hint: "Run klef login and have the user approve it in the browser (one passkey touch), or ask them to run klef unlock:",
+      next: [{ command: command("login"), description: "the user approves in the browser, which unlocks this device" }, { command: command("unlock"), description: "or the user types the passphrase in their own terminal" }],
     });
   }
 }
