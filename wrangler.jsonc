@@ -7,12 +7,18 @@
 		"nodejs_compat"
 	],
 	"assets": {
+		// The Worker reads static files through this (see the "/" route in src/api).
+		"binding": "ASSETS",
 		// Unmatched routes fall back to the SPA's index.html (client-side routing).
+		// index.html is the bare app shell; the prerendered landing page is home.html.
 		"not_found_handling": "single-page-application",
 		// API requests hit the Hono Worker first; everything else serves static SPA assets.
 		// /.well-known/* also goes to the Worker so unknown discovery probes get a
 		// real 404 instead of the SPA shell (a soft-404 that confuses crawlers).
+		// "/" goes to the Worker so it can serve home.html: index.html has to stay
+		// the bare shell that /app and workspace URLs fall back to.
 		"run_worker_first": [
+			"/",
 			"/api/*",
 			"/.well-known/*"
 		]

@@ -3,6 +3,7 @@
 // Runtime types generated with workerd@1.20260625.1 2026-06-25 nodejs_compat
 interface __BaseEnv_Env {
 	DB: D1Database;
+	ASSETS: Fetcher;
 	BETTER_AUTH_SECRET: string;
 	BETTER_AUTH_URL: string;
 	GOOGLE_CLIENT_ID: string;

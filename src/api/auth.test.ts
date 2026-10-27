@@ -4,6 +4,7 @@ import { makeSignature } from "better-auth/crypto";
 import { describe, expect, it } from "vitest";
 import {
   createAuth,
+  SESSION_COOKIE_CACHE_SECONDS,
   SESSION_EXPIRES_IN_SECONDS,
 } from "./auth";
 
@@ -156,6 +157,48 @@ describe("auth", () => {
         .bind(session.token)
         .first<{ expiresAt: string }>();
       expect(new Date(row!.expiresAt).getTime()).toBeGreaterThan(aged.getTime() + DAY_MS);
+    });
+  });
+
+  // Every API call checks the session; the signed cookie cache spares D1 that
+  // lookup for SESSION_COOKIE_CACHE_SECONDS, at the cost of a revoked session
+  // lingering that long on a device that still holds the cache cookie.
+  describe("session cookie cache", () => {
+    it("issues a short-lived signed copy of the session", async () => {
+      await seedUser("cache-user");
+      const ctx = await createAuth(env).$context;
+      const session = await ctx.internalAdapter.createSession("cache-user");
+      const res = await SELF.fetch("https://klef.test/api/auth/get-session", {
+        headers: { cookie: await sessionCookie(session.token) },
+      });
+      expect(res.status).toBe(200);
+      const cache = res.headers
+        .getSetCookie()
+        .find((c) => c.includes("session_data="));
+      expect(cache).toBeDefined();
+      expect(cache).toContain(`Max-Age=${SESSION_COOKIE_CACHE_SECONDS}`);
+      expect(cache).toMatch(/HttpOnly/i);
+    });
+
+    it("answers from the cache without D1 until it expires", async () => {
+      await seedUser("cached-revoked-user");
+      const ctx = await createAuth(env).$context;
+      const session = await ctx.internalAdapter.createSession("cached-revoked-user");
+      const first = await SELF.fetch("https://klef.test/api/auth/get-session", {
+        headers: { cookie: await sessionCookie(session.token) },
+      });
+      const cacheCookie = first.headers
+        .getSetCookie()
+        .find((c) => c.includes("session_data="))!
+        .split(";")[0];
+      // Revoke the session in the database; the cached copy still answers.
+      await env.DB.prepare("DELETE FROM session WHERE token = ?").bind(session.token).run();
+      const second = await SELF.fetch("https://klef.test/api/auth/get-session", {
+        headers: { cookie: `${await sessionCookie(session.token)}; ${cacheCookie}` },
+      });
+      const body = (await second.json()) as { user?: { id: string } } | null;
+      expect(body?.user?.id).toBe("cached-revoked-user");
+      expect(SESSION_COOKIE_CACHE_SECONDS).toBeLessThanOrEqual(5 * 60);
     });
   });
 });
