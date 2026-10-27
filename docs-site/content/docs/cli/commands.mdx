@@ -32,7 +32,9 @@ klef setup claude cursor                 # only (re)write the agent instructions
 
 Without a terminal it stops at each choice: `confirmation_required` with `--workspace`/`--project` to rerun with when the project is ambiguous, or the same command with `--yes` before writing agent files, and `locked` with `klef unlock` when pulling needs the passphrase.
 
-JSON `data`: `{ signedIn, email, linked: { workspace, project, files }, agentFiles: [ { path, action } ], pulled: [ path ] }`. Run with targets, it is `{ agentFiles }`. `action` is `create`, `update`, `unchanged` or `conflict` (a file klef did not write, left alone).
+It ends the way `klef status` would: each file's state (in sync, edited here, changed in the vault; "on disk, not yet compared" for a file this machine has never synced) and the commands to run next.
+
+JSON `data`: `{ signedIn, email, linked: { workspace, project, files }, agentFiles: [ { path, action } ], pulled: [ path ], files: [ { file, path, local, inVault, state } ], next: [ { command, description } ] }`. Run with targets, it is `{ agentFiles }`. `action` is `create`, `update`, `unchanged` or `conflict` (a file klef did not write, left alone).
 
 ### klef login
 
@@ -74,13 +76,20 @@ klef link [workspace] [project] [file] [flags]
 | `--workspace <name>` | The workspace, instead of the first argument |
 | `--project <name>` | The project, instead of the second argument |
 | `--file <name>` | The default env file, instead of the third argument |
+| `--add <path>` | List one more local env file in `.klef.json` (see `klef scan`) |
+| `--as <name>` | With `--add`: its name in the vault |
 
 ```bash
-klef link                      # see what can be linked
-klef link Personal lensdrop    # link to a project
+klef link                               # see what can be linked
+klef link Personal lensdrop             # link to a project
+klef link --add apps/web/.env.local     # also sync a monorepo app's file
 ```
 
-JSON `data`: `{ workspace, project, file, files: [ { file, path } ], config, changed }`
+`--add` names the vault file after the local one: a root file keeps its name, one in a folder gets the folder's name in front (`apps/web/.env.local` becomes `web.env.local`). It sends nothing; the next `sync` creates it in the vault.
+
+Linking records `minVersion`, the CLI version that wrote `.klef.json`, unless the file already has one. A CLI older than that refuses to run in the repo with `outdated` and says to run `npx @klefsh/cli@latest` instead. It checks only the version it was built with; there is no network call.
+
+JSON `data`: `{ workspace, project, file, files: [ { file, path } ], config, changed }`; with `--add`, `{ path, file, changed }`
 
 ## Everyday
 
@@ -111,7 +120,8 @@ klef sync [flags]
 
 | Flag | Does |
 | --- | --- |
-| `--dry-run`, `-n` | Show what would happen, and do none of it |
+| `--dry-run`, `-n` | Show what would happen, and do none of it (exits 0 even on a conflict) |
+| `--exit-code` | With `--dry-run`: exit 5 when there is a conflict |
 
 ```bash
 klef sync                   # bring everything in line
@@ -184,7 +194,9 @@ klef diff --all              # which keys differ, and how
 klef diff --all --exit-code  # exit 10 if anything differs, for scripts
 ```
 
-JSON `data`: `{ files: [ { file, path, state, reason, onlyLocal, onlyVault, changed } ] }`. `state` uses the same words as `sync`'s `action`.
+A commented-out line such as `# STRIPE_KEY=` is reported apart from set keys, as "declared, unset" on that side, and annotates a key the other side does set (`- STRIPE_KEY  only in the vault (declared, unset here)`). Like `sync --dry-run`, `diff` is read-only: a conflict is part of its answer, so it exits 0 unless `--exit-code`.
+
+JSON `data`: `{ files: [ { file, path, state, reason, onlyLocal, onlyVault, changed, declaredUnsetLocal, declaredUnsetVault } ] }`. `state` uses the same words as `sync`'s `action`.
 
 ## Unlock
 
@@ -233,6 +245,16 @@ klef list --json   # for a script or an agent
 ```
 
 JSON `data`: `{ files: [ { workspace, project, file, environment, hasVersion } ] }`
+
+### klef scan
+
+Lists the env files in this checkout that `.klef.json` does not cover, so a monorepo app's own `.env.local` is not quietly left out of sync. It finds `.env`, `.env.*` and `*.env` (not `.example`, `.sample` or `.template`), skipping `node_modules` and build output, and says whether git ignores each: one it does not could be committed with every value in it. Paths only; no file is opened.
+
+```bash
+klef scan
+```
+
+JSON `data`: `{ linked, gitRepository, unlisted: [ { path, ignored } ], listed: [ path ] }`. `ignored` is null outside a git repository.
 
 ### klef audit
 

@@ -44,6 +44,15 @@ A monorepo, or a vault file whose local name differs, gets a `path`:
 
 `file` is the name in the vault; `path` is where it lives on disk, relative to the repo. Paths must stay inside the directory: absolute paths and `../` are refused.
 
+### Monorepos
+
+`klef scan` lists env files in the checkout that `.klef.json` does not list yet, and warns about any git does not ignore. Add one with `klef link --add`:
+
+```bash
+klef scan
+klef link --add apps/web/.env.local   # synced as web.env.local
+```
+
 ## Sync
 
 ```bash

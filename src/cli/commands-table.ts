@@ -71,7 +71,7 @@ export const COMMANDS: CommandSpec[] = [
       ["klef setup --project lensdrop --yes", "No menu and no questions, for an agent"],
       ["klef setup claude cursor", "Only (re)write the agent instructions"],
     ],
-    json: "{ signedIn, email, linked: { workspace, project, files }, agentFiles: [ { path, action } ], pulled: [ path ] }",
+    json: "{ signedIn, email, linked: { workspace, project, files }, agentFiles: [ { path, action } ], pulled: [ path ], files: [ { file, path, state } ], next }",
   },
   {
     name: "login",
@@ -106,10 +106,13 @@ export const COMMANDS: CommandSpec[] = [
       { name: "workspace", value: "name", description: "The workspace, instead of the first argument" },
       { name: "project", value: "name", description: "The project, instead of the second argument" },
       FILE,
+      { name: "add", value: "path", description: "List one more local env file in .klef.json (see klef scan)" },
+      { name: "as", value: "name", description: "With --add: its name in the vault" },
     ],
     examples: [
       ["klef link", "See what can be linked"],
       ["klef link Personal lensdrop", "Link to a project"],
+      ["klef link --add apps/web/.env.local", "Also sync a monorepo app's file"],
     ],
     json: "{ workspace, project, file, files: [ { file, path } ], config, changed }",
   },
@@ -140,7 +143,10 @@ export const COMMANDS: CommandSpec[] = [
       "pulled over the untouched local copy. If both changed, or this machine never synced a file " +
       "that differs, nothing is written and the differing keys are listed (names, never values). " +
       "Pushes ask first.",
-    flags: [{ name: "dry-run", short: "n", description: "Show what would happen, and do none of it" }],
+    flags: [
+      { name: "dry-run", short: "n", description: "Show what would happen, and do none of it (exits 0 even on a conflict)" },
+      { name: "exit-code", description: "With --dry-run: exit 5 when there is a conflict" },
+    ],
     examples: [
       ["klef sync", "Bring everything in line"],
       ["klef sync --dry-run --json", "What would change, for an agent"],
@@ -181,12 +187,16 @@ export const COMMANDS: CommandSpec[] = [
     name: "diff",
     group: "Everyday",
     summary: "Compare local files with the vault, by key, writing nothing",
+    description:
+      "Lists, per file, the keys only here (+), only in the vault (-) and with different values " +
+      "(~), by name, never value. Commented-out `# KEY=` lines are reported apart, as declared, " +
+      "unset. Read-only, so a conflict is part of the answer: it exits 0 unless --exit-code.",
     flags: [FILE, PATH, ALL, EXIT_CODE],
     examples: [
       ["klef diff --all", "Which keys differ, and how"],
       ["klef diff --all --exit-code", "Exit 10 if anything differs, for scripts"],
     ],
-    json: "{ files: [ { file, path, state, reason, onlyLocal, onlyVault, changed } ] }",
+    json: "{ files: [ { file, path, state, reason, onlyLocal, onlyVault, changed, declaredUnsetLocal, declaredUnsetVault } ] }",
   },
   {
     name: "unlock",
@@ -224,6 +234,18 @@ export const COMMANDS: CommandSpec[] = [
     flags: [],
     examples: [["klef list --json", "For a script or an agent"]],
     json: "{ files: [ { workspace, project, file, environment, hasVersion } ] }",
+  },
+  {
+    name: "scan",
+    group: "Look around",
+    summary: "List env files here that .klef.json does not cover",
+    description:
+      "Walks this checkout for env files (.env, .env.*, *.env; not .example or .template) and " +
+      "lists those .klef.json does not list, and whether git ignores each: one it does not could " +
+      "be committed. Paths only; no file is opened. Add one with link --add.",
+    flags: [],
+    examples: [["klef scan", "Find a monorepo app's env files"]],
+    json: "{ linked, gitRepository, unlisted: [ { path, ignored } ], listed: [ path ] }",
   },
   {
     name: "audit",
@@ -501,6 +523,7 @@ export function topicHelp(topic: (typeof TOPICS)[number], cli: string): string {
       ["network", "The server could not be reached (exit 1)"],
       ["server", "The server refused or failed (exit 1)"],
       ["unsupported", "Not available on this platform (exit 1)"],
+      ["outdated", "Older than the repo's minVersion; run npx @klefsh/cli@latest (exit 1)"],
       ["internal", "Anything else (exit 1)"],
     ]),
   ].join("\n");

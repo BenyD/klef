@@ -9,6 +9,14 @@ Klef's web app deploys continuously from `main`; the CLI is versioned on npm as 
 
 - **Sign in once, unlocked.** Approving `klef login` in the browser can also unlock the CLI: the page asks for your passkey or passphrase and sends the vault key sealed to that terminal, end to end. The CLI keeps it in the OS keychain, so pull, push, sync, diff and restore never ask for the passphrase on that device, in your terminal or in a coding agent. `klef unlock` does the same from a terminal; `klef lock` and `klef logout` forget the key; `klef login --no-remember` keeps none. `klef status` says how the vault is unlocked.
 
+## Unreleased
+
+- `klef setup` ends with each file's state and what to run next, instead of "Every file is already here".
+- `minVersion` in `.klef.json`, written by `link` and `setup`: an older CLI refuses with `outdated` and points at `npx @klefsh/cli@latest`. No network call.
+- `sync --dry-run` and `diff` are read-only answers: a conflict exits 0 unless `--exit-code`.
+- `klef scan` lists env files `.klef.json` does not cover; `klef link --add <path>` adds one.
+- `diff` reports commented-out `# KEY=` lines as declared, unset.
+
 ## CLI 0.6.0
 
 Published to npm as `@klefsh/cli@0.6.0`:
