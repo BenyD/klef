@@ -14,7 +14,7 @@ export interface ParsedArgs {
 }
 
 /** Flags that take a value, so `--file .env` consumes the next argument. */
-const VALUE_FLAGS = new Set(["file", "path", "project", "workspace", "environment", "for", "cwd", "add", "as", "only"]);
+const VALUE_FLAGS = new Set(["file", "path", "project", "workspace", "environment", "for", "cwd", "add", "as", "from", "only"]);
 
 /** Short flags, as the long names commands check for. */
 const SHORT: Record<string, string> = {

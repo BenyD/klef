@@ -247,6 +247,7 @@ describe("sync", () => {
       ]),
     );
     expect((failure as CliError).next).toEqual([
+      { command: "klef sync --merge --dry-run", description: "see what a key-by-key merge would do" },
       { command: "klef pull --file .env.local", description: "take the vault's .env.local" },
       { command: "klef push --file .env.local", description: "keep this .env.local" },
     ]);
