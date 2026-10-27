@@ -26,9 +26,11 @@ Each platform environment is compared with the local file for the same environme
 | GitHub Actions | Repository and environment secrets | What `.github/workflows` references |
 | Cloudflare Workers | Each Worker's secrets | The Worker's `.dev.vars` or `.env.production`, else the repo's `.env.production` |
 
-When a linked repo keeps an environment under a different name, such as production in a plain `.env` marked production, that file is used instead. See [Environments](/docs/concepts/environments/).
+When a linked repo keeps an environment under a different name, such as production in a plain `.env` marked production, that file is used instead. See [Environments](/docs/concepts/environments/). Vercel Preview is checked only when the repo has a `.env.preview`.
 
-For each scope, audit reports the names only on the platform and the names only in the local file. An environment that holds nothing at all is one line, `unused environment`, rather than every local name.
+A platform is checked only when the directory is set up for it: a `.vercel/project.json` for Vercel, a `.git` directory for GitHub, and a wrangler config for Cloudflare. Anything else is reported as skipped.
+
+For each scope, audit reports the names only on the platform and the names only in the local file, and counts the names in both. An environment that holds nothing at all is one line, `unused environment`, rather than every local name.
 
 ### GitHub Actions and your workflows
 
@@ -37,7 +39,7 @@ A workflow only sees the secrets it names, so GitHub is compared with `.github/w
 - **referenced in workflows, not set**: a job will get an empty value.
 - **set, never referenced**: probably left over.
 
-The secrets set are the repository's plus those of each environment the workflows name. `GITHUB_TOKEN` is provided by GitHub and never counted. A repo without workflows falls back to comparing `.env.production` with the `production` environment and repository secrets.
+The secrets set are the repository's plus those of each environment the workflows name. `GITHUB_TOKEN` is provided by GitHub and never counted. GitHub upper-cases secret names, so they are matched without regard to case; the other platforms match exactly. A repo without workflows falls back to comparing `.env.production` with the `production` environment and repository secrets.
 
 ### Every Worker in the repo
 

@@ -21,7 +21,7 @@ Naming targets only writes the agent instructions: a Claude Code skill (`claude`
 | --- | --- |
 | `--workspace <name>` | Link to a project in this workspace |
 | `--project <name>` | Link to this project, without the menu |
-| `--global` | Install the Claude Code skill for every project, in `~/.claude` |
+| `--global` | Install the Claude Code skill for every project, in `~/.claude`. Goes with `claude` or `claude-md`: `klef setup claude --global` |
 | `--paste` | Sign in by pasting a token instead of the browser |
 
 ```bash
@@ -30,11 +30,42 @@ klef setup --project lensdrop --yes      # no menu and no questions, for an agen
 klef setup claude cursor                 # only (re)write the agent instructions
 ```
 
-Without a terminal it stops at each choice: `confirmation_required` with `--workspace`/`--project` to rerun with when the project is ambiguous, or the same command with `--yes` before writing agent files, and `locked` with `klef unlock` when pulling needs the passphrase.
+The four steps print as they go. A step already done is reported, not repeated:
 
-It ends the way `klef status` would: each file's state (in sync, edited here, changed in the vault; "on disk, not yet compared" for a file this machine has never synced) and the commands to run next.
+```console
+$ klef setup
+1/4  Signed in as you@example.com
+2/4  Linked to Personal / lensdrop (2 files)
+     Wrote .klef.json: names only, safe to commit.
+3/4  Instructions for Claude Code and Cursor
+     create   ./.claude/skills/klef/SKILL.md
+     create   ./.cursor/rules/klef.mdc
+     They teach coding agents here how to use Klef: commands and rules, never a value. Safe to commit.
+Write 2 files? [y/N] y
+     ✓ Wrote 2 files. New agent sessions pick them up
+4/4  Pull .env.local, .env.production
+✓ Already unlocked on this device
+klef lock forgets the key here.
+✓ Wrote 14 variables to .env.local
+✓ Wrote 9 variables to .env.production
+     .env.local       in sync
+     .env.production  in sync
+klef sync keeps them in line with the vault from now on.
 
-JSON `data`: `{ signedIn, email, linked: { workspace, project, files }, agentFiles: [ { path, action } ], pulled: [ path ], files: [ { file, path, local, inVault, state } ], next: [ { command, description } ] }`. Run with targets, it is `{ agentFiles }`. `action` is `create`, `update`, `unchanged` or `conflict` (a file klef did not write, left alone).
+Deploy platforms (names only)
+  Vercel Development: names match
+  Vercel Production: 1 only there
+klef audit lists the names.
+✓ Done. New Claude Code and Cursor sessions in this repo already know how to use Klef
+```
+
+Step 4 pulls only the files that are not on disk yet, so a local edit is never overwritten; when every file is on disk it says so and pulls nothing. If the browser sign-in did not unlock this device, step 4 asks for the passphrase at the terminal.
+
+It ends the way `klef status` would: each file's state (in sync, edited here, changed in the vault; "on disk, not yet compared" for a file this machine has never synced) and, under `Next`, the commands to run (`klef diff --all` for files not yet compared, `klef sync` for files out of line). Then one line of counts per deploy platform scope, as `klef audit` would report it; a platform not set up here, or whose CLI is missing or signed out, is left out.
+
+Without a terminal it stops at each choice: `confirmation_required` with `--workspace`/`--project` to rerun with when the project is ambiguous, or the same command with `--yes` before writing agent files, and `locked` when pulling needs this device unlocked, with `klef login` (for you to approve in the browser) and `klef unlock` as the ways out.
+
+JSON `data`: `{ signedIn, email, linked: { workspace, project, files }, agentFiles: [ { path, action } ], pulled: [ path ], files: [ { file, path, local, inVault, state } ], next: [ { command, description } ], audit: [ ... ] }`, where `audit` holds the same entries as `klef audit --json`. Run with targets, it is `{ agentFiles }`. `action` is `create`, `update`, `unchanged` or `conflict` (a file klef did not write, left alone).
 
 ### klef login
 
@@ -60,8 +91,6 @@ klef login --no-remember    # sign in, and keep no key here
 The code, the link and the waiting go to stderr; the result goes to stdout. A coding agent can run `klef login` too: you approve it in the browser, which is the human step, and the agent can then work without asking you for anything else.
 
 JSON `data`: `{ email, tokenStore: "keychain" | "file", unlocked }`
-
-
 
 ### klef link
 
@@ -293,7 +322,7 @@ klef unlock          # unlock this device
 klef unlock --for 8h # only for a working day
 ```
 
-Run without a terminal, it stops with `no_terminal` (exit 4): a person has to type the passphrase, or approve `klef login` in the browser. See [Staying signed in and unlocked](/docs/concepts/sessions/).
+On a device that is already unlocked it says so and changes nothing. Run without a terminal, it stops with `no_terminal` (exit 4): a person has to type the passphrase, or approve `klef login` in the browser. See [Staying signed in and unlocked](/docs/concepts/sessions/).
 
 JSON `data`: `{ unlocked: true, alreadyUnlocked, remembered, locksInSeconds }`
 

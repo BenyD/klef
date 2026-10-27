@@ -28,7 +28,7 @@ A token also cannot mint or revoke tokens, approve a CLI sign-in, rewrite vault 
 
 ## The CLI
 
-- **Never prints a secret value.** Errors are redacted on the way out as a backstop.
+- **Never prints a secret value.** Errors are redacted on the way out as a backstop. `klef run` is the one command that hands values to something else: the program it starts gets them in its environment. Its output comes back through klef, which replaces every value it handed over with `[klef:redacted]`; only `--no-redact` passes the output through unmasked, and warns. Values under 5 characters, and settings such as `true` or `production`, are not masked. The agent instructions say to use `klef run` rather than open the env file, and never to pass `--no-redact`.
 - **Reads the passphrase from `/dev/tty` only**, and refuses to prompt on a stream whose echo it cannot disable.
 - **A person unlocks each device.** By approving `klef login` in the browser (passkey or passphrase) or typing the passphrase into `klef unlock`. After that the device stays unlocked until `klef lock`.
 - **Keeps `pull` and `push` inside the working directory.** Absolute paths and `../` are refused.
