@@ -24,6 +24,7 @@ import { link } from "./commands/link.ts";
 import { list } from "./commands/list.ts";
 import { pull } from "./commands/pull.ts";
 import { push } from "./commands/push.ts";
+import { run } from "./commands/run.ts";
 import { unlock } from "./commands/unlock.ts";
 import { lock } from "./commands/lock.ts";
 import { audit } from "./commands/audit.ts";
@@ -34,7 +35,6 @@ import { setup, defaultSetupDeps } from "./commands/setup.ts";
 import { set } from "./commands/set.ts";
 import { recover } from "./commands/recover.ts";
 import { scan } from "./commands/scan.ts";
-import { run } from "./commands/run.ts";
 import { AGENT_COMMAND } from "./agent-spawn.ts";
 import { runAgentProcess } from "./agent.ts";
 import { CLI_VERSION } from "./version.ts";
@@ -57,6 +57,7 @@ const RUN: Record<string, Run> = {
   recover: (args, env, cwd) => recover(args, env, cwd),
   pull: (args, env, cwd) => pull(args, env, cwd),
   push: (args, env, cwd) => push(args, env, cwd),
+  run: (args, env, cwd) => run(args, env, cwd),
   sync: (args, env, cwd) => sync(args, env, cwd),
   diff: (args, env, cwd) => diff(args, env, cwd),
   audit: (args, env, cwd) => audit(args, env, cwd),
@@ -64,7 +65,6 @@ const RUN: Record<string, Run> = {
   unlock: (args, env) => unlock(args, env),
   lock: (_args, env) => lock(env),
   scan: (args, env, cwd) => scan(args, env, cwd),
-  run: (args, env, cwd) => run(args, env, cwd),
 };
 
 function resolveCwd(args: ParsedArgs): string {
