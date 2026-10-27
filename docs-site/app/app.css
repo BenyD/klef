@@ -35,7 +35,7 @@ html {
   font-weight: 600;
   white-space: nowrap;
 }
-/* The bare woven mark, as in the marketing header: no tile, top loop in ember. */
+/* The bare mark, as in the marketing header: no tile, the last strand in ember. */
 .klef-mark {
   display: inline-flex;
   color: var(--foreground);
