@@ -34,7 +34,7 @@ const PROMPTS = [
     // the same label doing different things is a coin flip for the reader.
     label: "Set up my repo",
     description:
-      "Audits this repo's env files, plans your Klef structure, then walks you through the browser steps. It never opens a file's contents.",
+      "Plans this repo's Klef setup and walks you through the browser steps. Never opens a file.",
     body: `Help me get this repository's environment files into Klef (https://klef.sh).
 
 You can't do this entirely for me, and that's deliberate. Klef accounts are
@@ -74,7 +74,7 @@ them.
     id: "connect",
     label: "Connect my agent",
     description:
-      "One time per repo: signs this machine in, links the repo, and installs instructions so every later Claude Code or Cursor session already knows Klef.",
+      "Signs this machine in, links the repo and installs the agent instructions. Once per repo.",
     body: `Connect this repository to Klef (https://klef.sh) with one command, so that
 you and every later agent session in this repo know how to sync its env files.
 
@@ -111,7 +111,7 @@ token, and don't open or print any env file.`,
     id: "self-host",
     label: "Self-host Klef",
     description:
-      "Deploys your own Klef on your Cloudflare account, so the server storing your ciphertext is one you control.",
+      "Deploys Klef on your own Cloudflare account, so you run the server.",
     body: `Set up a self-hosted Klef instance on my Cloudflare account, end to end.
 
 1. Fork https://github.com/BenyD/klef (use the gh CLI, or ask me to do it in the

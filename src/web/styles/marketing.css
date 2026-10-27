@@ -1015,6 +1015,10 @@
     width: 100%;
     translate: 0 0;
   }
+  .m-hero-tools > * {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
   .m-stage .m-slot-1,
   .m-stage .m-slot-2 {
     visibility: hidden;
@@ -1165,23 +1169,25 @@
   .m-split {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* Four cells in two rows, all in view: a scrolling strip would hide the
+     steps past the edge with nothing to say they are there. */
   .m-steps {
-    flex-direction: row;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     border-right: 0;
     border-bottom: 1px solid var(--m-line);
-    scrollbar-width: none;
   }
   .marketing .m-step {
-    flex: none;
     width: auto;
     gap: 4px;
     padding: 14px 16px;
-    border-top: 0;
-    border-left: 1px solid var(--m-line);
+    border-top: 1px solid var(--m-line);
   }
-  .marketing .m-step:first-child {
-    border-left: 0;
+  .marketing .m-step:nth-child(-n + 2) {
+    border-top: 0;
+  }
+  .marketing .m-step:nth-child(odd) {
+    border-right: 1px solid var(--m-line);
   }
   .m-step-title {
     margin-top: 0;
@@ -1320,7 +1326,9 @@
   }
 }
 
-/* The agent prompts, as one more card in the band. */
+/* The agent prompts, as one more card in the band: title and the copy
+   glyph on one row, the three prompts as tabs, the chosen prompt below with
+   a fade where it runs past the box. */
 .marketing-agent {
   margin-top: 16px;
   overflow: hidden;
@@ -1329,11 +1337,10 @@
 }
 .marketing-agent-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 6px 16px;
-  padding: 16px 20px 4px;
+  gap: 16px;
+  padding: 16px 16px 10px 20px;
 }
 .marketing-agent-head h3 {
   margin: 0;
@@ -1341,16 +1348,15 @@
   font-weight: 500;
 }
 .marketing .marketing-agent-head p {
-  margin: 0;
+  margin: 4px 0 0;
   font-size: 13px;
   color: var(--m-band-muted);
 }
 .marketing-agent-tabs {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 2px;
-  padding: 8px 14px;
+  padding: 0 14px 10px;
   border-bottom: 1px solid var(--m-band-line);
 }
 .marketing .marketing-agent-tab {
@@ -1364,6 +1370,7 @@
   font: inherit;
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     background-color var(--duration-fast) var(--ease-quick),
@@ -1374,11 +1381,8 @@
   background: var(--m-band-line);
   color: var(--m-band-fg);
 }
-.marketing .marketing-agent-copy {
-  margin-left: auto;
-}
 .marketing-agent-panel {
-  padding: 14px 20px 18px;
+  padding: 14px 20px 20px;
 }
 .marketing .marketing-agent-desc {
   margin: 0 0 10px;
@@ -1388,7 +1392,7 @@
 }
 .marketing-agent-prompt {
   margin: 0;
-  max-height: 220px;
+  max-height: 200px;
   overflow: auto;
   padding: 14px;
   border-radius: var(--m-r);
@@ -1400,6 +1404,22 @@
   font-variant-ligatures: none;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  /* The fade says there is more below; scrolling reveals it. */
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(#000 calc(100% - 40px), transparent);
+}
+
+@media (max-width: 520px) {
+  .marketing-agent-head {
+    padding: 14px 12px 8px 16px;
+  }
+  .marketing .marketing-agent-tab {
+    padding: 0 8px;
+    font-size: 12px;
+  }
+  .marketing-agent-panel {
+    padding: 12px 16px 16px;
+  }
 }
 
 /* Inline code inside the dark band. */
@@ -1485,7 +1505,8 @@
   color: var(--m-ok);
 }
 
-/* The hero's tool row: the command and the agent pill. */
+/* The hero's tool row: the command and the agent control, two controls of
+   one family: 40px, the app's radius, the canvas fill and a hairline. */
 .m-hero-tools {
   display: flex;
   flex-wrap: wrap;
@@ -1494,16 +1515,15 @@
   margin-top: -8px;
 }
 
-/* The agent pill: the three marks overlapping, the label, the copy glyph. */
 .marketing .m-agent-pill {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   height: 40px;
-  padding: 0 10px 0 6px;
+  padding: 0 4px 0 8px;
   border: 1px solid var(--m-line);
-  border-radius: 999px;
-  background: var(--m-card);
+  border-radius: var(--m-r);
+  background: var(--m-soft);
   color: var(--m-fg);
   font: inherit;
   font-size: 13px;
@@ -1515,10 +1535,19 @@
 }
 .marketing .m-agent-pill:hover {
   border-color: var(--m-line-strong);
-  background: var(--m-soft);
 }
 .marketing .m-agent-pill .m-copy-glyph {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
   color: var(--m-muted);
+  transition:
+    background-color var(--duration-fast) var(--ease-quick),
+    color var(--duration-fast) var(--ease-quick);
+}
+.marketing .m-agent-pill:hover .m-copy-glyph {
+  background: var(--m-fill-strong);
+  color: var(--m-fg);
 }
 .marketing .m-agent-pill[data-copied] .m-copy-glyph {
   color: var(--m-ok);
@@ -1529,15 +1558,19 @@
 .m-agent-mark {
   display: inline-grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   border: 1px solid var(--m-line);
   border-radius: 999px;
   background: var(--m-card);
   color: var(--m-fg);
 }
+.m-agent-mark svg {
+  width: 11px;
+  height: 11px;
+}
 .m-agent-mark + .m-agent-mark {
-  margin-left: -8px;
+  margin-left: -6px;
 }
 
 /* --- footer --------------------------------------------------------------------------- */
