@@ -1331,7 +1331,7 @@ function UserMenu({
             <DropdownMenuSubTrigger>
               <SunMoon />
               Theme
-              <span className="text-muted-foreground ml-auto pl-4 text-xs capitalize">
+              <span data-slot="menu-value" className="text-muted-foreground ml-auto pl-4 text-xs capitalize">
                 {theme ?? "system"}
               </span>
             </DropdownMenuSubTrigger>
@@ -1360,7 +1360,7 @@ function UserMenu({
             <DropdownMenuSubTrigger>
               <Timer />
               Auto-lock
-              <span className="text-muted-foreground ml-auto pl-4 text-xs">
+              <span data-slot="menu-value" className="text-muted-foreground ml-auto pl-4 text-xs">
                 {AUTO_LOCK_OPTIONS.find((o) => o.minutes === autoLockMinutes)
                   ?.label ?? ""}
               </span>
