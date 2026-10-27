@@ -3,6 +3,7 @@
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { command, invocationName } from "../invocation.ts";
+import { CLI_VERSION } from "../version.ts";
 import {
   DEFAULT_TARGETS,
   GLOBAL_TARGETS,
@@ -24,16 +25,20 @@ import { KlefApi, UnauthorizedError } from "../api.ts";
 import { loadToken } from "../credentials.ts";
 import { apiBaseUrl } from "../paths.ts";
 import { readProjectConfig, writeProjectConfig } from "../project-file.ts";
-import { allFiles, CONFIG_FILENAME } from "../project-config.ts";
+import { allFiles, CONFIG_FILENAME, type ProjectConfig } from "../project-config.ts";
 import { resolveWritePath } from "../write-path.ts";
 import { confirm, NoTerminalError, promptLine } from "../prompt.ts";
 import { flagValue, hasFlag, parseArgs, type ParsedArgs } from "../args.ts";
 import { confirmOrFail } from "../common.ts";
-import { CliError, cmd, done, emit, nested, note, say, style, uiMode } from "../ui.ts";
+import { CliError, cmd, done, emit, nested, note, say, style, uiMode, type NextStep } from "../ui.ts";
+import { fileStates, type FileState } from "../file-states.ts";
+import { QUICK_STATE_WORDS } from "../sync-plan.ts";
 import type { VaultTree } from "../../shared/api-types.ts";
 import { login } from "./login.ts";
 import { unlock } from "./unlock.ts";
 import { pull } from "./pull.ts";
+import { collectAudit, summarizeAudit, type AuditEntry } from "./audit.ts";
+import { platformMissing, PLATFORMS } from "../audit.ts";
 import { homedir } from "node:os";
 
 /** Everything setup reaches outside itself for, so tests can stand it in. */
@@ -47,6 +52,10 @@ export interface SetupDeps {
   account: () => Promise<{ email: string; tree: VaultTree } | null>;
   login: () => Promise<number>;
   unlock: () => Promise<number>;
+  /** `klef audit` for the platforms set up here; optional so tests can leave it out. */
+  audit?: () => Promise<AuditEntry[]>;
+  /** Each linked file's state, as `status` reports it; optional so tests can leave it out. */
+  states?: (config: ProjectConfig) => Promise<FileState[]>;
   /** Pull one vault file to one local path. */
   pullFile: (file: string, localPath: string) => Promise<number>;
 }
@@ -70,6 +79,12 @@ export function defaultSetupDeps(args: ParsedArgs, env: NodeJS.ProcessEnv, cwd: 
     },
     login: () => nested(() => login(parseArgs(["login", ...(hasFlag(args, "paste") ? ["--paste"] : [])]), env)),
     unlock: () => nested(() => unlock(parseArgs(["unlock"]), env)),
+    audit: () => collectAudit(PLATFORMS.filter((p) => platformMissing(p, cwd) === null), cwd, env),
+    async states(config) {
+      const stored = await loadToken(env);
+      const tree = stored ? await new KlefApi(apiBaseUrl(env), stored.token).tree().catch(() => null) : null;
+      return fileStates(config, tree, cwd, env);
+    },
     pullFile: (file, localPath) =>
       nested(() => pull(parseArgs(["pull", "--file", file, "--path", localPath]), env, cwd)),
   };
@@ -123,7 +138,7 @@ export async function setup(
     step(2, `Linked to ${config.workspace} / ${config.project}`);
   } else {
     const choice = await chooseProject(args, projectChoices(account.tree), deps);
-    config = configForChoice(choice);
+    config = { ...configForChoice(choice), minVersion: CLI_VERSION };
     await writeProjectConfig(cwd, config);
     step(2, `Linked to ${config.workspace} / ${config.project} (${allFiles(config).length} files)`);
     say(style.dim(`     Wrote ${CONFIG_FILENAME}: names only, safe to commit.`));
@@ -141,9 +156,8 @@ export async function setup(
     if (!(await exists(resolveWritePath(cwd, entry.path)))) missing.push(entry);
   }
   if (missing.length === 0) {
-    step(4, "Every file is already here");
-    note(`${cmd(command("sync"), true)} keeps them in line with the vault from now on.`);
-    emit(report);
+    step(4, "Every file is on disk");
+    await finish(config, deps, report);
     return agentCode;
   }
 
@@ -167,9 +181,50 @@ export async function setup(
     if (code !== 0) return code;
     (report.pulled as string[]).push(localPath);
   }
+  await finish(config, deps, report);
   done("Done. New Claude Code and Cursor sessions in this repo already know how to use Klef");
-  emit(report);
   return agentCode;
+}
+
+/** How setup sees a file's state: "unknown" here means it has not been compared yet. */
+const SETUP_WORDS: Record<FileState["state"], string> = {
+  ...QUICK_STATE_WORDS,
+  unknown: "on disk, not yet compared",
+};
+
+/**
+ * End where `status` would: each file's state and what to run next, rather
+ * than "already here", which said nothing about whether here matches the
+ * vault. Never needs the passphrase.
+ */
+async function finish(config: ProjectConfig, deps: SetupDeps, report: Record<string, unknown>): Promise<void> {
+  const files = deps.states ? await deps.states(config) : [];
+  report.files = files;
+  if (files.length) {
+    const width = Math.max(...files.map((f) => f.path.length));
+    for (const f of files) {
+      const words = SETUP_WORDS[f.state];
+      say(`     ${f.path.padEnd(width)}  ${f.state === "in-sync" ? style.dim(words) : words}`);
+    }
+  }
+  const next: NextStep[] = [];
+  if (files.some((f) => f.state === "unknown")) {
+    next.push({ command: command("diff --all"), description: "compare them with the vault, by key" });
+  }
+  if (files.some((f) => !["in-sync", "unknown", "absent"].includes(f.state))) {
+    next.push({ command: command("sync"), description: "bring them in line" });
+  }
+  report.next = next;
+  if (next.length) {
+    say();
+    say("Next");
+    const width = Math.max(...next.map((n) => n.command.length));
+    for (const n of next) say(`  ${cmd(n.command.padEnd(width))}  ${style.dim(n.description ?? "")}`);
+  } else if (files.length) {
+    note(`${cmd(command("sync"), true)} keeps them in line with the vault from now on.`);
+  }
+  await auditSummary(deps, report);
+  emit(report);
 }
 
 async function chooseProject(
@@ -332,4 +387,27 @@ async function readOrNull(file: string): Promise<string | null> {
 
 async function exists(file: string): Promise<boolean> {
   return access(file).then(() => true, () => false);
+}
+
+/**
+ * The deploy platforms, checked the way `klef audit` does: names only and
+ * read-only, as one line of counts per scope, so setup ends knowing whether
+ * Vercel, GitHub or a Worker holds something this repo does not. A missing
+ * or signed-out platform CLI is skipped quietly here; `klef audit` says why.
+ */
+async function auditSummary(deps: SetupDeps, report: Record<string, unknown>): Promise<void> {
+  if (!deps.audit) return;
+  let entries: AuditEntry[];
+  try {
+    entries = await deps.audit();
+  } catch {
+    return;
+  }
+  const lines = summarizeAudit(entries);
+  report.audit = entries;
+  if (lines.length === 0) return;
+  say();
+  say("Deploy platforms (names only)");
+  for (const line of lines) say(`  ${line}`);
+  note(`${cmd(command("audit"), true)} lists the names.`);
 }

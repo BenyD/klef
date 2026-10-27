@@ -38,7 +38,9 @@ if (tool === "vercel" && args[0] === "env" && args[1] === "ls") {
   if (!scope) fail(`HTTP 404: Not Found (https://api.github.com/repos/o/r/environments/${env}/secrets)`);
   process.stdout.write(JSON.stringify(scope.map((name) => ({ name }))));
 } else if (tool === "wrangler" && args[0] === "secret" && args[1] === "list") {
-  process.stdout.write(JSON.stringify(state.cloudflare.map((name) => ({ name, type: "secret_text" }))));
+  // A list for one Worker, or per Worker keyed by the directory wrangler runs in.
+  const names = Array.isArray(state.cloudflare) ? state.cloudflare : (state.cloudflare[path.basename(process.cwd())] ?? []);
+  process.stdout.write(JSON.stringify(names.map((name) => ({ name, type: "secret_text" }))));
 } else {
   fail(`fake ${tool}: unhandled ${args.join(" ")}`);
 }

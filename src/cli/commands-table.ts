@@ -71,7 +71,7 @@ export const COMMANDS: CommandSpec[] = [
       ["klef setup --project lensdrop --yes", "No menu and no questions, for an agent"],
       ["klef setup claude cursor", "Only (re)write the agent instructions"],
     ],
-    json: "{ signedIn, email, linked: { workspace, project, files }, agentFiles: [ { path, action } ], pulled: [ path ] }",
+    json: "{ signedIn, email, linked: { workspace, project, files }, agentFiles: [ { path, action } ], pulled: [ path ], files: [ { file, path, state } ], next }",
   },
   {
     name: "login",
@@ -106,10 +106,13 @@ export const COMMANDS: CommandSpec[] = [
       { name: "workspace", value: "name", description: "The workspace, instead of the first argument" },
       { name: "project", value: "name", description: "The project, instead of the second argument" },
       FILE,
+      { name: "add", value: "path", description: "List one more local env file in .klef.json (see klef scan)" },
+      { name: "as", value: "name", description: "With --add: its name in the vault" },
     ],
     examples: [
       ["klef link", "See what can be linked"],
       ["klef link Personal lensdrop", "Link to a project"],
+      ["klef link --add apps/web/.env.local", "Also sync a monorepo app's file"],
     ],
     json: "{ workspace, project, file, files: [ { file, path } ], config, changed }",
   },
@@ -139,15 +142,22 @@ export const COMMANDS: CommandSpec[] = [
       "A file edited here since it last matched the vault is pushed; one changed in the vault is " +
       "pulled over the untouched local copy. If both changed, or this machine never synced a file " +
       "that differs, nothing is written and the differing keys are listed (names, never values). " +
-      "Pushes ask first.",
-    flags: [{ name: "dry-run", short: "n", description: "Show what would happen, and do none of it" }],
+      "With --merge, such a file is merged by key instead: on a first sync each side gains the " +
+      "keys only the other has; after that, against the last-synced version, so a key deleted on " +
+      "one side stays deleted. It stops only on keys whose values differ. Pushes ask first.",
+    flags: [
+      { name: "dry-run", short: "n", description: "Show what would happen, and do none of it (exits 0 even on a conflict)" },
+      { name: "exit-code", description: "With --dry-run: exit 5 when there is a conflict" },
+      { name: "merge", description: "Settle conflicts key by key: each side gains the other's keys" },
+    ],
     examples: [
       ["klef sync", "Bring everything in line"],
       ["klef sync --dry-run --json", "What would change, for an agent"],
+      ["klef sync --merge --dry-run", "What a key-by-key merge would bring each side"],
     ],
     json:
       "{ dryRun, files: [ { file, path, action, reason, keys?: { onlyLocal, onlyVault, changed } } ] }  " +
-      "action: in-sync | pull | push | create | conflict | absent",
+      "action: in-sync | pull | push | create | merge | conflict | absent; merge?: { conflicts, fromVault, fromLocal, removedHere, removedThere, base }",
   },
   {
     name: "pull",
@@ -181,12 +191,75 @@ export const COMMANDS: CommandSpec[] = [
     name: "diff",
     group: "Everyday",
     summary: "Compare local files with the vault, by key, writing nothing",
+    description:
+      "Lists, per file, the keys only here (+), only in the vault (-) and with different values " +
+      "(~), by name, never value. Commented-out `# KEY=` lines are reported apart, as declared, " +
+      "unset. Read-only, so a conflict is part of the answer: it exits 0 unless --exit-code.",
     flags: [FILE, PATH, ALL, EXIT_CODE],
     examples: [
       ["klef diff --all", "Which keys differ, and how"],
       ["klef diff --all --exit-code", "Exit 10 if anything differs, for scripts"],
     ],
-    json: "{ files: [ { file, path, state, reason, onlyLocal, onlyVault, changed } ] }",
+    json: "{ files: [ { file, path, state, reason, onlyLocal, onlyVault, changed, declaredUnsetLocal, declaredUnsetVault } ] }",
+  },
+  {
+    name: "run",
+    group: "Everyday",
+    args: "-- <command> [args...]",
+    summary: "Run a command with an env file's variables, without opening the file",
+    description:
+      "Starts the command with the linked file's variables (or --file's) in its environment, " +
+      "read from the local file, or decrypted from the vault with --from-vault. stdin, stdout, " +
+      "stderr and the exit code pass straight through, unmasked: klef prints no value, but the " +
+      "command gets them all and can print any of them. To use a variable inside the command, " +
+      "wrap it in sh -c '...' so your own shell does not expand $NAME before klef runs. Values " +
+      "are decoded as dotenv loaders do; there is no ${VAR} expansion inside the file.",
+    flags: [
+      { name: "file", value: "name", description: "Which env file (default: the linked one)" },
+      { name: "only", value: "KEY,KEY", description: "Pass only these variables" },
+      { name: "from-vault", description: "Use the vault's copy instead of the local file (needs the vault unlocked)" },
+    ],
+    examples: [
+      ["klef run -- npm run dev", "The app, with .env.local loaded"],
+      ["klef run --only DATABASE_URL -- sh -c 'psql \"$DATABASE_URL\" -c \"select 1\"'", "One variable in a query; single quotes so your shell does not expand it first"],
+      ["klef run --file .env.production --from-vault -- node scripts/check.js", "The vault's production values"],
+    ],
+    json: "(passes the command's output through; --json is not supported)",
+  },
+  {
+    name: "set",
+    group: "Everyday",
+    args: "<NAME>",
+    summary: "Set one variable in a local file, the value typed at the terminal",
+    description:
+      "Asks for the value with echo off, at the terminal only, like the passphrase: never from " +
+      "the command line, a pipe or a variable, so an agent cannot set one. Edits only that key's " +
+      "line in the local file (adding it if new); push or sync saves it to the vault.",
+    flags: [{ name: "file", value: "name", description: "Which env file (default: the linked one)" }],
+    examples: [
+      ["klef set STRIPE_KEY", "Type the new value; nothing is echoed"],
+      ["klef set DATABASE_URL --file .env.production", "In another listed file"],
+    ],
+    json: "{ name, file, path, added }",
+  },
+  {
+    name: "recover",
+    group: "Everyday",
+    args: "<NAME> --from <version>",
+    summary: "Bring one variable back from an earlier vault version",
+    description:
+      "For when a push replaced a file and took a key with it: copies that key's line from an " +
+      "earlier version into the local file, leaving every other line alone. The version is an id " +
+      "or the start of one, from `klef list --versions`. Writes only locally; push or sync saves it.",
+    flags: [
+      { name: "from", value: "version", description: "The version to take it from (an id or its start)" },
+      { name: "file", value: "name", description: "Which env file (default: the linked one)" },
+    ],
+    examples: [
+      ["klef list --versions", "Find the version that still had it"],
+      ["klef recover PROBE_GALLERY_ID --from 3f9a2c1b", "Bring it back here, then push"],
+    ],
+    json: "{ name, file, path, version, added }",
   },
   {
     name: "unlock",
@@ -220,10 +293,28 @@ export const COMMANDS: CommandSpec[] = [
     name: "list",
     aliases: ["ls"],
     group: "Look around",
-    summary: "List the env files in your vault, names only",
+    summary: "List the env files in your vault, or one file's versions",
+    flags: [
+      { name: "versions", description: "The linked file's versions instead, newest first (ids and dates)" },
+      { name: "file", value: "name", description: "With --versions: another file in the project" },
+    ],
+    examples: [
+      ["klef list --json", "For a script or an agent"],
+      ["klef list --versions", "Pick a version to recover a key from"],
+    ],
+    json: "{ files: [ { workspace, project, file, environment, hasVersion } ] }  --versions: { file, versions: [ { id, createdAt, isCurrent } ] }",
+  },
+  {
+    name: "scan",
+    group: "Look around",
+    summary: "List env files here that .klef.json does not cover",
+    description:
+      "Walks this checkout for env files (.env, .env.*, *.env; not .example or .template) and " +
+      "lists those .klef.json does not list, and whether git ignores each: one it does not could " +
+      "be committed. Paths only; no file is opened. Add one with link --add.",
     flags: [],
-    examples: [["klef list --json", "For a script or an agent"]],
-    json: "{ files: [ { workspace, project, file, environment, hasVersion } ] }",
+    examples: [["klef scan", "Find a monorepo app's env files"]],
+    json: "{ linked, gitRepository, unlisted: [ { path, ignored } ], listed: [ path ] }",
   },
   {
     name: "audit",
@@ -396,7 +487,10 @@ export function commandHelp(spec: CommandSpec, cli: string): string {
     spec.description ?? spec.summary,
     "",
     "Usage",
-    `  ${cli} ${spec.name}${spec.args ? ` ${spec.args}` : ""}${usageFlags}`,
+    // Flags go before a `--` that hands the rest to another program.
+    spec.args?.startsWith("--")
+      ? `  ${cli} ${spec.name}${usageFlags} ${spec.args}`
+      : `  ${cli} ${spec.name}${spec.args ? ` ${spec.args}` : ""}${usageFlags}`,
   ];
   if (spec.aliases?.length) lines.push("", "Aliases", `  ${spec.aliases.join(", ")}`);
   if (spec.flags.length) lines.push("", "Flags", ...table(spec.flags.map((f) => [flagLabel(f), f.description])));
@@ -501,6 +595,7 @@ export function topicHelp(topic: (typeof TOPICS)[number], cli: string): string {
       ["network", "The server could not be reached (exit 1)"],
       ["server", "The server refused or failed (exit 1)"],
       ["unsupported", "Not available on this platform (exit 1)"],
+      ["outdated", "Older than the repo's minVersion; run npx @klefsh/cli@latest (exit 1)"],
       ["internal", "Anything else (exit 1)"],
     ]),
   ].join("\n");
