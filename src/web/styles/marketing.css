@@ -1207,6 +1207,14 @@
   }
 }
 
+@media (max-width: 520px) {
+  /* The sidebar is hidden at this width (see the stage rules above), so
+     the panel takes the whole window. */
+  .m-showcase .m-app .m-shot-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* --- sections ------------------------------------------------------------------- */
 
 .m-section {
