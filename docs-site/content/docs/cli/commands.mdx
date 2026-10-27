@@ -32,7 +32,9 @@ klef setup claude cursor                 # only (re)write the agent instructions
 
 Without a terminal it stops at each choice: `confirmation_required` with `--workspace`/`--project` to rerun with when the project is ambiguous, or the same command with `--yes` before writing agent files, and `locked` with `klef unlock` when pulling needs the passphrase.
 
-JSON `data`: `{ signedIn, email, linked: { workspace, project, files }, agentFiles: [ { path, action } ], pulled: [ path ] }`. Run with targets, it is `{ agentFiles }`. `action` is `create`, `update`, `unchanged` or `conflict` (a file klef did not write, left alone).
+It ends the way `klef status` would: each file's state (in sync, edited here, changed in the vault; "on disk, not yet compared" for a file this machine has never synced) and the commands to run next.
+
+JSON `data`: `{ signedIn, email, linked: { workspace, project, files }, agentFiles: [ { path, action } ], pulled: [ path ], files: [ { file, path, local, inVault, state } ], next: [ { command, description } ] }`. Run with targets, it is `{ agentFiles }`. `action` is `create`, `update`, `unchanged` or `conflict` (a file klef did not write, left alone).
 
 ### klef login
 
@@ -74,13 +76,20 @@ klef link [workspace] [project] [file] [flags]
 | `--workspace <name>` | The workspace, instead of the first argument |
 | `--project <name>` | The project, instead of the second argument |
 | `--file <name>` | The default env file, instead of the third argument |
+| `--add <path>` | List one more local env file in `.klef.json` (see `klef scan`) |
+| `--as <name>` | With `--add`: its name in the vault |
 
 ```bash
-klef link                      # see what can be linked
-klef link Personal lensdrop    # link to a project
+klef link                               # see what can be linked
+klef link Personal lensdrop             # link to a project
+klef link --add apps/web/.env.local     # also sync a monorepo app's file
 ```
 
-JSON `data`: `{ workspace, project, file, files: [ { file, path } ], config, changed }`
+`--add` names the vault file after the local one: a root file keeps its name, one in a folder gets the folder's name in front (`apps/web/.env.local` becomes `web.env.local`). It sends nothing; the next `sync` creates it in the vault.
+
+Linking records `minVersion`, the CLI version that wrote `.klef.json`, unless the file already has one. A CLI older than that refuses to run in the repo with `outdated` and says to run `npx @klefsh/cli@latest` instead. It checks only the version it was built with; there is no network call.
+
+JSON `data`: `{ workspace, project, file, files: [ { file, path } ], config, changed }`; with `--add`, `{ path, file, changed }`
 
 ## Everyday
 
@@ -105,20 +114,25 @@ JSON `data`: `{ version, server, account: { signedIn, email, tokenSource, tokenS
 
 Pull or push each linked file, whichever side changed. A file edited here since it last matched the vault is pushed; one changed in the vault is pulled over the untouched local copy; a file only here is created in the vault. If both changed, or this machine never synced a file that differs, nothing is written and the differing keys are listed (names, never values), exit 5. Pushes ask first. See [Syncing](/docs/guides/sync/).
 
+With `--merge`, such a file is merged by key instead of stopping. On a first sync on this machine each side gains the keys only the other has; after that the merge is three-way, against the version this machine last synced, so a key deleted on one side stays deleted. It stops only on keys whose values differ, and suggests `klef set` for each.
+
 ```bash
 klef sync [flags]
 ```
 
 | Flag | Does |
 | --- | --- |
-| `--dry-run`, `-n` | Show what would happen, and do none of it |
+| `--dry-run`, `-n` | Show what would happen, and do none of it (exits 0 even on a conflict) |
+| `--exit-code` | With `--dry-run`: exit 5 when there is a conflict |
+| `--merge` | Settle conflicts key by key: each side gains the other's keys |
 
 ```bash
 klef sync                   # bring everything in line
 klef sync --dry-run --json  # what would change, for an agent
+klef sync --merge --dry-run # what a key-by-key merge would bring each side
 ```
 
-JSON `data`: `{ dryRun, files: [ { file, path, action, reason, keys? } ] }`. `action` is `in-sync`, `pull`, `push`, `create`, `conflict` or `absent`; `keys` (`{ onlyLocal, onlyVault, changed }`) is there for a conflict. On a conflict the same `data` comes with the error.
+JSON `data`: `{ dryRun, files: [ { file, path, action, reason, keys? } ] }`. `action` is `in-sync`, `pull`, `push`, `create`, `merge`, `conflict` or `absent`; `keys` (`{ onlyLocal, onlyVault, changed }`) is there for a conflict, and with `--merge`, `merge` (`{ conflicts, fromVault, fromLocal, removedHere, removedThere, base }`) says what each side gains. On a conflict the same `data` comes with the error.
 
 ### klef pull
 
@@ -164,6 +178,45 @@ klef push --all --yes     # every listed file, no question (after asking the use
 
 JSON `data`: `{ files: [ { file, path, action, variables, added, removed, version } ] }`. `action` is `pushed` or `unchanged`.
 
+### klef set
+
+Sets one variable in a local env file, with the value typed at the terminal. The value is read with echo off from the terminal only, exactly like the passphrase: never from the command line (which `ps` shows), a pipe or a variable. So an agent cannot set a value; a person types it. Only that key's line changes (or a new line is added), and only locally: `push` or `sync` saves it to the vault. It prints `set NAME in .env.local`, never the value.
+
+```bash
+klef set <NAME> [flags]
+```
+
+| Flag | Does |
+| --- | --- |
+| `--file <name>` | Which env file (default: the linked one) |
+
+```bash
+klef set STRIPE_KEY                            # type the new value; nothing is echoed
+klef set DATABASE_URL --file .env.production   # in another listed file
+```
+
+JSON `data`: `{ name, file, path, added }`
+
+### klef recover
+
+Brings one variable back from an earlier vault version into the local file, leaving every other line alone: for when a push replaced a file and took a key with it. Name the version by its id or the start of it, from `klef list --versions`. It writes only locally; `push` or `sync` saves it. The value is copied as written and never printed.
+
+```bash
+klef recover <NAME> --from <version> [flags]
+```
+
+| Flag | Does |
+| --- | --- |
+| `--from <version>` | The version to take it from (an id or its start) |
+| `--file <name>` | Which env file (default: the linked one) |
+
+```bash
+klef list --versions                              # find the version that still had it
+klef recover PROBE_GALLERY_ID --from 3f9a2c1b     # bring it back here, then push
+```
+
+JSON `data`: `{ name, file, path, version, added }`
+
 ### klef diff
 
 Compares local files with the vault, by key, writing nothing. Each differing key is `+` (only here), `-` (only in the vault) or `~` (value differs), by name.
@@ -184,7 +237,9 @@ klef diff --all              # which keys differ, and how
 klef diff --all --exit-code  # exit 10 if anything differs, for scripts
 ```
 
-JSON `data`: `{ files: [ { file, path, state, reason, onlyLocal, onlyVault, changed } ] }`. `state` uses the same words as `sync`'s `action`.
+A commented-out line such as `# STRIPE_KEY=` is reported apart from set keys, as "declared, unset" on that side, and annotates a key the other side does set (`- STRIPE_KEY  only in the vault (declared, unset here)`). Like `sync --dry-run`, `diff` is read-only: a conflict is part of its answer, so it exits 0 unless `--exit-code`.
+
+JSON `data`: `{ files: [ { file, path, state, reason, onlyLocal, onlyVault, changed, declaredUnsetLocal, declaredUnsetVault } ] }`. `state` uses the same words as `sync`'s `action`.
 
 ### klef run
 
@@ -256,14 +311,33 @@ JSON `data`: `{ locked: true, wasUnlocked }`
 
 ### klef list
 
-Lists the env files in your vault, names only. Alias: `klef ls`.
+Lists the env files in your vault, names only. Alias: `klef ls`. With `--versions`, lists one linked file's versions instead, newest first: ids and dates, nothing that needs the vault unlocked.
 
 ```bash
 klef list [flags]
-klef list --json   # for a script or an agent
 ```
 
-JSON `data`: `{ files: [ { workspace, project, file, environment, hasVersion } ] }`
+| Flag | Does |
+| --- | --- |
+| `--versions` | The linked file's versions instead, newest first |
+| `--file <name>` | With `--versions`: another file in the project |
+
+```bash
+klef list --json        # for a script or an agent
+klef list --versions    # pick a version to recover a key from
+```
+
+JSON `data`: `{ files: [ { workspace, project, file, environment, hasVersion } ] }`; with `--versions`, `{ file, versions: [ { id, createdAt, isCurrent } ] }`
+
+### klef scan
+
+Lists the env files in this checkout that `.klef.json` does not cover, so a monorepo app's own `.env.local` is not quietly left out of sync. It finds `.env`, `.env.*` and `*.env` (not `.example`, `.sample` or `.template`), skipping `node_modules` and build output, and says whether git ignores each: one it does not could be committed with every value in it. Paths only; no file is opened.
+
+```bash
+klef scan
+```
+
+JSON `data`: `{ linked, gitRepository, unlisted: [ { path, ignored } ], listed: [ path ] }`. `ignored` is null outside a git repository.
 
 ### klef audit
 

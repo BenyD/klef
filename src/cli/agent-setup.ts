@@ -102,7 +102,8 @@ report success or failure over ones that print a variable (\`echo\`, \`env\`,
 \`.klef.json\` (safe to read and commit: names only) links this directory to a
 project in the vault. \`file\` is the default env file, and the optional
 \`files\` list is everything \`--all\` covers, each with the local \`path\` it
-lives at.
+lives at. If it sets \`minVersion\` and a command says the CLI is older than
+that, run it as \`npx @klefsh/cli@latest <command>\` instead.
 
 ### Start with status
 
@@ -139,8 +140,13 @@ agent: where it would need a person, it stops with one of these codes.
   needs a yes. Say what will change (the plan is in the output), get a yes in
   the chat, then run the \`next\` command, which adds \`--yes\`.
 - **\`conflict\` (exit 5)**: both sides changed and nothing was written. Show
-  the user which keys differ (in \`data\`) and let them choose; \`next\` holds
-  the pull and push that settle it.
+  the user which keys differ (in \`data\`) and let them choose: \`next\` holds
+  the pull and push that keep one side whole, and \`${cli} sync --merge
+  --dry-run\` shows what merging by key would give each side. A whole-file
+  push or pull drops the other side's extra keys, so prefer the merge when
+  both sides added keys. A key whose value differs needs the user: they
+  settle it with \`${cli} set NAME\` (which prompts them, not you) or
+  choose a side.
 - **\`not_signed_in\` or \`not_linked\` (exit 3 or 6)**: run \`${cli} setup\`.
   Sign-in opens the browser for the user to approve; when it needs a choice
   from the user, it stops with the exact command to rerun once they answer.
