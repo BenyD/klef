@@ -1,12 +1,11 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
-// Terminal transcripts and motion helpers for the landing page.
+// Terminal transcripts for the landing page.
 //
 // Every line is what the CLI prints (src/cli/commands, src/cli/output.ts),
 // down to the wording. None shows a value, because the CLI never prints one:
 // that is the claim the page makes, so an invented line with a secret in it
-// would undercut it. SSR-safe: the server renders the first step and every
-// label in its final form; motion starts only after mount.
+// would undercut it. SSR-safe: the server renders the first step in full.
 
 export function Cmd({ children }: { children: ReactNode }) {
   return (
@@ -30,52 +29,9 @@ export function Yes() {
   return <span className="t-fg">y</span>;
 }
 
-const CIPHER = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789*%#?";
-
-/**
- * A label that decrypts into place: it starts as cipher characters and
- * resolves left to right. The server and first paint show the final text,
- * and reduced motion keeps it there, so nothing depends on the animation.
- */
-export function useDecrypted(text: string, delay = 0): string {
-  const [shown, setShown] = useState(text);
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    let tick = 0;
-    let timer = 0;
-    const start = window.setTimeout(() => {
-      timer = window.setInterval(() => {
-        tick += 1;
-        setShown(
-          text
-            .split("")
-            .map((ch, i) => (ch === " " || tick > i * 2 ? ch : CIPHER[(i * 11 + tick * 17) % CIPHER.length]))
-            .join(""),
-        );
-        if (tick > text.length * 2) window.clearInterval(timer);
-      }, 40);
-    }, delay);
-    return () => {
-      window.clearTimeout(start);
-      window.clearInterval(timer);
-    };
-  }, [text, delay]);
-  return shown;
-}
-
-export function Decrypt({ text, delay }: { text: string; delay?: number }) {
-  const shown = useDecrypted(text, delay);
-  // The visible text scrambles; assistive tech reads the real label once.
-  return (
-    <>
-      <span aria-hidden="true">{shown}</span>
-      <span className="m-sr">{text}</span>
-    </>
-  );
-}
-
 interface Step {
   label: string;
+  title: string;
   body: string;
   lines: ReactNode;
 }
@@ -83,7 +39,8 @@ interface Step {
 const STEPS: Step[] = [
   {
     label: "01 Setup",
-    body: "Signs this machine in, links the repo, teaches your agents and pulls what is missing.",
+    title: "Link the repo",
+    body: "Signs this machine in, links the checkout, teaches your agents and pulls what is missing.",
     lines: (
       <>
         <Cmd>npx @klefsh/cli setup</Cmd>
@@ -102,6 +59,7 @@ const STEPS: Step[] = [
   },
   {
     label: "02 Sync",
+    title: "Push and pull in one go",
     body: "Pushes what you edited, pulls what changed. Both changed? It writes nothing and shows which keys differ.",
     lines: (
       <>
@@ -119,7 +77,8 @@ const STEPS: Step[] = [
   },
   {
     label: "03 Restore",
-    body: "Clone your repos on a new Mac, confirm once, and every linked checkout gets its files back.",
+    title: "A new machine in one command",
+    body: "Clone your repos, confirm once, and every linked checkout gets its files back.",
     lines: (
       <>
         <Cmd>klef restore ~/Developer</Cmd>
@@ -138,7 +97,8 @@ const STEPS: Step[] = [
   },
   {
     label: "04 Audit",
-    body: "Checks key names on Vercel, GitHub and Cloudflare against your files. Read-only, names only.",
+    title: "Check the platforms",
+    body: "Compares key names on Vercel, GitHub and Cloudflare against your files. Read-only, names only.",
     lines: (
       <>
         <Cmd>klef audit vercel</Cmd>
@@ -154,12 +114,13 @@ const STEPS: Step[] = [
 const PANEL_ID = "m-step-panel";
 
 /**
- * How it works: the steps as a vertical tab list, the chosen step's real
- * output on the ember panel. role="tab" promises arrow keys, so they are
- * implemented, with a roving tabindex so the list is one stop in tab order.
+ * How it works: the steps as a vertical tab list in a bordered grid, the
+ * chosen step's real output on the tinted panel beside it. role="tab"
+ * promises arrow keys, so they are implemented, with a roving tabindex so
+ * the list is one stop in tab order.
  */
 export function StepTabs() {
-  const [active, setActive] = useState(1);
+  const [active, setActive] = useState(0);
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
   const step = STEPS[active] as Step;
 
@@ -195,18 +156,25 @@ export function StepTabs() {
             onClick={() => setActive(i)}
             onKeyDown={onKeyDown}
           >
-            <span className="m-label">
-              <Decrypt text={s.label} delay={200 + i * 150} />
-            </span>
-            <span>{s.body}</span>
+            <span className="m-label">{s.label}</span>
+            <span className="m-step-title">{s.title}</span>
+            <span className="m-step-body">{s.body}</span>
           </button>
         ))}
       </div>
-      <div className="m-grain" role="tabpanel" id={PANEL_ID} aria-labelledby={`m-step-${active}`}>
-        {/* Keyed, so switching replays the entrance on the new lines. */}
-        <pre key={active} className="m-term">
-          {step.lines}
-        </pre>
+      <div className="m-tint" role="tabpanel" id={PANEL_ID} aria-labelledby={`m-step-${active}`}>
+        <div className="m-shot m-shot-panel">
+          <div className="m-shot-bar">
+            <span className="m-shot-dot" />
+            <span className="m-shot-dot" />
+            <span className="m-shot-dot" />
+            <span className="m-shot-title">zsh</span>
+          </div>
+          {/* Keyed, so switching replays the entrance on the new lines. */}
+          <pre key={active} className="m-term">
+            {step.lines}
+          </pre>
+        </div>
       </div>
     </div>
   );
