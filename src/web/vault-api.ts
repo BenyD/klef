@@ -2,7 +2,7 @@ import type { KdfParams, VaultKeyMaterial, WrappedKey } from "../shared/types.ts
 import type { VaultPasskeyWrap } from "../shared/api-types.ts";
 import { apiFetch } from "./api-fetch.ts";
 
-interface VaultStatus {
+export interface VaultStatus {
   exists: boolean;
   keyMaterial?: VaultKeyMaterial;
   /** When the user last confirmed saving their recovery key; null = never. */
