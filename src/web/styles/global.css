@@ -276,101 +276,71 @@
   }
 }
 
-/* Splash screen motion (see components/Splash.tsx). */
+/* The splash (see components/Splash.tsx): the mark weaves itself, one loop
+   after another, then a hairline keeps moving so a slow network still reads
+   as loading rather than stuck. The loops are the mark's <g> children, in
+   drawing order; transform-box lets them turn about the viewBox centre. */
 @keyframes klef-splash-in {
   from {
     opacity: 0;
-    transform: scale(0.9);
-    filter: blur(3px);
   }
   to {
     opacity: 1;
-    transform: scale(1);
-    filter: blur(0);
   }
 }
-@keyframes klef-breathe {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.95;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 1;
-  }
-}
-@keyframes klef-dot {
-  0%,
-  100% {
-    opacity: 0.25;
-    transform: translateY(0);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-2px);
-  }
-}
-.klef-splash-mark {
-  animation:
-    klef-splash-in 0.5s var(--ease-out) both,
-    klef-breathe 2.4s ease-in-out 0.5s infinite;
-}
-.klef-splash-dot {
-  animation: klef-dot 1.2s ease-in-out infinite;
-}
-.klef-splash-dot:nth-child(2) {
-  animation-delay: 0.16s;
-}
-.klef-splash-dot:nth-child(3) {
-  animation-delay: 0.32s;
-}
-@media (prefers-reduced-motion: reduce) {
-  .klef-splash-mark,
-  .klef-splash-dot {
-    animation: none;
-  }
-}
-
-/* Ambient ciphertext field behind the splash centerpiece. */
-.klef-splash-field {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
-  align-content: start;
-  gap: 12px 20px;
-  padding: 28px;
-  overflow: hidden;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.18em;
-  color: var(--muted-foreground);
-  opacity: 0.4;
-  pointer-events: none;
-  user-select: none;
-  animation: klef-field-in 0.8s ease-out both;
-  -webkit-mask-image: radial-gradient(
-    ellipse 52% 52% at 50% 50%,
-    transparent 0%,
-    #000 62%
-  );
-  mask-image: radial-gradient(
-    ellipse 52% 52% at 50% 50%,
-    transparent 0%,
-    #000 62%
-  );
-}
-.klef-splash-field > span {
-  overflow: hidden;
-  white-space: nowrap;
-}
-@keyframes klef-field-in {
+@keyframes klef-loop-in {
   from {
     opacity: 0;
+    transform: rotate(-24deg) scale(0.86);
   }
   to {
-    opacity: 0.4;
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+@keyframes klef-splash-line {
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 300% 0;
+  }
+}
+.klef-splash {
+  animation: klef-splash-in var(--duration-slow) var(--ease-out) both;
+}
+.klef-splash-mark svg > g {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: klef-loop-in 0.5s var(--ease-out) both;
+}
+.klef-splash-mark svg > g:nth-of-type(2) {
+  animation-delay: 0.1s;
+}
+.klef-splash-mark svg > g:nth-of-type(3) {
+  animation-delay: 0.2s;
+}
+.klef-splash-line {
+  position: relative;
+  width: 96px;
+  height: 1px;
+  overflow: hidden;
+  background: var(--border);
+}
+.klef-splash-line::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 33%;
+  background: var(--primary);
+  animation: klef-splash-line 1.4s var(--ease-in-out) 0.6s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .klef-splash,
+  .klef-splash-mark svg > g {
+    animation: none;
+  }
+  .klef-splash-line {
+    display: none;
   }
 }

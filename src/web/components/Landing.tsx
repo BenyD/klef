@@ -1,23 +1,24 @@
 import { useState, type CSSProperties } from "react";
 import { Link } from "react-router";
-import { Check, Copy } from "lucide-react";
+import { Check, ChevronRight, Copy, Search } from "lucide-react";
 import { MarketingLayout } from "./MarketingLayout.tsx";
-import { AgentPrompts, CopyPromptButton } from "./AgentPrompts.tsx";
-import { Decrypt, StepTabs } from "./LandingTerminal.tsx";
-import { DEFAULT_PROMPT } from "../lib/agent-prompts.ts";
+import { AgentPrompts } from "./AgentPrompts.tsx";
+import { KlefMark } from "./KlefMark.tsx";
+import { Cmd, Out, StepTabs, Yes } from "./LandingTerminal.tsx";
 
-// The landing page: six sections, and the detail lives on its own pages
-// (/compare, /security, /docs). Every transcript is the CLI's real output and
-// none shows a value, because the CLI never prints one. Motion is described
-// in marketing.css; all of it is off under prefers-reduced-motion.
+// The landing page: a hero, two sections and a closing line. The detail
+// lives on its own pages (/compare, /security, /docs). Every transcript is
+// the CLI's real output and none shows a value, because the CLI never prints
+// one. The page is prerendered, so nothing here touches a browser API at
+// render time.
+
+const GITHUB = "https://github.com/BenyD/klef";
 
 export function Landing() {
   return (
     <MarketingLayout>
       <main className="m-main">
         <Hero />
-        <Marquee />
-        <Statement />
         <HowItWorks />
         <Agents />
         <Closing />
@@ -26,243 +27,182 @@ export function Landing() {
   );
 }
 
-/**
- * Deterministic pseudo-random numbers, so the server and the browser draw the
- * same dot field and React has nothing to reconcile.
- */
-function seeded(seed: number) {
-  let s = seed;
-  return () => {
-    s = (s * 9301 + 49297) % 233280;
-    return s / 233280;
-  };
+/** A leading chevron, the way every button and text link here points. */
+export function Chev() {
+  return <ChevronRight className="m-chev" aria-hidden="true" />;
 }
 
-const DOTS = (() => {
-  const rnd = seeded(5);
-  return Array.from({ length: 110 }, (_, i) => {
-    const ember = i % 13 === 0;
-    return {
-      ember,
-      style: {
-        left: `${Math.floor(rnd() * 65) * 22 + 8}px`,
-        top: `${Math.floor(rnd() * 28) * 22 + 8}px`,
-        "--floor": ember ? 0.35 : 0.05,
-        "--peak": ember ? 0.9 : Number((0.12 + rnd() * 0.25).toFixed(2)),
-        "--dur": `${(6 + rnd() * 12).toFixed(1)}s`,
-        "--delay": `-${(rnd() * 12).toFixed(1)}s`,
-      } as CSSProperties,
-    };
-  });
-})();
-
-const VAULT_ROWS = ["DATABASE_URL", "STRIPE_KEY", "OPENAI_API_KEY", "SENTRY_DSN"];
+// A few pixel squares in the hero's dot grid, on the same 24px pitch, so the
+// background reads as a surface rather than wallpaper. Fixed positions: the
+// server and the browser draw the same field.
+const PIXELS: { x: number; y: number; tone?: "ember" }[] = [
+  { x: 2, y: 3 },
+  { x: 3, y: 3 },
+  { x: 3, y: 4, tone: "ember" },
+  { x: 27, y: 1 },
+  { x: 28, y: 1 },
+  { x: 28, y: 2 },
+  { x: 44, y: 14 },
+  { x: 45, y: 14, tone: "ember" },
+  { x: 45, y: 15 },
+  { x: 12, y: 17 },
+  { x: 13, y: 17 },
+];
 
 function Hero() {
   return (
     <section className="m-hero" aria-labelledby="hero-title">
-      <div className="m-field" aria-hidden="true">
-        {DOTS.map((d, i) => (
-          <span key={i} className={d.ember ? "m-dot m-dot-ember" : "m-dot"} style={d.style} />
+      <div className="m-grid" aria-hidden="true">
+        {PIXELS.map((p, i) => (
+          <i
+            key={i}
+            className={p.tone === "ember" ? "m-px m-px-ember" : "m-px"}
+            style={{ left: p.x * 24, top: p.y * 24 }}
+          />
         ))}
-        <span className="m-walker" style={{ left: 1012, top: 66, "--dur": "9s" } as CSSProperties}>
-          &#10033;
-        </span>
-        <span className="m-walker" style={{ left: 132, top: 506, "--dur": "12s" } as CSSProperties}>
-          &#10033;
-        </span>
       </div>
 
       <div className="m-wrap m-hero-grid">
         <div className="m-hero-copy">
-          <p className="m-label m-kicker">
-            <Decrypt text="End-to-end encrypted .env sync" delay={300} />
+          <p className="m-label m-eyebrow">
+            <KlefMark className="m-eyebrow-mark" />
+            Open source &middot; AGPL-3.0 &middot; Self-hostable
           </p>
           <h1 id="hero-title">
-            Your{" "}
+            Your .env files, in sync on every machine.{" "}
             <span className="m-nowrap">
-              <span className="m-redact" style={{ "--d": "450ms" } as CSSProperties}>
-                .env files
-              </span>
-              ,
-            </span>{" "}
-            in sync on every Mac. Readable only by{" "}
-            <span className="m-nowrap">
-              <span className="m-redact" style={{ "--d": "900ms" } as CSSProperties}>
-                you
-              </span>
-              .
+              Readable only by <mark className="m-hl">you</mark>.
             </span>
           </h1>
           <p className="m-hero-lead">
             Klef keeps <code>.env.local</code> and <code>.env.production</code>{" "}
-            the same everywhere you code, sealed on your device, through a CLI
-            that never prints a value. Hand it to Claude Code or Cursor and
-            keep the key yourself.
+            the same everywhere you code. Files are sealed on your device, the
+            server only ever holds ciphertext, and the CLI never prints a
+            value, so Claude Code and Cursor can run it while you keep the key.
           </p>
           <div className="m-actions-row">
             <Link to="/auth" className="m-btn m-btn-ink">
-              Get started free <span className="m-arrow" aria-hidden="true">&#8594;</span>
+              <Chev />
+              Get started free
             </Link>
-            <CopyPromptButton prompt={DEFAULT_PROMPT} className="m-btn m-btn-line">
-              Copy the agent prompt
-            </CopyPromptButton>
+            <Link to="/docs" className="m-btn m-btn-soft">
+              <Chev />
+              Read the docs
+            </Link>
           </div>
         </div>
 
-        <div className="m-stack" aria-hidden="true">
-          <div className="m-card m-card-back">
-            <div className="m-tabs">
-              <span className="m-swatch" style={{ background: "var(--m-fg)" }} />
-              <b>Audit</b>
-              <span>Vercel</span>
-              <span>GitHub</span>
-              <span>Cloudflare</span>
-            </div>
-          </div>
-          <div className="m-card m-card-mid">
-            <div className="m-tabs">
-              <span className="m-swatch" style={{ background: "var(--m-ok)" }} />
-              <b>Agents</b>
-              <span>Claude Code</span>
-              <span>Cursor</span>
-            </div>
-          </div>
-          <div className="m-card m-card-front">
-            <div className="m-tabs">
-              <span className="m-swatch" />
-              <b>Vault</b>
-              <span className="m-mono">.env.local</span>
-              <span className="m-mono">.env.production</span>
-              <span className="m-mono m-end">0 values shown</span>
-            </div>
-            <table className="m-vault">
-              <thead>
-                <tr>
-                  <th>Key</th>
-                  <th>Value</th>
-                  <th>MacBook</th>
-                  <th>Mac mini</th>
-                  <th>New Mac</th>
-                </tr>
-              </thead>
-              <tbody>
-                {VAULT_ROWS.map((key, r) => (
-                  <tr key={key} style={{ "--d": `${250 + r * 70}ms` } as CSSProperties}>
-                    <td className="m-mono">{key}</td>
-                    <td className="m-mono m-masked">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</td>
-                    {[0, 1, 2].map((c) => (
-                      <td key={c}>
-                        <span
-                          className="m-chk"
-                          style={{ "--d": `${(c === 2 ? 1300 : 500 + c * 60) + r * 60}ms` } as CSSProperties}
-                        >
-                          &#10003;
-                        </span>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="m-card-foot">
-              $ klef restore ~/Developer &#160;<span className="t-ok">Wrote 14 variables to .env.local</span>
-            </div>
-          </div>
-        </div>
+        <HeroStage />
       </div>
     </section>
   );
 }
 
-const MARQUEE = [
-  "klef setup",
-  "klef sync",
-  "klef restore",
-  "klef audit",
-  "AES-256-GCM",
-  "Argon2id",
-  "0 values printed",
-  "AGPL-3.0",
-  "Self-host on Cloudflare",
+const VAULT_ROWS: [string, number][] = [
+  ["DATABASE_URL", 9],
+  ["STRIPE_SECRET_KEY", 12],
+  ["OPENAI_API_KEY", 10],
+  ["RESEND_API_KEY", 8],
+  ["SENTRY_DSN", 11],
 ];
 
-function Marquee() {
-  // Two copies, so translating by half loops seamlessly. Only the first copy
-  // is read out.
+/**
+ * The product, drawn small: the app's shell (canvas, sidebar, inset content
+ * panel, 32px rows) with a file open, and the CLI's sync behind it. Values
+ * are dots in the mock as they are in the app before unlock.
+ */
+function HeroStage() {
   return (
-    <section className="m-marquee" aria-label="At a glance">
-      <div className="m-marquee-track">
-        {[0, 1].map((copy) =>
-          MARQUEE.map((item) => (
-            <span key={`${copy}-${item}`} aria-hidden={copy === 1 ? true : undefined} style={{ display: "contents" }}>
-              <span>{item}</span>
-              <i aria-hidden="true">&#10033;</i>
-            </span>
-          )),
-        )}
+    <div className="m-stage" aria-hidden="true">
+      <div className="m-shot m-shot-term">
+        <div className="m-shot-bar">
+          <span className="m-shot-dot" />
+          <span className="m-shot-dot" />
+          <span className="m-shot-dot" />
+          <span className="m-shot-title">zsh</span>
+        </div>
+        <pre className="m-term m-term-sm">
+          <Cmd>klef sync</Cmd>
+          <Out>.env.local       edited here</Out>
+          <Out>.env.production  changed in the vault</Out>
+          <Out>
+            Push .env.local? [y/N] <Yes />
+          </Out>
+          <Out tone="ok">Pushed 14 variables (+1 lines) to .env.local</Out>
+          <Out tone="ok">Wrote 9 variables to .env.production</Out>
+        </pre>
       </div>
-    </section>
-  );
-}
 
-function Statement() {
-  return (
-    <section className="m-section">
-      <div className="m-wrap m-statement">
-        <figure className="m-editor" style={{ margin: 0 }}>
-          <figcaption className="m-editor-bar">
-            <span className="m-swatch" />
-            .env.production
-          </figcaption>
-          <div className="m-editor-body">
-            <div className="m-editor-gutter" aria-hidden="true">
-              1<br />2<br />3<br />4
-            </div>
-            <pre className="m-editor-code">
-              <span className="m-comment"># The end-to-end encrypted way</span>
-              {"\n"}
-              <span className="m-comment"># to keep .env files in sync.</span>
-              {"\n\n"}
-              YOUR_SECRETS<span className="m-comment">=</span>
-              <span className="m-masked" aria-label="hidden value">
-                &#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;
-              </span>
-              <span className="m-caret" aria-hidden="true" />
-            </pre>
+      <div className="m-shot m-app">
+        <aside className="m-app-side">
+          <div className="m-app-ws">
+            <KlefMark accent="var(--m-accent)" />
+            <b>personal</b>
           </div>
-        </figure>
-        <p className="m-lede" style={{ fontSize: 18, textAlign: "center" }}>
-          Sealed on your device, synced through a server that only ever holds
-          ciphertext, and opened on your next Mac with one command.{" "}
-          <Link to="/security" style={{ color: "var(--m-fg)", textDecoration: "underline", textUnderlineOffset: 3 }}>
-            How the encryption works
-          </Link>
-          .
-        </p>
+          <div className="m-app-search">
+            <Search />
+            Search
+            <kbd>&#8984;K</kbd>
+          </div>
+          <p className="m-label">Projects</p>
+          <ul className="m-app-tree">
+            <li className="m-app-open">lensdrop</li>
+            <li className="m-app-file">.env.local</li>
+            <li className="m-app-file m-app-active">.env.production</li>
+            <li>klef</li>
+            <li>portfolio</li>
+          </ul>
+        </aside>
+        <div className="m-app-panel">
+          <div className="m-app-head">
+            <span>lensdrop</span>
+            <span className="m-app-sep">/</span>
+            <b>.env.production</b>
+            <span className="m-app-status">Synced</span>
+          </div>
+          <table className="m-vault">
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {VAULT_ROWS.map(([key, n], r) => (
+                <tr key={key} style={{ "--d": `${320 + r * 60}ms` } as CSSProperties}>
+                  <td className="m-mono">{key}</td>
+                  <td className="m-mono m-masked">{"•".repeat(n)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="m-app-foot">9 variables &middot; 0 values shown</div>
+        </div>
       </div>
-    </section>
+    </div>
   );
 }
 
 function HowItWorks() {
   return (
-    <section className="m-section" id="how-it-works" aria-labelledby="how-title" style={{ paddingTop: 0 }}>
+    <section className="m-section" id="how-it-works" aria-labelledby="how-title">
       <div className="m-wrap">
         <div className="m-section-head">
           <div>
+            <p className="m-label">How it works</p>
             <h2 id="how-title" className="m-h2">
-              <span className="m-redact" style={{ "--d": "200ms" } as CSSProperties}>
-                How it works
-              </span>
+              One command per repo.
+              <br />
+              One per new machine.
             </h2>
             <p className="m-lede">
-              One command per repo, one per new machine. Sync works out which
-              side changed, and stops for you when both did.
+              Setup links a checkout to its files and teaches your agents. Sync
+              works out which side changed, and stops for you when both did.
             </p>
           </div>
-          <Link to="/docs" className="m-btn m-btn-line">
-            Read the docs <span className="m-arrow" aria-hidden="true">&#8594;</span>
+          <Link to="/docs/quickstart" className="m-btn m-btn-soft">
+            <Chev />
+            Quickstart
           </Link>
         </div>
         <StepTabs />
@@ -271,26 +211,16 @@ function HowItWorks() {
   );
 }
 
-/** Rows of dots that grow until they become the dark band. */
-function Halftone({ flip }: { flip?: boolean }) {
-  const cols = 48;
-  const rows = [
-    (x: number) => 2 + 6 * x,
-    (x: number) => 8 + 14 * x,
-  ];
-  const ordered = flip ? [...rows].reverse() : rows;
+/** The stepped pixel edge where the page turns dark, and back again. */
+function PixelEdge({ flip }: { flip?: boolean }) {
   return (
-    <div className="m-halftone" aria-hidden="true" style={{ "--cols": cols } as CSSProperties}>
-      {ordered.map((size, r) =>
-        Array.from({ length: cols }, (_, c) => {
-          const px = Math.round(size(c / (cols - 1)));
-          return (
-            <span key={`${r}-${c}`}>
-              <i style={{ width: px, height: px }} />
-            </span>
-          );
-        }),
-      )}
+    <div className={flip ? "m-edge m-edge-flip" : "m-edge"} aria-hidden="true">
+      <i style={{ left: 0, width: 24, height: 48 }} />
+      <i style={{ left: 24, width: 48, height: 24 }} />
+      <i style={{ left: 96, width: 24, height: 24 }} />
+      <i style={{ right: 120, width: 24, height: 24 }} />
+      <i style={{ right: 48, width: 24, height: 24 }} />
+      <i style={{ right: 0, width: 48, height: 48 }} />
     </div>
   );
 }
@@ -298,70 +228,73 @@ function Halftone({ flip }: { flip?: boolean }) {
 function Agents() {
   return (
     <>
-      <Halftone />
+      <PixelEdge />
       <section className="m-dark" id="agents" aria-labelledby="agents-title">
         <div className="m-wrap">
-          <div className="m-section-head" style={{ marginBottom: 0 }}>
-            <h2 id="agents-title" className="m-h2" style={{ margin: 0 }}>
-              Agents never see your secrets.
-              <br />
-              <span className="m-dark-quiet">Your agent runs Klef. You hold the key.</span>
-            </h2>
+          <div className="m-section-head">
+            <div>
+              <p className="m-label">For coding agents</p>
+              <h2 id="agents-title" className="m-h2">
+                Agents never see your secrets.
+                <br />
+                <span className="m-dark-quiet">Your agent runs Klef. You hold the key.</span>
+              </h2>
+            </div>
+            <Link to="/docs/guides/coding-agents" className="m-btn m-btn-paper">
+              <Chev />
+              Agent guide
+            </Link>
           </div>
 
-          <pre className="m-session">
-            <span className="m-you">&gt; pull the latest env files</span>
-            {"\n"}
-            <span className="m-call">&#9679; Bash(klef sync)</span>
-            {"\n  This needs an interactive terminal. Run it yourself rather than through a script or agent.\n"}
-            <span className="m-you">
-              &#9679; The vault is locked. Run klef unlock in your own terminal and tell me when it is done.
-            </span>
-            {"\n"}
-            <span className="m-you">&gt; done</span>
-            {"\n"}
-            <span className="m-call">&#9679; Bash(klef sync)</span>
-            {"\n  "}
-            <span className="m-call">Wrote 9 variables to .env.production</span>
-          </pre>
+          <div className="m-band-grid">
+            <pre className="m-session">
+              <span className="m-you">&gt; pull the latest env files</span>
+              {"\n"}
+              <span className="m-call">&#9679; Bash(klef sync)</span>
+              {"\n  This needs an interactive terminal. Run it yourself rather than through a script or agent.\n"}
+              <span className="m-you">
+                &#9679; The vault is locked. Run klef unlock in your own terminal and tell me when it is done.
+              </span>
+              {"\n"}
+              <span className="m-you">&gt; done</span>
+              {"\n"}
+              <span className="m-call">&#9679; Bash(klef sync)</span>
+              {"\n  "}
+              <span className="m-call">Wrote 9 variables to .env.production</span>
+            </pre>
 
-          <ul className="m-facts">
-            <li>
-              <p className="m-label">
-                <Decrypt text="Never printed" delay={200} />
-              </p>
-              <h3>No value, ever</h3>
-              <p>
-                There is no <code>klef get</code> and no <code>--print</code>. Pull
-                writes the file at mode 0600 and reports a count.
-              </p>
-            </li>
-            <li>
-              <p className="m-label">
-                <Decrypt text="Passphrase" delay={350} />
-              </p>
-              <h3>Your terminal only</h3>
-              <p>
-                The CLI reads it from your terminal, never from stdin, a flag or
-                the agent driving it.
-              </p>
-            </li>
-            <li>
-              <p className="m-label">
-                <Decrypt text="Setup" delay={500} />
-              </p>
-              <h3>Taught once</h3>
-              <p>
-                Setup writes a Claude Code skill and a Cursor rule into the repo,
-                so every new session already knows how to sync.
-              </p>
-            </li>
-          </ul>
+            <ul className="m-facts">
+              <li>
+                <p className="m-label">Never printed</p>
+                <h3>No value, ever</h3>
+                <p>
+                  There is no <code>klef get</code> and no <code>--print</code>. Pull
+                  writes the file at mode 0600 and reports a count.
+                </p>
+              </li>
+              <li>
+                <p className="m-label">Passphrase</p>
+                <h3>Your terminal only</h3>
+                <p>
+                  The CLI reads it from your terminal, never from stdin, a flag or
+                  the agent driving it.
+                </p>
+              </li>
+              <li>
+                <p className="m-label">Setup</p>
+                <h3>Taught once</h3>
+                <p>
+                  Setup writes a Claude Code skill and a Cursor rule into the repo,
+                  so every new session already knows how to sync.
+                </p>
+              </li>
+            </ul>
+          </div>
 
           <AgentPrompts />
         </div>
       </section>
-      <Halftone flip />
+      <PixelEdge flip />
     </>
   );
 }
@@ -385,7 +318,7 @@ function CopyCommand() {
         <span className="t-prompt">$ </span>
         {SETUP}
       </span>
-      <button type="button" className="m-btn m-btn-sm m-btn-ink" onClick={() => void copy()} aria-label="Copy the setup command">
+      <button type="button" className="m-cmd-copy" onClick={() => void copy()} aria-label="Copy the setup command">
         {copied ? <Check /> : <Copy />}
         {copied ? "Copied" : "Copy"}
       </button>
@@ -395,58 +328,27 @@ function CopyCommand() {
 
 function Closing() {
   return (
-    <section className="m-section" id="start" aria-labelledby="closing-title">
-      <div className="m-wrap">
-        <div className="m-grain m-cta">
-          <div className="m-cta-copy">
-            <p className="m-label">Get started</p>
-            <h2 id="closing-title">Your next Mac is one command away.</h2>
-            <p>
-              Put your env files in Klef today, and the next laptop, reinstall
-              or new repo takes one command instead of an afternoon.
-            </p>
-            <CopyCommand />
-            <p className="m-checks">
-              <span>&#10003; No card</span>
-              <span>&#10003; No tracking</span>
-              <span>&#10003; Export any time</span>
-            </p>
-          </div>
-          <div className="m-paths">
-            <Link to="/auth" className="m-path m-path-ink">
-              <span className="m-path-top">
-                <b>Use klef.sh</b>
-                <span className="m-btn m-btn-sm m-btn-ember">
-                  Get started free <span className="m-arrow" aria-hidden="true">&#8594;</span>
-                </span>
-              </span>
-              <span>
-                Hosted for you, free. Sign in with Google, GitHub or a passkey
-                and your vault is ready in a minute.
-              </span>
-            </Link>
-            <a
-              href="https://github.com/BenyD/klef#self-hosting"
-              target="_blank"
-              rel="noreferrer"
-              className="m-path"
-            >
-              <span className="m-path-top">
-                <b>Run your own</b>
-                <span className="m-btn m-btn-sm m-btn-line">
-                  Self-host guide <span className="m-arrow" aria-hidden="true">&#8594;</span>
-                </span>
-              </span>
-              <span>
-                AGPL-3.0 on your Cloudflare account with Workers and D1. The same
-                encryption, on a server you own.
-              </span>
-            </a>
-            <p style={{ margin: "6px 0 0", fontSize: 13 }}>
-              Either way, whoever runs the server cannot read your files.
-            </p>
-          </div>
+    <section className="m-section m-closing" id="start" aria-labelledby="closing-title">
+      <div className="m-wrap m-closing-inner">
+        <h2 id="closing-title" className="m-h2">
+          Starting with Klef is simple, fast, and free.
+        </h2>
+        <p className="m-lede">
+          Hosted at klef.sh with Google, GitHub or passkey sign-in, or on your
+          own Cloudflare account. Either way, whoever runs the server cannot
+          read your files.
+        </p>
+        <div className="m-actions-row">
+          <Link to="/auth" className="m-btn m-btn-ink">
+            <Chev />
+            Get started free
+          </Link>
+          <a href={`${GITHUB}#self-hosting`} target="_blank" rel="noreferrer" className="m-btn m-btn-soft">
+            <Chev />
+            Self-host guide
+          </a>
         </div>
+        <CopyCommand />
       </div>
     </section>
   );

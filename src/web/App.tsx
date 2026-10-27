@@ -196,6 +196,7 @@ export function App() {
         {import.meta.env.DEV && (
           <Route path="/dev/design" element={<DesignLab />} />
         )}
+        {import.meta.env.DEV && <Route path="/dev/splash" element={<Splash />} />}
         {/* Workspace home: klef.sh/<workspace-slug>. Marketing routes above
             win first; reserved slugs are rejected at workspace creation. */}
         <Route path="/:wsSlug" element={<AppArea />} />
