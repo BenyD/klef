@@ -253,6 +253,14 @@ describe("sync", () => {
     expect(JSON.stringify((failure as CliError).data)).not.toContain(SECRET);
   });
 
+  it("reports a conflict on --dry-run and exits 0, or 5 with --exit-code", async () => {
+    await writeFile(path.join(cwd, ".env.local"), "PORT=1\n");
+    expect(await sync(parseArgs(["sync", "--dry-run"]), env, cwd, prompt, yes)).toBe(0);
+    expect(output).toContain("Dry run: nothing written.");
+    expect(await sync(parseArgs(["sync", "--dry-run", "--exit-code"]), env, cwd, prompt, yes)).toBe(5);
+    expect(await local(".env.local")).toBe("PORT=1\n");
+  });
+
   it("treats a differing file this machine never synced as a conflict", async () => {
     await writeFile(path.join(cwd, ".env.local"), "PORT=1\n");
     await expect(sync(parseArgs(["sync"]), env, cwd, prompt, yes)).rejects.toMatchObject({ code: "conflict" });
