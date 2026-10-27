@@ -28,8 +28,8 @@ describe("instructionsBody", () => {
     expect(body).toMatch(/Never ask the user for their master passphrase/);
   });
 
-  it("covers status, pull --all, push --all, and unlock", () => {
-    for (const sub of ["status", "pull --all", "push --all --yes", "unlock", "list --json"]) {
+  it("covers status, run, pull --all, push --all, and unlock", () => {
+    for (const sub of ["status", "run -- npm run dev", "run -- <command>", "pull --all", "push --all --yes", "unlock", "list --json"]) {
       expect(body).toContain(`${CLI} ${sub}`);
     }
   });
@@ -42,7 +42,7 @@ describe("instructionsBody", () => {
   it("uses the invocation it is given, so npx users get npx", () => {
     const npx = instructionsBody("npx @klefsh/cli");
     expect(npx).toContain("npx @klefsh/cli pull --all");
-    expect(npx).not.toMatch(/(^|[\s`])klef (pull|push|status|unlock)/m);
+    expect(npx).not.toMatch(/(^|[\s`])klef (pull|push|status|unlock|run)/m);
   });
 
   // The platforms are audited, never written: an agent that copied a value

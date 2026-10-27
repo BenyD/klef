@@ -8,6 +8,7 @@ A coding agent can run the Klef CLI for you: pull the env files a repo needs, pu
 ## Why this is safe to hand an agent
 
 - **No command prints a secret value.** There is no `klef get` and no `--print`. `pull` writes a file and reports a count. `push` reports how many lines changed. `diff` and `sync` name keys, never values. Errors are redacted on the way out as a backstop.
+- **The app can run without the file.** `klef run -- <command>` puts the variables into the command's environment, writes nothing to disk, and replaces any secret value the command prints with `[klef:redacted]` before the agent sees it. See [klef run](/docs/cli/run/).
 - **The agent cannot unlock on its own.** Unlocking a device takes you: approving `klef login` in the browser with your passkey or passphrase, or typing the passphrase into `klef unlock` at a terminal. The passphrase is never read from a flag, a pipe or an environment variable, so the process that started the CLI can neither supply it nor see it. When a device is locked, the CLI stops and says so, and the agent runs `klef login` for you to approve.
 - **Files land where `.klef.json` says.** `pull` and `push` refuse absolute paths and `../`, so an agent cannot be talked into writing plaintext somewhere else or uploading an arbitrary file.
 - **A token is not a secret.** The CLI's access token reaches ciphertext and names only.
@@ -31,7 +32,7 @@ Along with signing in, linking and pulling, setup offers to write instructions f
 | Claude Code, always loaded | `CLAUDE.md` | When asked |
 | Other agents | `AGENTS.md` | When asked |
 
-The instructions tell the agent how this repo's env files are synced (status, sync, pull, push, unlock), how to read the CLI's `--json` errors, and that it must never read or print a secret value. Commit them with the repo so every later session starts out knowing.
+The instructions tell the agent how this repo's env files are synced (status, sync, pull, push, unlock), to prefer `klef run` over `klef pull` when it needs to start the app or run the tests, how to read the CLI's `--json` errors, and that it must never read or print a secret value. Commit them with the repo so every later session starts out knowing.
 
 Choose the files with targets:
 
@@ -60,7 +61,7 @@ Paste it into a session once per repo. The landing page at [klef.sh](https://kle
 
 1. If this device is not unlocked yet, the agent runs `klef login` and you approve it in the browser with **Also unlock the CLI on this device** ticked. You do this once per device; after it, no session needs you to unlock.
 2. The agent runs `klef status --json`: account, link, lock state and each file's sync state in one call, with the commands to run `next`.
-3. It runs `klef sync`, `klef pull` or `klef push` as the task needs, with `--json`.
+3. It runs `klef sync`, `klef pull` or `klef push` as the task needs, with `--json`. To start the app or run the tests, it uses `klef run -- <command>`, which needs no file on disk.
 4. On a conflict, it reads the key names `sync` returned and asks you which side wins.
 5. To lock this device again, run `klef lock`.
 
@@ -79,4 +80,4 @@ Nothing is written when a command stops this way. The full list of codes is in [
 
 ## What agents should not do
 
-Even with Klef, the env file on disk is plaintext. An agent that runs `cat .env.local` puts the values in its context. The instructions setup writes tell it not to; keep that rule in your own prompts as well.
+Even with Klef, an env file on disk is plaintext. An agent that runs `cat .env.local` puts the values in its context, and so does an app that prints its own config when the agent runs it. The instructions setup writes tell it not to read the file and to prefer `klef run`, which leaves no file and masks values in the app's output; keep both rules in your own prompts as well. Pull only when a tool reads `.env` itself and cannot take the environment.

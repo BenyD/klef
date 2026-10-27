@@ -155,13 +155,33 @@ export const COMMANDS: CommandSpec[] = [
     summary: "Write the vault's copy of env files here",
     description:
       "Writes each file at mode 0600 and reports how many variables it holds; never a value. " +
-      "Overwrites the local copy: `klef sync` is the safe choice when this one may have been edited.",
+      "Overwrites the local copy: `klef sync` is the safe choice when this one may have been edited. " +
+      "To run something with the variables and no file on disk, see `klef run`.",
     flags: [FILE, PATH, ALL],
     examples: [
       ["klef pull --all", "Every file listed in .klef.json"],
       ["klef pull --file .env.production", "One file"],
     ],
     json: "{ files: [ { file, path, variables, version } ] }",
+  },
+  {
+    name: "run",
+    group: "Everyday",
+    args: "[flags] -- <command...>",
+    summary: "Run a command with the vault's variables, and no file on disk",
+    description:
+      "Decrypts the env file in memory, starts the command with its variables in the " +
+      "environment (the file wins over a variable already set), and forwards the command's " +
+      "output with every secret value replaced by [klef:redacted]. Nothing is written to " +
+      "disk, so there is no .env for anyone to read. The exit code is the command's own; " +
+      "Ctrl-C and SIGTERM are passed on to it. Under --json its output goes to stderr.",
+    flags: [FILE, ALL, { name: "no-redact", description: "Forward the output as it is, values included (warns)" }],
+    examples: [
+      ["klef run -- npm run dev", "The linked file's variables, output redacted"],
+      ["klef run --file .env.production -- node build.js", "Another file"],
+      ["klef run --all -- pnpm test", "Every file in .klef.json; a later file wins a shared key"],
+    ],
+    json: "{ files: [ { file, variables, version } ], exitCode, redactions, redacted }",
   },
   {
     name: "push",
@@ -391,7 +411,9 @@ export function rootHelp(cli: string, version: string): string {
 }
 
 export function commandHelp(spec: CommandSpec, cli: string): string {
-  const usageFlags = spec.flags.length ? " [flags]" : "";
+  // A command whose args say where the flags go (run: before the `--`) lays
+  // its own usage out.
+  const usageFlags = spec.flags.length && !spec.args?.includes("[flags]") ? " [flags]" : "";
   const lines = [
     spec.description ?? spec.summary,
     "",

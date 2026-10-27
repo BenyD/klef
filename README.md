@@ -67,6 +67,7 @@ npx @klefsh/cli login   # approve this machine in the browser
 npx @klefsh/cli list    # see what is in your vault (--json for scripts)
 npx @klefsh/cli link    # connect this directory to a project in your vault
 npx @klefsh/cli pull    # write it to disk (mode 0600), reporting only a count
+npx @klefsh/cli run -- npm run dev  # or skip the file: inject, and redact the output
 npx @klefsh/cli unlock  # one passphrase for the next pulls and pushes
 npx @klefsh/cli sync    # pull or push each file, whichever side changed
 npx @klefsh/cli diff --all  # which keys differ, never their values
@@ -181,7 +182,11 @@ published version has, so this ordering is the only thing enforcing it.
 
 `pull` never prints a value. There is no `--print` and no `klef get`, which is
 what makes it safe to hand to a coding agent. `diff` and `sync` name keys,
-never values. See
+never values. `run` goes one further: `klef run -- <command>` puts the
+variables into the command's environment with no file on disk, and replaces
+every secret value the command prints with `[klef:redacted]`, so a key an app
+logs never reaches the terminal or the agent that ran it. The agent
+instructions `setup` writes prefer it over `pull`. See
 [`docs/AGENT_ACCESS.md`](./docs/AGENT_ACCESS.md).
 
 ## How it works (threat model in brief)
