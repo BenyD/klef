@@ -33,7 +33,7 @@ pnpm dev                  # SPA + Worker (workerd) + local D1, one server
 pnpm typecheck            # tsc for app + node configs
 pnpm test                 # vitest: unit (node/happy-dom) + worker (Miniflare/D1)
 pnpm build                # typecheck + vite build + prerender marketing pages + docs
-pnpm docs:dev             # the docs site alone (Astro Starlight), at /docs
+pnpm docs:dev             # the docs site alone (Fumadocs), at /docs
 pnpm build:docs           # build the docs into dist/client/docs
 pnpm db:migrate:local     # apply D1 migrations locally
 pnpm deploy               # build + wrangler deploy (production)
@@ -108,8 +108,9 @@ npm publish ./dist/cli --access public
   (`marketing.css`), prerendered to static HTML at build time by
   `scripts/prerender.tsx` - keep them SSR-safe (no browser APIs at module
   scope or render time).
-- **Docs live in `docs-site/`** (Astro Starlight, pages in
-  `src/content/docs/*.md`), served at `/docs` from the same deploy. `pnpm
+- **Docs live in `docs-site/`** (Fumadocs on React Router, prerendered;
+  pages in `content/docs/*.mdx`, sidebar order in each folder's
+  `meta.json`), served at `/docs` from the same deploy. `pnpm
   dev` does not serve them; use `pnpm docs:dev`. Colours come from
   `src/web/styles/tokens.css`, shared with the app, and theme follows the
   app's `theme` localStorage key. Document only what the code does; when a
