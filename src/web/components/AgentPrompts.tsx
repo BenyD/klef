@@ -48,13 +48,13 @@ export function AgentPrompts() {
   }
 
   return (
-    <div className="m-card marketing-agent" id="prompts">
-      <div className="m-card-head">
-        <span className="m-card-title">Or start from a prompt</span>
-        <span className="m-card-sub">
+    <div className="marketing-agent" id="prompts">
+      <div className="marketing-agent-head">
+        <h3>Or start from a prompt</h3>
+        <p>
           Paste one into Claude Code or Cursor. Prefer your own terminal? Run{" "}
-          <code className="m-code">npx @klefsh/cli setup</code>.
-        </span>
+          <code>npx @klefsh/cli setup</code>.
+        </p>
       </div>
 
       <div>
@@ -83,7 +83,7 @@ export function AgentPrompts() {
           ))}
           <CopyPromptButton
             prompt={active}
-            className="m-btn m-btn-sm m-btn-outline marketing-agent-copy"
+            className="m-btn m-btn-sm m-btn-paper marketing-agent-copy"
           />
         </div>
 
@@ -91,7 +91,7 @@ export function AgentPrompts() {
           role="tabpanel"
           id={PANEL_ID}
           aria-labelledby={`agent-tab-${active.id}`}
-          className="m-panel marketing-agent-panel"
+          className="marketing-agent-panel"
         >
           <p className="marketing-agent-desc">{active.description}</p>
           <pre className="marketing-agent-prompt">{promptText(active)}</pre>

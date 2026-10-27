@@ -249,22 +249,18 @@ export function Security() {
           only ever stores ciphertext it cannot read.
         </>
       }
-      intro={
-        <div className="m-card">
-          <SecurityBoundary />
-        </div>
-      }
+      intro={<SecurityBoundary />}
       sections={sections}
     >
       <div className="marketing-page-cta">
-        <Link to="/auth" className="m-btn m-btn-primary">
+        <Link to="/auth" className="m-btn m-btn-ink">
           Get started free
         </Link>
         <a
           href="https://github.com/BenyD/klef/blob/main/SECURITY.md"
           target="_blank"
           rel="noreferrer"
-          className="m-btn m-btn-outline"
+          className="m-btn m-btn-line"
         >
           Read SECURITY.md
         </a>
