@@ -45,15 +45,25 @@ const NAV: { label: string; to: string }[] = [
  * and a sheet of links, closed by Escape, a link, or widening the window.
  */
 function SiteHeader() {
-  const [open, setOpen] = useState(false);
+  // The sheet animates out before it leaves the DOM, so closing passes
+  // through a short "closing" state (see .m-menu.is-closing).
+  const [menu, setMenu] = useState<"closed" | "open" | "closing">("closed");
+  const open = menu === "open";
+  const close = () => setMenu((m) => (m === "open" ? "closing" : m));
+
+  useEffect(() => {
+    if (menu !== "closing") return;
+    const t = window.setTimeout(() => setMenu("closed"), 160);
+    return () => window.clearTimeout(t);
+  }, [menu]);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") close();
     };
     const wide = window.matchMedia("(min-width: 861px)");
-    const onWide = () => wide.matches && setOpen(false);
+    const onWide = () => wide.matches && setMenu("closed");
     window.addEventListener("keydown", onKey);
     wide.addEventListener("change", onWide);
     return () => {
@@ -61,8 +71,6 @@ function SiteHeader() {
       wide.removeEventListener("change", onWide);
     };
   }, [open]);
-
-  const close = () => setOpen(false);
 
   return (
     <header className="m-header">
@@ -92,15 +100,15 @@ function SiteHeader() {
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             aria-controls="m-menu"
-            onClick={() => setOpen((v) => !v)}
+            onClick={() => (open ? close() : setMenu("open"))}
           >
             {open ? <X /> : <Menu />}
           </button>
         </div>
       </div>
 
-      {open && (
-        <nav id="m-menu" className="m-menu" aria-label="Menu">
+      {menu !== "closed" && (
+        <nav id="m-menu" className={menu === "closing" ? "m-menu is-closing" : "m-menu"} aria-label="Menu">
           {NAV.map((item) => (
             <Link key={item.label} to={item.to} onClick={close}>
               {item.label}
@@ -194,7 +202,13 @@ function SiteFooter() {
       </div>
 
       <div className="m-wrap m-footer-base">
-        <span className="m-label">&copy; {new Date().getFullYear()} Klef</span>
+        <span className="m-footer-copy">
+          &copy; {new Date().getFullYear()} Klef. Open source under the{" "}
+          <a href={`${GITHUB}/blob/main/LICENSE`} target="_blank" rel="noreferrer">
+            AGPL-3.0 licence
+          </a>
+          .
+        </span>
         <span className="m-footer-tools">
           <a href="#top" className="m-icon-btn" aria-label="Back to top">
             <ArrowUp />

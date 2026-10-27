@@ -4,21 +4,26 @@ import {
   ArrowRight,
   BookOpen,
   Bot,
+  Box,
   Check,
   ChevronDown,
   ChevronsUpDown,
   Copy,
+  GitCompare,
+  History,
+  Import,
   KeyRound,
   LayoutGrid,
+  Lock,
   PanelLeft,
   Plus,
   Search,
   Server,
   X,
 } from "lucide-react";
-import { MarketingLayout } from "./MarketingLayout.tsx";
-import { AgentPrompts, OnboardAgentPill } from "./AgentPrompts.tsx";
-import { KlefMark } from "./KlefMark.tsx";
+import { GitHubIcon, MarketingLayout } from "./MarketingLayout.tsx";
+import { OnboardAgentPill } from "./AgentPrompts.tsx";
+import { FrameworkIcon } from "./FrameworkIcon.tsx";
 import { PixelField } from "./PixelField.tsx";
 import { Reveal } from "./Reveal.tsx";
 import { Cmd, Done, Out, StepTabs, Yes } from "./LandingTerminal.tsx";
@@ -34,6 +39,8 @@ export function Landing() {
     <MarketingLayout>
       <main className="m-main">
         <Hero />
+        <Evidence />
+        <Showcase />
         <HowItWorks />
         <Agents />
         <Closing />
@@ -46,15 +53,20 @@ function Hero() {
   return (
     <section className="m-hero" aria-labelledby="hero-title">
       <div className="m-grid" aria-hidden="true">
-        <PixelField className="m-hero-field" cell={32} cols={34} rows={18} count={96} seed={11} />
+        <PixelField className="m-hero-field" cell={32} cols={34} rows={18} count={110} seed={11} />
       </div>
 
       <div className="m-wrap m-hero-grid">
         <div className="m-hero-copy">
-          <p className="m-label m-eyebrow m-beat">
-            <KlefMark className="m-eyebrow-mark" />
+          <a
+            href="https://github.com/BenyD/klef"
+            target="_blank"
+            rel="noreferrer"
+            className="m-label m-eyebrow m-beat"
+          >
+            <GitHubIcon />
             Open source and self-hostable
-          </p>
+          </a>
           <h1 id="hero-title" className="m-beat">
             Your .env files, in sync on every machine.{" "}
             <span className="m-nowrap">
@@ -62,27 +74,76 @@ function Hero() {
             </span>
           </h1>
           <p className="m-hero-lead m-beat">
-            Keep <code>.env.local</code> and <code>.env.production</code> the
-            same on every machine. Encrypted on your device. Safe to hand to
-            Claude Code and Cursor.
+            One encrypted vault for every project's <code>.env</code> files,
+            pulled wherever you code. The CLI never prints a value, so your
+            coding agents can sync without seeing a secret.
           </p>
           <div className="m-actions-row m-beat">
             <Link to="/auth" className="m-btn m-btn-ink">
               Get started free
               <ArrowRight className="m-arrow" />
             </Link>
-            <Link to="/docs" className="m-btn m-btn-soft">
-              <BookOpen />
-              Read the docs
-            </Link>
+            <OnboardAgentPill />
           </div>
           <div className="m-beat m-hero-tools">
-            <CopyCommand />
-            <OnboardAgentPill />
+            <ManualSetup />
           </div>
         </div>
 
         <HeroStage />
+      </div>
+    </section>
+  );
+}
+
+const GITGUARDIAN = "https://blog.gitguardian.com/the-state-of-secrets-sprawl-2026/";
+
+/**
+ * Three numbers under the hero, each with its source and year. The first
+ * two are quoted from GitGuardian's State of Secrets Sprawl 2026 (checked
+ * against the page on 27 Oct 2026; the leak-rate figure there is measured on
+ * Claude Code-assisted commits). The third is Klef's own answer.
+ */
+function Evidence() {
+  return (
+    <section className="m-evidence" aria-labelledby="evidence-title">
+      <div className="m-wrap">
+        <Reveal className="m-evidence-grid">
+          <div className="m-evidence-lead">
+            <p className="m-label">Why now</p>
+            <h2 id="evidence-title">
+              Agents leak secrets twice as often. Klef lets yours sync .env
+              files without ever seeing a value.
+            </h2>
+          </div>
+          <ul className="m-stats">
+            <li>
+              <b>28.65M</b>
+              <span>new hardcoded secrets reached public GitHub in 2025, up 34% in a year.</span>
+              <a href={GITGUARDIAN} target="_blank" rel="noreferrer">
+                GitGuardian, 2026
+              </a>
+            </li>
+            <li>
+              <b>2&times;</b>
+              <span>
+                Commits written with a coding agent leaked secrets at 3.2%, against a 1.5%
+                baseline.
+              </span>
+              <a href={GITGUARDIAN} target="_blank" rel="noreferrer">
+                GitGuardian, 2026
+              </a>
+            </li>
+            <li>
+              <b>0</b>
+              <span>
+                values the Klef CLI prints. An ignore file does not stop an agent reading
+                .env from the terminal; <code>klef run</code> redacts them from its output.
+              </span>
+              <Link to="/security">How Klef does it</Link>
+            </li>
+          </ul>
+        </Reveal>
       </div>
     </section>
   );
@@ -190,9 +251,11 @@ function Window({ id, className, front, children }: { id: number; className: str
 
 /**
  * The app's sidebar as it is: workspace switcher, the search field, the two
- * fixed rows, then the project tree with files in mono.
+ * fixed rows, the project tree with files in mono, and the user row at the
+ * foot. `compact` is for the hero's small windows: fewer tree rows, so the
+ * column still ends at the window's edge.
  */
-function Sidebar() {
+function Sidebar({ compact = false }: { compact?: boolean }) {
   return (
     <aside className="m-app-side">
       <div className="m-app-ws">
@@ -224,25 +287,38 @@ function Sidebar() {
       </p>
       <ul className="m-app-tree">
         <li className="m-app-open">
-          <span className="m-app-proj">L</span>
+          <FrameworkIcon framework="nextjs" className="m-app-mark" />
           lensdrop
           <ChevronDown />
         </li>
         <li className="m-app-file">.env.local</li>
         <li className="m-app-file m-app-active">.env.production</li>
-        <li className="m-app-file m-app-add">
-          <Plus />
-          New file
-        </li>
+        {!compact && (
+          <li className="m-app-file m-app-add">
+            <Plus />
+            New file
+          </li>
+        )}
         <li>
-          <span className="m-app-proj">K</span>
+          <FrameworkIcon framework="vite" className="m-app-mark" />
           klef
         </li>
-        <li>
-          <span className="m-app-proj">P</span>
-          portfolio
-        </li>
+        {!compact && (
+          <li>
+            <FrameworkIcon framework="astro" className="m-app-mark" />
+            portfolio
+          </li>
+        )}
       </ul>
+      <div className="m-app-user">
+        <span className="m-app-avatar">B</span>
+        <span className="m-app-ws-text">
+          <b>Beny</b>
+          <span>you@example.com</span>
+        </span>
+        <ChevronsUpDown />
+        <Lock className="m-app-lock" />
+      </div>
     </aside>
   );
 }
@@ -253,11 +329,13 @@ function AppHead({ children }: { children: ReactNode }) {
     <div className="m-app-head">
       <PanelLeft className="m-app-trigger" />
       <span className="m-app-crumb">
-        <span className="m-app-tile m-app-tile-sm">P</span>personal
+        <Box />
+        personal
       </span>
       <span className="m-app-sep">/</span>
       <span className="m-app-crumb">
-        <span className="m-app-proj">L</span>lensdrop
+        <FrameworkIcon framework="nextjs" className="m-app-mark" />
+        lensdrop
       </span>
       <span className="m-app-sep">/</span>
       {children}
@@ -269,7 +347,7 @@ function AppHead({ children }: { children: ReactNode }) {
 function VaultCard() {
   return (
     <>
-      <Sidebar />
+      <Sidebar compact />
       <div className="m-app-panel">
         <AppHead>
           <b className="m-app-crumb m-mono">
@@ -309,7 +387,7 @@ function VaultCard() {
 function CompareCard() {
   return (
     <>
-      <Sidebar />
+      <Sidebar compact />
       <div className="m-app-panel">
         <AppHead>
           <b className="m-app-crumb">Compare environments</b>
@@ -382,16 +460,34 @@ function HowItWorks() {
   );
 }
 
+// The stair into the dark band: blocks on a --px grid (24px, 16px on
+// phones), as [column, height in cells], stepping down from each corner.
+const STAIR_LEFT: [number, number][] = [
+  [0, 2],
+  [1, 2],
+  [2, 1],
+  [3, 1],
+  [5, 1],
+  [8, 1],
+];
+const STAIR_RIGHT: [number, number][] = [
+  [0, 2],
+  [1, 1],
+  [2, 1],
+  [4, 1],
+  [7, 1],
+];
+
 /** The stepped pixel edge where the page turns dark, and back again. */
 function PixelEdge({ flip }: { flip?: boolean }) {
   return (
     <div className={flip ? "m-edge m-edge-flip" : "m-edge"} aria-hidden="true">
-      <i style={{ left: 0, width: 24, height: 48 }} />
-      <i style={{ left: 24, width: 48, height: 24 }} />
-      <i style={{ left: 96, width: 24, height: 24 }} />
-      <i style={{ right: 120, width: 24, height: 24 }} />
-      <i style={{ right: 48, width: 24, height: 24 }} />
-      <i style={{ right: 0, width: 48, height: 48 }} />
+      {STAIR_LEFT.map(([c, h]) => (
+        <i key={`l${c}`} style={{ left: `calc(var(--px) * ${c})`, height: `calc(var(--px) * ${h})` }} />
+      ))}
+      {STAIR_RIGHT.map(([c, h]) => (
+        <i key={`r${c}`} style={{ right: `calc(var(--px) * ${c})`, height: `calc(var(--px) * ${h})` }} />
+      ))}
     </div>
   );
 }
@@ -455,10 +551,6 @@ function Agents() {
               </li>
             </ul>
           </Reveal>
-
-          <Reveal delay={120}>
-            <AgentPrompts />
-          </Reveal>
         </div>
       </section>
       <PixelEdge flip />
@@ -468,7 +560,8 @@ function Agents() {
 
 const SETUP = "npx @klefsh/cli setup";
 
-function CopyCommand() {
+/** The way in without an agent: one line, the command, a copy glyph. */
+function ManualSetup() {
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {
@@ -480,23 +573,179 @@ function CopyCommand() {
     }
   }
   return (
-    <span className="m-cmd">
-      <span>
-        <span className="t-prompt">$ </span>
-        {SETUP}
+    <span className="m-manual">
+      or set up manually
+      <span className="m-manual-cmd">
+        <code>{SETUP}</code>
+        <button
+          type="button"
+          className="m-cmd-copy"
+          onClick={() => void copy()}
+          aria-label={copied ? "Copied" : "Copy the setup command"}
+          data-copied={copied || undefined}
+        >
+          <span key={copied ? "check" : "copy"} className="m-copy-glyph">
+            {copied ? <Check /> : <Copy />}
+          </span>
+        </button>
       </span>
-      <button
-        type="button"
-        className="m-cmd-copy"
-        onClick={() => void copy()}
-        aria-label={copied ? "Copied" : "Copy the setup command"}
-        data-copied={copied || undefined}
-      >
-        <span key={copied ? "check" : "copy"} className="m-copy-glyph">
-          {copied ? <Check /> : <Copy />}
-        </span>
-      </button>
     </span>
+  );
+}
+
+const SHOWCASE_ROWS: [string, number][] = [
+  ["DATABASE_URL", 9],
+  ["DIRECT_URL", 9],
+  ["STRIPE_SECRET_KEY", 12],
+  ["STRIPE_WEBHOOK_SECRET", 10],
+  ["OPENAI_API_KEY", 10],
+  ["RESEND_API_KEY", 8],
+  ["SENTRY_DSN", 11],
+  ["NEXT_PUBLIC_APP_URL", 9],
+];
+
+/** Relative and absolute time, the two lines the app gives each version. */
+const HISTORY = [
+  ["2 minutes ago", "Oct 27, 1:55 PM", true],
+  ["Yesterday", "Oct 26, 9:12 AM", false],
+  ["8 days ago", "Oct 19, 6:40 PM", false],
+  ["25 days ago", "Oct 2, 11:03 AM", false],
+] as const;
+
+/**
+ * The app at full width: the shell with a file open and its version history
+ * beside it, over the tinted panel, with the three things the table shows
+ * best underneath. The same pieces as the hero's windows, drawn larger.
+ */
+function Showcase() {
+  return (
+    <section className="m-section" id="app" aria-labelledby="app-title">
+      <div className="m-wrap">
+        <Reveal className="m-section-head">
+          <div>
+            <p className="m-label">The app</p>
+            <h2 id="app-title" className="m-h2">
+              Every file, every machine,
+              <br />
+              one place.
+            </h2>
+            <p className="m-lede">
+              Projects and files in the sidebar. Values decrypt only after you
+              unlock, and every save keeps a version.
+            </p>
+          </div>
+          <Link to="/auth" className="m-btn m-btn-soft">
+            <LayoutGrid />
+            Open the app
+          </Link>
+        </Reveal>
+
+        <Reveal delay={80}>
+          <div className="m-showcase" aria-hidden="true">
+            <div className="m-shot m-app m-showcase-shot">
+              <div className="m-shot-body">
+                <Sidebar />
+                <div className="m-app-panel">
+                  <AppHead>
+                    <b className="m-app-crumb m-mono">
+                      .env.production
+                      <ChevronDown />
+                    </b>
+                    <span className="m-app-status">Saved</span>
+                  </AppHead>
+                  <div className="m-app-tabs">
+                    <span className="m-app-tab">.env.local</span>
+                    <span className="m-app-tab m-app-tab-active">
+                      .env.production
+                      <X />
+                    </span>
+                  </div>
+                  <div className="m-app-split">
+                    <ul className="m-env">
+                      {SHOWCASE_ROWS.map(([key, n]) => (
+                        <li key={key}>
+                          <span className="m-env-key">{key}</span>
+                          <span className="m-env-eq">=</span>
+                          <span className="m-env-val">{"\u2022".repeat(n)}</span>
+                        </li>
+                      ))}
+                      <li className="m-env-add">
+                        <Plus />
+                        <span>KEY</span>
+                        <span className="m-env-eq">=</span>
+                        <span>value</span>
+                      </li>
+                    </ul>
+                    <aside className="m-app-hist">
+                      <div className="m-app-hist-head">
+                        <History />
+                        <b>Version history</b>
+                        <span className="m-mono">.env.production</span>
+                      </div>
+                      <ol>
+                        {HISTORY.map(([when, at, current], i) => (
+                          <li key={when} className={current ? "is-current" : undefined}>
+                            <span className="m-app-hist-rail">
+                              <span className="m-app-hist-dot" />
+                              {i < HISTORY.length - 1 && <span className="m-app-hist-line" />}
+                            </span>
+                            <span className="m-app-hist-text">
+                              <span className="m-app-hist-when">
+                                {when}
+                                {current && <em>Current</em>}
+                              </span>
+                              <span className="m-app-hist-at">{at}</span>
+                            </span>
+                            {!current && (
+                              <span className="m-app-hist-actions">
+                                <span className="m-app-chip">
+                                  <GitCompare />
+                                  Compare
+                                </span>
+                                <span className="m-app-chip m-app-chip-line">
+                                  <Import />
+                                  Load
+                                </span>
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ol>
+                    </aside>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <ul className="m-features">
+            <li>
+              <p className="m-label">
+                <History />
+                Version history
+              </p>
+              <h3>Every save is a version</h3>
+              <p>Compare any two, or load an older one back into the editor.</p>
+            </li>
+            <li>
+              <p className="m-label">
+                <GitCompare />
+                Compare environments
+              </p>
+              <h3>Which keys each one sets</h3>
+              <p>Development against production, names first, values on request.</p>
+            </li>
+            <li>
+              <p className="m-label">
+                <KeyRound />
+                Find a key
+              </p>
+              <h3>One search, every file</h3>
+              <p>&#8984;K finds a key across the workspace and the files missing it.</p>
+            </li>
+          </ul>
+        </Reveal>
+      </div>
+    </section>
   );
 }
 

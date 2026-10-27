@@ -320,6 +320,45 @@
   border-top: 1px solid var(--m-line);
   padding: 4px var(--m-gutter) 20px;
   background: var(--m-bg);
+  animation: m-menu-in var(--duration-base) var(--ease-out) both;
+}
+.m-menu.is-closing {
+  animation: m-menu-out var(--duration-fast) var(--ease-quick) both;
+}
+@keyframes m-menu-in {
+  from {
+    opacity: 0;
+    translate: 0 -8px;
+  }
+}
+@keyframes m-menu-out {
+  to {
+    opacity: 0;
+    translate: 0 -8px;
+  }
+}
+/* The rows follow the sheet in, 30ms apart. */
+.m-menu > a,
+.m-menu > .m-menu-actions {
+  animation: m-rise 320ms var(--ease-out) both;
+}
+.m-menu > :nth-child(2) {
+  animation-delay: 30ms;
+}
+.m-menu > :nth-child(3) {
+  animation-delay: 60ms;
+}
+.m-menu > :nth-child(4) {
+  animation-delay: 90ms;
+}
+.m-menu > :nth-child(5) {
+  animation-delay: 120ms;
+}
+.m-menu > :nth-child(6) {
+  animation-delay: 150ms;
+}
+.m-menu.is-closing > * {
+  animation: none;
 }
 
 .marketing .m-menu a:not(.m-btn) {
@@ -487,11 +526,14 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  transition: color var(--duration-fast) var(--ease-quick);
 }
-.m-eyebrow-mark {
-  width: 12px;
-  height: 12px;
-  color: var(--m-accent);
+.marketing a.m-eyebrow:hover {
+  color: var(--m-fg);
+}
+.marketing .m-eyebrow svg {
+  width: 13px;
+  height: 13px;
 }
 
 .m-hero h1 {
@@ -583,6 +625,41 @@
   translate: 0 10px;
 }
 
+/* The hero's windows are small: a narrower sidebar, no user row, the
+   breadcrumb without the workspace, and the compare table sized to fit. */
+.m-stage .m-app .m-shot-body {
+  grid-template-columns: 148px minmax(0, 1fr);
+}
+.m-stage .m-app-head > :nth-child(2),
+.m-stage .m-app-head > :nth-child(3) {
+  display: none;
+}
+.m-stage .m-app-user {
+  height: 32px;
+  padding-left: 4px;
+}
+.m-stage .m-app-user .m-app-ws-text span {
+  display: none;
+}
+.m-stage .m-dialog {
+  margin: 8px;
+}
+.m-stage .m-compare {
+  table-layout: fixed;
+}
+.m-stage .m-compare th,
+.m-stage .m-compare td {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.m-stage .m-compare th:first-child {
+  width: 44%;
+}
+.m-stage .m-compare td:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .m-shot-bar {
   display: flex;
   align-items: center;
@@ -627,6 +704,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-height: 0;
   padding: 8px;
   color: var(--m-muted);
 }
@@ -670,16 +748,44 @@
   border-radius: 3px;
   font-size: 8px;
 }
-.m-app-proj {
-  display: inline-grid;
-  place-items: center;
+.m-app .m-app-mark {
   width: 14px;
   height: 14px;
-  border-radius: 3px;
-  background: var(--m-fill-strong);
+}
+.m-app-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  margin-top: auto;
+  padding: 0 4px 0 6px;
   color: var(--m-fg);
-  font-size: 8px;
-  font-weight: 600;
+}
+.m-app-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--m-fill-strong);
+  font-size: 10px;
+  font-weight: 500;
+}
+.m-app-user .m-app-ws-text {
+  min-width: 0;
+}
+.m-app-user .m-app-ws-text b,
+.m-app-user .m-app-ws-text span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.m-app-user .m-app-ws-text b {
+  font-weight: 500;
+}
+.m-app .m-app-lock {
+  margin-left: 6px;
+  color: var(--m-muted);
 }
 .m-app-search {
   display: flex;
@@ -1026,8 +1132,14 @@
 }
 
 @media (max-width: 520px) {
-  .m-app .m-shot-body {
+  .m-app .m-shot-body,
+  .m-stage .m-app .m-shot-body,
+  .m-showcase .m-app .m-shot-body {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* The field would sit among the buttons at this width. */
+  .m-grid .m-hero-field {
+    display: none;
   }
   .m-app-side {
     display: none;
@@ -1049,6 +1161,309 @@
   .marketing .m-cmd-copy {
     width: 36px;
     height: 36px;
+  }
+}
+
+/* --- evidence: three numbers under the hero ------------------------------------ */
+
+.m-evidence {
+  padding-block: 48px;
+  border-bottom: 1px solid var(--m-line);
+}
+.m-evidence-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr);
+  gap: 32px 48px;
+  align-items: center;
+}
+.m-evidence-lead h2 {
+  margin: 10px 0 0;
+  font-size: 20px;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  font-weight: 500;
+}
+.m-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-r-lg);
+  overflow: hidden;
+}
+.m-stats li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  border-left: 1px solid var(--m-line);
+}
+.m-stats li:first-child {
+  border-left: 0;
+}
+.m-stats b {
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-weight: 500;
+}
+.m-stats span {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--m-muted);
+}
+.marketing .m-stats a {
+  margin-top: auto;
+  padding-top: 4px;
+  font-family: var(--m-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--m-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--m-line-strong);
+  transition: color var(--duration-fast) var(--ease-quick);
+}
+.marketing .m-stats a:hover {
+  color: var(--m-fg);
+}
+
+@media (max-width: 960px) {
+  .m-evidence-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .m-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .m-stats li {
+    border-left: 0;
+    border-top: 1px solid var(--m-line);
+  }
+  .m-stats li:first-child {
+    border-top: 0;
+  }
+}
+
+/* --- the app, full width ------------------------------------------------------- */
+
+.m-showcase {
+  padding: 40px 40px 0;
+  overflow: hidden;
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-r-lg) var(--m-r-lg) 0 0;
+  background-color: var(--m-tint);
+  background-image: radial-gradient(color-mix(in oklab, var(--m-accent) 45%, transparent) 1px, transparent 1.2px);
+  background-size: 16px 16px;
+}
+.m-showcase .m-showcase-shot {
+  border-bottom: 0;
+  border-radius: var(--m-r-lg) var(--m-r-lg) 0 0;
+  animation: none;
+}
+.m-showcase .m-app .m-shot-body {
+  grid-template-columns: 200px minmax(0, 1fr);
+  min-height: 440px;
+}
+.m-showcase .m-app-panel {
+  margin-bottom: 0;
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+}
+.m-app-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  flex: 1;
+}
+.m-app-split .m-env li {
+  animation: none;
+}
+
+/* The version history panel as the app draws it: a header with the file
+   name, then a timeline with a filled dot for the current version, two
+   lines per version, and Compare and Load on the older ones. */
+.m-app-hist {
+  border-left: 1px solid var(--m-line);
+  color: var(--m-muted);
+}
+.m-app-hist-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--m-line);
+}
+.m-app-hist-head b {
+  color: var(--m-fg);
+  font-weight: 500;
+}
+.m-app-hist-head .m-mono {
+  font-size: 10px;
+}
+.m-app-hist ol {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 12px 12px 0;
+  list-style: none;
+}
+.m-app-hist li {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  padding-bottom: 14px;
+  white-space: nowrap;
+}
+.m-app-hist li > :not(.m-app-hist-rail) {
+  align-self: flex-start;
+}
+.m-app-hist li:last-child {
+  padding-bottom: 0;
+}
+.m-app-hist-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: stretch;
+  padding-top: 5px;
+}
+.m-app-hist-dot {
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--m-line-strong);
+  border-radius: 999px;
+  background: var(--m-card);
+}
+.m-app-hist li.is-current .m-app-hist-dot {
+  border-color: var(--m-accent);
+  background: var(--m-accent);
+}
+.m-app-hist-line {
+  flex: 1;
+  width: 1px;
+  margin-top: 4px;
+  background: var(--m-line);
+}
+.m-app-hist-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+.m-app-hist-when {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--m-fg);
+  font-size: 12px;
+  font-weight: 500;
+}
+.m-app-hist-when em {
+  padding: 0 6px;
+  border: 1px solid var(--m-line);
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 16px;
+}
+.m-app-hist-at {
+  font-size: 10px;
+}
+.m-app-hist-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 1px;
+}
+.m-app-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--m-fg);
+}
+.m-app-chip-line {
+  border: 1px solid var(--m-line);
+}
+
+/* Three facts under the window, sharing its hairlines. */
+.m-features {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--m-line);
+  border-top: 0;
+  border-radius: 0 0 var(--m-r-lg) var(--m-r-lg);
+}
+.m-features li {
+  padding: 18px 22px 20px;
+  border-left: 1px solid var(--m-line);
+}
+.m-features li:first-child {
+  border-left: 0;
+}
+.m-features .m-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.m-features .m-label svg {
+  width: 12px;
+  height: 12px;
+  color: var(--m-accent-text);
+}
+.m-features h3 {
+  margin: 10px 0 4px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.marketing .m-features p:last-child {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--m-muted);
+}
+
+@media (max-width: 860px) {
+  .m-showcase {
+    padding: 20px 16px 0;
+  }
+  .m-showcase .m-app .m-shot-body {
+    grid-template-columns: 168px minmax(0, 1fr);
+    min-height: 0;
+  }
+  .m-app-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .m-app-hist {
+    display: none;
+  }
+  .m-features {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .m-features li {
+    border-left: 0;
+    border-top: 1px solid var(--m-line);
+  }
+  .m-features li:first-child {
+    border-top: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  /* The sidebar is hidden at this width (see the stage rules above), so
+     the panel takes the whole window. */
+  .m-showcase .m-app .m-shot-body {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1161,8 +1576,10 @@
   border-radius: var(--m-r-lg) 0 0 0;
   animation: none;
 }
+/* As tall as the longest transcript, so switching steps never moves the
+   page. */
 .m-tint .m-term {
-  min-height: 280px;
+  min-height: 312px;
 }
 
 @media (max-width: 860px) {
@@ -1204,22 +1621,24 @@
     padding: 24px 0 0 16px;
   }
   .m-tint .m-term {
-    min-height: 0;
+    min-height: 410px;
     font-size: 12px;
   }
 }
 
 /* --- the dark band ----------------------------------------------------------------- */
 
-/* Pixel steps where the page turns dark: squares on the 24px pitch, built up
-   from the band's edge at both ends of the row. */
+/* Pixel steps where the page turns dark: blocks on a --px grid built up
+   from the band's edge at both corners (see PixelEdge in Landing.tsx). */
 .m-edge {
+  --px: 24px;
   position: relative;
-  height: 48px;
+  height: calc(var(--px) * 2);
 }
 .m-edge i {
   position: absolute;
   bottom: 0;
+  width: var(--px);
   background: var(--m-band);
 }
 .m-edge-flip i {
@@ -1309,116 +1728,7 @@
     font-size: 12px;
   }
   .m-edge {
-    height: 24px;
-  }
-  .m-edge i {
-    transform: scale(0.5);
-    transform-origin: left bottom;
-  }
-  .m-edge i[style*="right"] {
-    transform-origin: right bottom;
-  }
-  .m-edge-flip i {
-    transform-origin: left top;
-  }
-  .m-edge-flip i[style*="right"] {
-    transform-origin: right top;
-  }
-}
-
-/* The agent prompts, as one more card in the band: title and the copy
-   glyph on one row, the three prompts as tabs, the chosen prompt below with
-   a fade where it runs past the box. */
-.marketing-agent {
-  margin-top: 16px;
-  overflow: hidden;
-  border: 1px solid var(--m-band-line);
-  border-radius: var(--m-r-lg);
-}
-.marketing-agent-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 16px 10px 20px;
-}
-.marketing-agent-head h3 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 500;
-}
-.marketing .marketing-agent-head p {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--m-band-muted);
-}
-.marketing-agent-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  padding: 0 14px 10px;
-  border-bottom: 1px solid var(--m-band-line);
-}
-.marketing .marketing-agent-tab {
-  appearance: none;
-  height: 30px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: var(--m-r);
-  background: transparent;
-  color: var(--m-band-muted);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease-quick),
-    color var(--duration-fast) var(--ease-quick);
-}
-.marketing .marketing-agent-tab:hover,
-.marketing .marketing-agent-tab[aria-selected="true"] {
-  background: var(--m-band-line);
-  color: var(--m-band-fg);
-}
-.marketing-agent-panel {
-  padding: 14px 20px 20px;
-}
-.marketing .marketing-agent-desc {
-  margin: 0 0 10px;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--m-band-muted);
-}
-.marketing-agent-prompt {
-  margin: 0;
-  max-height: 200px;
-  overflow: auto;
-  padding: 14px;
-  border-radius: var(--m-r);
-  background: var(--m-band-fill);
-  color: var(--m-band-fg);
-  font-family: var(--m-mono);
-  font-size: 12px;
-  line-height: 1.7;
-  font-variant-ligatures: none;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  /* The fade says there is more below; scrolling reveals it. */
-  -webkit-mask-image: linear-gradient(#000 calc(100% - 40px), transparent);
-  mask-image: linear-gradient(#000 calc(100% - 40px), transparent);
-}
-
-@media (max-width: 520px) {
-  .marketing-agent-head {
-    padding: 14px 12px 8px 16px;
-  }
-  .marketing .marketing-agent-tab {
-    padding: 0 8px;
-    font-size: 12px;
-  }
-  .marketing-agent-panel {
-    padding: 12px 16px 16px;
+    --px: 16px;
   }
 }
 
@@ -1505,41 +1815,44 @@
   color: var(--m-ok);
 }
 
-/* The hero's tool row: the command and the agent control, two controls of
-   one family: 40px, the app's radius, the canvas fill and a hairline. */
+/* The hero's tool row: the agent control leads; the manual command is a
+   quiet line beside it. */
 .m-hero-tools {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-top: -8px;
+  gap: 8px 18px;
+  margin-top: -6px;
 }
 
 .marketing .m-agent-pill {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  height: 40px;
-  padding: 0 4px 0 8px;
+  height: 44px;
+  padding: 0 6px 0 8px;
   border: 1px solid var(--m-line);
-  border-radius: var(--m-r);
-  background: var(--m-soft);
+  border-radius: var(--m-r-lg);
+  background: var(--m-card);
+  box-shadow: var(--elevation-raised);
   color: var(--m-fg);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition:
     border-color var(--duration-fast) var(--ease-quick),
-    background-color var(--duration-fast) var(--ease-quick);
+    box-shadow var(--duration-fast) var(--ease-quick);
 }
 .marketing .m-agent-pill:hover {
   border-color: var(--m-line-strong);
+  box-shadow: var(--elevation-overlay);
 }
 .marketing .m-agent-pill .m-copy-glyph {
-  width: 30px;
-  height: 30px;
-  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--m-r);
+  background: var(--m-fill);
   color: var(--m-muted);
   transition:
     background-color var(--duration-fast) var(--ease-quick),
@@ -1558,19 +1871,71 @@
 .m-agent-mark {
   display: inline-grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   border: 1px solid var(--m-line);
   border-radius: 999px;
   background: var(--m-card);
   color: var(--m-fg);
 }
 .m-agent-mark svg {
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
+}
+
+/* "or set up by hand: npx ..." with the glyph. */
+.m-manual {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--m-muted);
+}
+/* The chip holds the command and its copy glyph together. */
+.marketing .m-manual-cmd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 2px 0 8px;
+  border-radius: var(--m-r);
+  background: var(--m-fill);
+  color: var(--m-fg);
+}
+.marketing .m-manual-cmd code {
+  font-family: var(--m-mono);
+  font-size: 12px;
+  font-variant-ligatures: none;
+  white-space: nowrap;
+}
+.m-manual .m-cmd-copy {
+  width: 24px;
+  height: 24px;
+}
+.m-manual .m-cmd-copy:hover {
+  background: var(--m-fill-strong);
 }
 .m-agent-mark + .m-agent-mark {
-  margin-left: -6px;
+  margin-left: -7px;
+}
+.m-actions-row .m-agent-pill {
+  height: 36px;
+  padding: 0 4px 0 6px;
+  border-radius: var(--m-r);
+  font-size: 13px;
+}
+.m-actions-row .m-agent-pill .m-copy-glyph {
+  width: 28px;
+  height: 28px;
+}
+.m-actions-row .m-agent-mark {
+  width: 22px;
+  height: 22px;
+}
+.m-actions-row .m-agent-mark svg {
+  width: 11px;
+  height: 11px;
 }
 
 /* --- footer --------------------------------------------------------------------------- */
@@ -1634,9 +1999,19 @@
   min-height: 52px;
   border-top: 1px solid var(--m-line);
 }
-.marketing .m-footer-base .m-label {
-  font-size: 12px;
-  letter-spacing: 0.05em;
+.marketing .m-footer-copy {
+  font-size: 13px;
+  color: var(--m-muted);
+}
+.marketing .m-footer-copy a {
+  color: var(--m-fg);
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--m-line-strong);
+}
+.marketing .m-footer-copy a:hover {
+  text-decoration-color: var(--m-fg);
 }
 
 .m-footer-tools {
@@ -1663,19 +2038,35 @@
   background: var(--sidebar);
 }
 
+.m-footer-base {
+  padding-block: 10px;
+}
+.m-footer-base .m-footer-copy {
+  flex: 1 1 240px;
+}
+.m-footer-base .m-footer-tools {
+  margin-left: auto;
+}
+
 @media (max-width: 860px) {
   .m-footer-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding-block: 40px 40px;
+    gap: 28px 16px;
+    padding-block: 36px 32px;
   }
   .m-footer-brand {
     grid-column: 1 / -1;
+    gap: 10px;
   }
   .m-footer-col ul {
-    gap: 4px;
+    gap: 2px;
+    margin-top: 12px;
   }
   .marketing .m-footer-col a {
-    padding: 6px 0;
+    padding: 5px 0;
+  }
+  .marketing .m-footer-copy {
+    font-size: 12px;
   }
 }
 
@@ -1699,7 +2090,7 @@
 }
 .m-table {
   width: 100%;
-  min-width: 760px;
+  min-width: 920px;
   border-collapse: collapse;
   font-size: 14px;
   line-height: 1.45;
@@ -1799,7 +2190,7 @@
 .marketing-doc,
 .marketing-single {
   flex: 1;
-  padding-block: clamp(40px, 6vw, 72px) 88px;
+  padding-block: clamp(40px, 6vw, 72px) clamp(96px, 12vw, 160px);
 }
 
 .marketing-doc-grid {

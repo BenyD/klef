@@ -9,28 +9,74 @@ import { MarketingLayout } from "./MarketingLayout.tsx";
 // Category-level and checkable on purpose: no competitor is named in the
 // table, and every cell is a property of the kind of tool, including the rows
 // Klef loses.
-const COLUMNS = ["Klef", "Hosted secrets managers", "Encrypted .env in git", "Pasting into chat"] as const;
+const COLUMNS = [
+  "Klef",
+  "Hosted secrets managers",
+  "Password manager",
+  "Encrypted .env in git",
+  "Pasting into chat",
+] as const;
 
-const ROWS: { label: string; cells: [string, string, string, string] }[] = [
+type Cells = [string, string, string, string, string];
+
+const ROWS: { label: string; cells: Cells }[] = [
   {
     label: "Who can decrypt",
-    cells: ["Only your devices", "The provider's servers", "Whoever holds the private key", "Anyone who can read it"],
+    cells: [
+      "Only your devices",
+      "Usually the provider's servers",
+      "Only your devices",
+      "Whoever holds the private key",
+      "Anyone who can read it",
+    ],
   },
   {
     label: "Setup for one developer",
-    cells: ["One command per repo", "Workspace, projects, tokens", "A key to place per environment", "None"],
+    cells: [
+      "One command per repo",
+      "Workspace, projects, tokens",
+      "An app on every machine",
+      "A key to place per environment",
+      "None",
+    ],
   },
   {
     label: "Safe to hand to an agent",
-    cells: ["The CLI never prints a value", "Their CLIs can print values", "The key decrypts everything", "No"],
+    cells: [
+      "The CLI never prints a value",
+      "Their CLIs can print values",
+      "Its CLI can print a value",
+      "The key decrypts everything",
+      "No",
+    ],
+  },
+  {
+    label: "Run the app with no file on disk",
+    cells: [
+      "klef run injects the env and redacts values from the output",
+      "Run commands inject; output is not redacted",
+      "Its run command injects and masks output",
+      "Exec helpers inject; output is not redacted",
+      "No",
+    ],
   },
   {
     label: "Teams, CI injection, rotation",
-    cells: ["No, by design", "Yes", "CI, through the key", "No"],
+    cells: ["No, by design", "Yes", "Yes, on paid plans", "CI, through the key", "No"],
+  },
+  {
+    label: "If the service shuts down",
+    cells: [
+      "AGPL-3.0: run it on your own Cloudflare account",
+      "Export, then migrate",
+      "Export, then migrate",
+      "Nothing to shut down",
+      "Nothing to shut down",
+    ],
   },
   {
     label: "Cost",
-    cells: ["Free, or self-host", "Free tiers, then per seat", "Free and open source", "Free"],
+    cells: ["Free, or self-host", "Free tiers, then per seat", "Paid subscription", "Free and open source", "Free"],
   },
 ];
 
@@ -49,10 +95,22 @@ const FAQ: { q: string; a: ReactNode }[] = [
     q: "What can my coding agent see?",
     a: (
       <>
-        Through Klef, key names and counts, never values. Once{" "}
-        <code>pull</code> writes a file, it is an ordinary file on your disk
-        that any process running as you could open. The skill and rule that
-        setup installs tell your agent not to.
+        Through Klef, key names and counts, never values. <code>klef run</code>{" "}
+        starts your app with the env injected and redacts the values from its
+        output, so nothing has to be on disk. Once <code>pull</code> writes a
+        file, it is an ordinary file that any process running as you could
+        open; the skill and rule that setup installs tell your agent not to.
+      </>
+    ),
+  },
+  {
+    q: "Why not my password manager?",
+    a: (
+      <>
+        It works, and for many people it is enough. Klef adds the parts a
+        password manager does not: the file comes back byte for byte, you see
+        a line diff before each save, every save is a version, and the CLI is
+        built never to print a value.
       </>
     ),
   },
