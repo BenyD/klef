@@ -8,6 +8,8 @@ import {
   ChevronDown,
   ChevronsUpDown,
   Copy,
+  GitCompare,
+  History,
   KeyRound,
   LayoutGrid,
   PanelLeft,
@@ -34,6 +36,7 @@ export function Landing() {
     <MarketingLayout>
       <main className="m-main">
         <Hero />
+        <Showcase />
         <HowItWorks />
         <Agents />
         <Closing />
@@ -77,8 +80,8 @@ function Hero() {
             </Link>
           </div>
           <div className="m-beat m-hero-tools">
-            <CopyCommand />
             <OnboardAgentPill />
+            <ManualSetup />
           </div>
         </div>
 
@@ -468,7 +471,8 @@ function Agents() {
 
 const SETUP = "npx @klefsh/cli setup";
 
-function CopyCommand() {
+/** The way in without an agent: one line, the command, a copy glyph. */
+function ManualSetup() {
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {
@@ -480,11 +484,9 @@ function CopyCommand() {
     }
   }
   return (
-    <span className="m-cmd">
-      <span>
-        <span className="t-prompt">$ </span>
-        {SETUP}
-      </span>
+    <span className="m-manual">
+      or set up by hand:
+      <code className="m-manual-cmd">{SETUP}</code>
       <button
         type="button"
         className="m-cmd-copy"
@@ -497,6 +499,140 @@ function CopyCommand() {
         </span>
       </button>
     </span>
+  );
+}
+
+const SHOWCASE_ROWS: [string, number][] = [
+  ["DATABASE_URL", 9],
+  ["DIRECT_URL", 9],
+  ["STRIPE_SECRET_KEY", 12],
+  ["STRIPE_WEBHOOK_SECRET", 10],
+  ["OPENAI_API_KEY", 10],
+  ["RESEND_API_KEY", 8],
+  ["SENTRY_DSN", 11],
+  ["NEXT_PUBLIC_APP_URL", 9],
+];
+
+const HISTORY = [
+  ["2 minutes ago", true],
+  ["Yesterday", false],
+  ["Oct 19", false],
+  ["Oct 2", false],
+] as const;
+
+/**
+ * The app at full width: the shell with a file open and its version history
+ * beside it, over the tinted panel, with the three things the table shows
+ * best underneath. The same pieces as the hero's windows, drawn larger.
+ */
+function Showcase() {
+  return (
+    <section className="m-section" id="app" aria-labelledby="app-title">
+      <div className="m-wrap">
+        <Reveal className="m-section-head">
+          <div>
+            <p className="m-label">The app</p>
+            <h2 id="app-title" className="m-h2">
+              Every file, every machine,
+              <br />
+              one place.
+            </h2>
+            <p className="m-lede">
+              Projects and files in the sidebar. Values decrypt only after you
+              unlock, and every save keeps a version.
+            </p>
+          </div>
+          <Link to="/auth" className="m-btn m-btn-soft">
+            <LayoutGrid />
+            Open the app
+          </Link>
+        </Reveal>
+
+        <Reveal delay={80}>
+          <div className="m-showcase" aria-hidden="true">
+            <div className="m-shot m-app m-showcase-shot">
+              <div className="m-shot-body">
+                <Sidebar />
+                <div className="m-app-panel">
+                  <AppHead>
+                    <b className="m-app-crumb m-mono">
+                      .env.production
+                      <ChevronDown />
+                    </b>
+                    <span className="m-app-status">Saved</span>
+                  </AppHead>
+                  <div className="m-app-tabs">
+                    <span className="m-app-tab">.env.local</span>
+                    <span className="m-app-tab m-app-tab-active">
+                      .env.production
+                      <X />
+                    </span>
+                  </div>
+                  <div className="m-app-split">
+                    <ul className="m-env">
+                      {SHOWCASE_ROWS.map(([key, n]) => (
+                        <li key={key}>
+                          <span className="m-env-key">{key}</span>
+                          <span className="m-env-eq">=</span>
+                          <span className="m-env-val">{"\u2022".repeat(n)}</span>
+                        </li>
+                      ))}
+                      <li className="m-env-add">
+                        <Plus />
+                        <span>KEY</span>
+                        <span className="m-env-eq">=</span>
+                        <span>value</span>
+                      </li>
+                    </ul>
+                    <aside className="m-app-hist">
+                      <p className="m-label">
+                        <History />
+                        Version history
+                      </p>
+                      <ol>
+                        {HISTORY.map(([when, current]) => (
+                          <li key={when} className={current ? "is-current" : undefined}>
+                            <span className="m-app-hist-dot" />
+                            <span>{when}</span>
+                            {current ? <em>Current</em> : <i>Compare</i>}
+                          </li>
+                        ))}
+                      </ol>
+                    </aside>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <ul className="m-features">
+            <li>
+              <p className="m-label">
+                <History />
+                Version history
+              </p>
+              <h3>Every save is a version</h3>
+              <p>Compare any two, or load an older one back into the editor.</p>
+            </li>
+            <li>
+              <p className="m-label">
+                <GitCompare />
+                Compare environments
+              </p>
+              <h3>Which keys each one sets</h3>
+              <p>Development against production, names first, values on request.</p>
+            </li>
+            <li>
+              <p className="m-label">
+                <KeyRound />
+                Find a key
+              </p>
+              <h3>One search, every file</h3>
+              <p>&#8984;K finds a key across the workspace and the files missing it.</p>
+            </li>
+          </ul>
+        </Reveal>
+      </div>
+    </section>
   );
 }
 
