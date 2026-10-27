@@ -77,6 +77,17 @@ The CLI never waits on a prompt an agent cannot answer. It detects Claude Code, 
 
 Nothing is written when a command stops this way. The full list of codes is in [JSON output and exit codes](/docs/cli/json/).
 
+## Using a value without reading it
+
+When a task needs a value, such as testing an API key or querying the database, the agent should run the command through Klef instead of opening the env file:
+
+```bash
+klef run --only ANTHROPIC_API_KEY -- node scripts/check-key.js
+klef run --only DATABASE_URL -- sh -c 'psql "$DATABASE_URL" -c "select 1"'
+```
+
+The command gets the variables in its environment, and the agent sees only the command's own output. That output is not masked, so the instructions setup writes tell the agent never to run a command that prints a variable. See [`klef run`](/docs/cli/commands/#klef-run).
+
 ## What agents should not do
 
-Even with Klef, the env file on disk is plaintext. An agent that runs `cat .env.local` puts the values in its context. The instructions setup writes tell it not to; keep that rule in your own prompts as well.
+Even with Klef, the env file on disk is plaintext. An agent that runs `cat .env.local` puts the values in its context. The instructions setup writes tell it not to, and to use `klef run` when it needs a value; keep that rule in your own prompts as well.
