@@ -62,7 +62,10 @@ export const SCOPES: Record<Platform, AuditScope[]> = {
  * production, is audited against what it actually uses. Without a match, the
  * conventional file, at its configured path if it has one.
  */
-export function localFileFor(scope: AuditScope, config: ProjectConfig | null): string {
+export function localFileFor(scope: AuditScope, config: ProjectConfig | null, worker: string | null = null): string {
+  // An explicit "audit" map in .klef.json says it outright.
+  const mapped = config?.audit?.[auditKey(scope, worker)];
+  if (mapped) return mapped;
   const conventional = config ? (localPathFor(config, scope.file) ?? scope.file) : scope.file;
   if (!config) return conventional;
   // Repository secrets and Workers have no environment of their own; they
@@ -79,6 +82,16 @@ export function localFileFor(scope: AuditScope, config: ProjectConfig | null): s
       ) === target,
   );
   return match?.path ?? conventional;
+}
+
+/**
+ * The key a scope has in `.klef.json`'s "audit" map: "vercel:production",
+ * "github:production", "github:repository", "github:workflows",
+ * "cloudflare:." or "cloudflare:workers/image".
+ */
+export function auditKey(scope: AuditScope, worker: string | null = null): string {
+  if (scope.platform === "cloudflare") return `cloudflare:${worker ?? "."}`;
+  return `${scope.platform}:${scope.environment ?? "repository"}`;
 }
 
 export function scopeLabel(scope: AuditScope, worker: string | null = null): string {
@@ -169,15 +182,53 @@ function namesOf(items: unknown, field: string, what: string): string[] {
 }
 
 /** wrangler is usually a dev dependency rather than a global install. */
-function binary(cwd: string, name: string): string {
-  const local = path.join(cwd, "node_modules", ".bin", name);
-  return name === "wrangler" && existsSync(local) ? local : name;
+/**
+ * wrangler is usually a dev dependency rather than a global install: the
+ * Worker's own node_modules first, then the repository's, then PATH.
+ */
+function binary(dirs: string[], name: string): string {
+  if (name !== "wrangler") return name;
+  for (const dir of dirs) {
+    const local = path.join(dir, "node_modules", ".bin", name);
+    if (existsSync(local)) return local;
+  }
+  return name;
+}
+
+const WRANGLER_CONFIGS = ["wrangler.jsonc", "wrangler.json", "wrangler.toml"];
+const SKIP_DIRS = new Set(["node_modules", "dist", "build", "out", ".next", ".turbo", "vendor", "target"]);
+
+/**
+ * Every directory under `root` with a wrangler config, as relative paths
+ * ("." for the root), sorted: a repo can hold several Workers
+ * (workers/image, containers/ai). Bounded and symlink-free.
+ */
+export async function findWorkers(root: string, maxDepth = 4): Promise<string[]> {
+  const { readdir } = await import("node:fs/promises");
+  const found: string[] = [];
+  async function walk(dir: string, depth: number): Promise<void> {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    if (entries.some((e) => e.isFile() && WRANGLER_CONFIGS.includes(e.name))) {
+      found.push(path.relative(root, dir) || ".");
+    }
+    if (depth >= maxDepth) return;
+    for (const e of entries) {
+      if (e.isDirectory() && !e.name.startsWith(".") && !SKIP_DIRS.has(e.name)) await walk(path.join(dir, e.name), depth + 1);
+    }
+  }
+  await walk(root, 0);
+  return found.sort((a, b) => (a === "." ? -1 : b === "." ? 1 : a.localeCompare(b)));
 }
 
 /** The key names a platform holds in a scope. Throws ToolError with a printable reason. */
 export async function listPlatformNames(
   scope: AuditScope,
-  ctx: { cwd: string; env: NodeJS.ProcessEnv },
+  ctx: { cwd: string; env: NodeJS.ProcessEnv; root?: string },
 ): Promise<string[]> {
   const [tool, args, what] =
     scope.platform === "vercel"
@@ -190,7 +241,7 @@ export async function listPlatformNames(
           ]
         : ["wrangler", ["secret", "list", "--format", "json"], "wrangler secret list"];
 
-  const result = await runTool(binary(ctx.cwd, tool), args, ctx);
+  const result = await runTool(binary([ctx.cwd, ctx.root ?? ctx.cwd], tool), args, { cwd: ctx.cwd, env: ctx.env });
   if (result.code !== 0) {
     if (scope.platform === "github" && scope.environment && result.stderr.includes("HTTP 404")) {
       throw new ToolError(`no GitHub environment "${scope.environment}" in this repository`);

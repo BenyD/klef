@@ -34,6 +34,8 @@ import type { VaultTree } from "../../shared/api-types.ts";
 import { login } from "./login.ts";
 import { unlock } from "./unlock.ts";
 import { pull } from "./pull.ts";
+import { collectAudit, summarizeAudit, type AuditEntry } from "./audit.ts";
+import { platformMissing, PLATFORMS } from "../audit.ts";
 import { homedir } from "node:os";
 
 /** Everything setup reaches outside itself for, so tests can stand it in. */
@@ -47,6 +49,8 @@ export interface SetupDeps {
   account: () => Promise<{ email: string; tree: VaultTree } | null>;
   login: () => Promise<number>;
   unlock: () => Promise<number>;
+  /** `klef audit` for the platforms set up here; optional so tests can leave it out. */
+  audit?: () => Promise<AuditEntry[]>;
   /** Pull one vault file to one local path. */
   pullFile: (file: string, localPath: string) => Promise<number>;
 }
@@ -70,6 +74,7 @@ export function defaultSetupDeps(args: ParsedArgs, env: NodeJS.ProcessEnv, cwd: 
     },
     login: () => nested(() => login(parseArgs(["login", ...(hasFlag(args, "paste") ? ["--paste"] : [])]), env)),
     unlock: () => nested(() => unlock(parseArgs(["unlock"]), env)),
+    audit: () => collectAudit(PLATFORMS.filter((p) => platformMissing(p, cwd) === null), cwd, env),
     pullFile: (file, localPath) =>
       nested(() => pull(parseArgs(["pull", "--file", file, "--path", localPath]), env, cwd)),
   };
@@ -143,6 +148,7 @@ export async function setup(
   if (missing.length === 0) {
     step(4, "Every file is already here");
     note(`${cmd(command("sync"), true)} keeps them in line with the vault from now on.`);
+    await auditSummary(deps, report);
     emit(report);
     return agentCode;
   }
@@ -168,6 +174,7 @@ export async function setup(
     (report.pulled as string[]).push(localPath);
   }
   done("Done. New Claude Code and Cursor sessions in this repo already know how to use Klef");
+  await auditSummary(deps, report);
   emit(report);
   return agentCode;
 }
@@ -332,4 +339,27 @@ async function readOrNull(file: string): Promise<string | null> {
 
 async function exists(file: string): Promise<boolean> {
   return access(file).then(() => true, () => false);
+}
+
+/**
+ * The deploy platforms, checked the way `klef audit` does: names only and
+ * read-only, as one line of counts per scope, so setup ends knowing whether
+ * Vercel, GitHub or a Worker holds something this repo does not. A missing
+ * or signed-out platform CLI is skipped quietly here; `klef audit` says why.
+ */
+async function auditSummary(deps: SetupDeps, report: Record<string, unknown>): Promise<void> {
+  if (!deps.audit) return;
+  let entries: AuditEntry[];
+  try {
+    entries = await deps.audit();
+  } catch {
+    return;
+  }
+  const lines = summarizeAudit(entries);
+  report.audit = entries;
+  if (lines.length === 0) return;
+  say();
+  say("Deploy platforms (names only)");
+  for (const line of lines) say(`  ${line}`);
+  note(`${cmd(command("audit"), true)} lists the names.`);
 }
