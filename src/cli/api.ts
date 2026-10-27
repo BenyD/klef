@@ -101,6 +101,16 @@ export class KlefApi {
     return this.request("/api/tree");
   }
 
+  /** Every version of a file, newest first: ids and dates, nothing encrypted. */
+  versions(fileId: string): Promise<{ versions: { id: string; createdAt: string; isCurrent: boolean }[] }> {
+    return this.request(`/api/files/${encodeURIComponent(fileId)}/versions`);
+  }
+
+  /** One version's opaque blob, by id: the base a three-way merge needs. */
+  version(fileId: string, versionId: string): Promise<{ version: CurrentVersion }> {
+    return this.request(`/api/files/${encodeURIComponent(fileId)}/versions/${encodeURIComponent(versionId)}`);
+  }
+
   currentVersion(fileId: string): Promise<{ version: CurrentVersion | null }> {
     return this.request(`/api/files/${encodeURIComponent(fileId)}/current`);
   }
