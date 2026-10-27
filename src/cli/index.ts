@@ -31,6 +31,8 @@ import { sync } from "./commands/sync.ts";
 import { diff } from "./commands/diff.ts";
 import { restore } from "./commands/restore.ts";
 import { setup, defaultSetupDeps } from "./commands/setup.ts";
+import { set } from "./commands/set.ts";
+import { recover } from "./commands/recover.ts";
 import { run } from "./commands/run.ts";
 import { AGENT_COMMAND } from "./agent-spawn.ts";
 import { runAgentProcess } from "./agent.ts";
@@ -46,7 +48,9 @@ const RUN: Record<string, Run> = {
   logout: (_args, env) => logout(env),
   status: (args, env, cwd) => status(args, env, cwd),
   link: (args, env, cwd) => link(args, env, cwd),
-  list: (args, env) => list(args, env),
+  list: (args, env, cwd) => list(args, env, cwd),
+  set: (args, env, cwd) => set(args, env, cwd),
+  recover: (args, env, cwd) => recover(args, env, cwd),
   pull: (args, env, cwd) => pull(args, env, cwd),
   push: (args, env, cwd) => push(args, env, cwd),
   sync: (args, env, cwd) => sync(args, env, cwd),
