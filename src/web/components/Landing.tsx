@@ -45,7 +45,7 @@ function Hero() {
         <div className="m-hero-copy">
           <p className="m-label m-eyebrow m-beat">
             <KlefMark className="m-eyebrow-mark" />
-            Open source &middot; AGPL-3.0 &middot; Self-hostable
+            Open source and self-hostable
           </p>
           <h1 id="hero-title" className="m-beat">
             Your .env files, in sync on every machine.{" "}
@@ -54,9 +54,9 @@ function Hero() {
             </span>
           </h1>
           <p className="m-hero-lead m-beat">
-            Klef keeps <code>.env.local</code> and <code>.env.production</code>{" "}
-            the same on every machine. Encrypted on your device, synced by a
-            CLI that never prints a value, so your coding agents can run it.
+            Keep <code>.env.local</code> and <code>.env.production</code> the
+            same on every machine. Encrypted on your device. Safe to hand to
+            Claude Code and Cursor.
           </p>
           <div className="m-actions-row m-beat">
             <Link to="/auth" className="m-btn m-btn-ink">
@@ -67,6 +67,9 @@ function Hero() {
               <Chev />
               Read the docs
             </Link>
+          </div>
+          <div className="m-beat">
+            <CopyCommand />
           </div>
         </div>
 
@@ -226,7 +229,7 @@ function VaultCard() {
             ))}
           </tbody>
         </table>
-        <div className="m-app-foot">9 variables &middot; 0 values shown</div>
+        <div className="m-app-foot">9 variables, 0 values shown</div>
       </div>
     </>
   );
@@ -270,7 +273,7 @@ function CompareCard() {
             ))}
           </tbody>
         </table>
-        <div className="m-app-foot">2 keys differ &middot; 0 values shown</div>
+        <div className="m-app-foot">2 keys differ, 0 values shown</div>
       </div>
     </>
   );
@@ -290,7 +293,7 @@ function HowItWorks() {
             </h2>
             <p className="m-lede">
               Setup links a checkout to its files. Sync works out which side
-              changed, and stops for you when both did.
+              changed.
             </p>
           </div>
           <Link to="/docs/quickstart" className="m-btn m-btn-soft">
@@ -363,25 +366,19 @@ function Agents() {
                 <p className="m-label">Never printed</p>
                 <h3>No value, ever</h3>
                 <p>
-                  There is no <code>klef get</code> and no <code>--print</code>. Pull
-                  writes the file at mode 0600 and reports a count.
+                  No <code>klef get</code>, no <code>--print</code>. Pull writes the
+                  file and reports a count.
                 </p>
               </li>
               <li>
                 <p className="m-label">Passphrase</p>
                 <h3>Your terminal only</h3>
-                <p>
-                  The CLI reads it from your terminal, never from stdin, a flag or
-                  the agent driving it.
-                </p>
+                <p>Read from your terminal. Never from stdin, a flag or the agent.</p>
               </li>
               <li>
                 <p className="m-label">Setup</p>
                 <h3>Taught once</h3>
-                <p>
-                  Setup writes a Claude Code skill and a Cursor rule into the repo,
-                  so every new session already knows how to sync.
-                </p>
+                <p>Setup writes a Claude Code skill and a Cursor rule into the repo.</p>
               </li>
             </ul>
           </Reveal>
@@ -444,7 +441,6 @@ function Closing() {
             Self-host guide
           </a>
         </div>
-        <CopyCommand />
       </Reveal>
     </section>
   );

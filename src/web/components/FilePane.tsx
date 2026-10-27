@@ -480,9 +480,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
                     {relativeTime(created)}
                   </time>
                   {v.isCurrent && (
-                    <Badge variant="secondary" className="font-normal">
-                      current
-                    </Badge>
+                    <Badge variant="outline">Current</Badge>
                   )}
                 </span>
                 <time

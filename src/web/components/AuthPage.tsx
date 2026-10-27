@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ArrowLeft, CircleAlert, Fingerprint } from "lucide-react";
 import { KlefMark } from "./KlefMark.tsx";
+import { CanvasField } from "./PixelField.tsx";
 import {
   signInWithGitHub,
   signInWithGoogle,
@@ -54,7 +55,8 @@ export function AuthPage() {
   }
 
   return (
-    <div className="bg-sidebar relative flex min-h-svh flex-col items-center justify-center gap-6 px-4 py-10">
+    <div className="klef-screen klef-canvas bg-sidebar flex min-h-svh flex-col items-center justify-center gap-6 px-4 py-10">
+      <CanvasField />
       <Link
         to="/"
         className={`${buttonVariants({ variant: "ghost", size: "sm" })} text-muted-foreground absolute top-4 left-4`}
@@ -73,10 +75,10 @@ export function AuthPage() {
 
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">
-            Welcome to Klef
-          </CardTitle>
-          <CardDescription>Sign in or create your account.</CardDescription>
+          <CardTitle className="text-lg font-semibold">Sign in to Klef</CardTitle>
+          <CardDescription>
+            Google, GitHub or a passkey. A new account starts the same way.
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {error && (
@@ -127,7 +129,7 @@ export function AuthPage() {
         </CardContent>
         <CardFooter>
           <p className="text-muted-foreground w-full text-center text-xs leading-relaxed">
-            By continuing, you agree to Klef's{" "}
+            By continuing you agree to the{" "}
             <Link
               to="/terms"
               className="hover:text-foreground underline underline-offset-2"

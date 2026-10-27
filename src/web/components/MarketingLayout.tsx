@@ -40,7 +40,8 @@ const NAV: { label: string; to: string }[] = [
 
 /**
  * A sticky bar with a hairline under it: the wordmark, the pages, and on the
- * right GitHub, sign in and the one primary action. Phones get a menu button
+ * right GitHub and the one primary action (the auth page signs you in or
+ * creates the account, so there is no second button for it). Phones get a menu button
  * and a sheet of links, closed by Escape, a link, or widening the window.
  */
 function SiteHeader() {
@@ -77,13 +78,10 @@ function SiteHeader() {
         </nav>
 
         <div className="m-actions">
-          <a href={GITHUB} target="_blank" rel="noreferrer" className="m-btn m-btn-ghost m-hide-sm">
+          <a href={GITHUB} target="_blank" rel="noreferrer" className="m-btn m-btn-line m-hide-sm">
             <GitHubIcon />
             GitHub
           </a>
-          <Link to="/auth" className="m-btn m-btn-soft m-hide-sm">
-            Sign in
-          </Link>
           <Link to="/auth" className="m-btn m-btn-ink">
             <ChevronRight className="m-chev" aria-hidden="true" />
             Get started free
@@ -115,9 +113,6 @@ function SiteHeader() {
             <Link to="/auth" className="m-btn m-btn-ink" onClick={close}>
               Get started free
             </Link>
-            <Link to="/auth" className="m-btn m-btn-soft" onClick={close}>
-              Sign in
-            </Link>
           </div>
         </nav>
       )}
@@ -133,28 +128,35 @@ const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
     links: [
       { label: "How it works", href: "/#how-it-works" },
       { label: "For coding agents", href: "/#agents" },
-      { label: "Security model", to: "/security" },
+      { label: "Security", to: "/security" },
       { label: "Compare", to: "/compare" },
-      { label: "About", to: "/about" },
     ],
   },
   {
     title: "Developers",
     links: [
       { label: "Documentation", to: "/docs" },
+      { label: "Quickstart", to: "/docs/quickstart" },
       { label: "CLI reference", to: "/docs/cli" },
-      { label: "CLI on npm", href: "https://www.npmjs.com/package/@klefsh/cli", external: true },
       { label: "Self-hosting", to: "/docs/guides/self-hosting" },
+      { label: "CLI on npm", href: "https://www.npmjs.com/package/@klefsh/cli", external: true },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About", to: "/about" },
       { label: "GitHub", href: GITHUB, external: true },
+      { label: "Changelog", to: "/docs/changelog" },
+      { label: "Report a vulnerability", href: `${GITHUB}/blob/main/SECURITY.md`, external: true },
     ],
   },
   {
     title: "Legal",
     links: [
-      { label: "Privacy", to: "/privacy" },
       { label: "Terms", to: "/terms" },
+      { label: "Privacy", to: "/privacy" },
       { label: "AGPL-3.0 licence", href: `${GITHUB}/blob/main/LICENSE`, external: true },
-      { label: "Report a vulnerability", href: `${GITHUB}/blob/main/SECURITY.md`, external: true },
     ],
   },
 ];
@@ -165,14 +167,7 @@ function SiteFooter() {
       <div className="m-wrap m-footer-grid">
         <div className="m-footer-brand">
           <Brand />
-          <p>
-            End-to-end encrypted .env sync for one developer and their coding
-            agents. Open source, and self-hostable on Cloudflare.
-          </p>
-          <a href={GITHUB} target="_blank" rel="noreferrer" className="m-btn m-btn-soft m-btn-sm">
-            <GitHubIcon />
-            Star on GitHub
-          </a>
+          <p>Encrypted .env sync for you and your coding agents.</p>
         </div>
 
         {FOOTER_COLUMNS.map((col) => (
@@ -200,7 +195,7 @@ function SiteFooter() {
 
       <div className="m-wrap m-footer-base">
         <span className="m-label">
-          &copy; {new Date().getFullYear()} Klef &middot; Built by{" "}
+          &copy; {new Date().getFullYear()} Klef. Built by{" "}
           <a
             href="https://beny.one"
             target="_blank"
@@ -211,7 +206,7 @@ function SiteFooter() {
             Beny Dishon K
           </a>
         </span>
-        <span className="m-label">No analytics. No trackers.</span>
+        <span className="m-label m-footer-mid">No analytics. No trackers.</span>
         <span className="m-footer-tools">
           <a href="#top" className="m-icon-btn" aria-label="Back to top">
             <ArrowUp />

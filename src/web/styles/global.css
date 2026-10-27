@@ -508,16 +508,17 @@
   }
 }
 
-/* The field on the splash: centred, with the middle masked clear so the
-   mark sits on quiet canvas. */
-.klef-splash {
+/* A canvas screen (splash, sign-in, unlock, CLI connect): the field sits
+   behind everything, centred, with the middle masked clear so the card or
+   the mark sits on quiet canvas. */
+.klef-canvas {
   position: relative;
   overflow: hidden;
 }
-.klef-splash > :not(.klef-splash-field) {
+.klef-canvas > :not(.klef-canvas-field) {
   position: relative;
 }
-.klef-splash-field {
+.klef-canvas-field {
   position: absolute;
   left: 50%;
   top: 50%;

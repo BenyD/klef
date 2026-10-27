@@ -4,6 +4,7 @@ import { Check, Terminal, TriangleAlert } from "lucide-react";
 import { apiFetch } from "../api-fetch.ts";
 import { normalizeUserCode } from "../../shared/device-code.ts";
 import { KlefMark } from "./KlefMark.tsx";
+import { CanvasField } from "./PixelField.tsx";
 import { ThemeToggle } from "./ThemeToggle.tsx";
 import { Button } from "./ui/button.tsx";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card.tsx";
@@ -92,7 +93,8 @@ export function CliAuthorize() {
   const asking = pending.state === "idle" || pending.state === "error" || pending.state === "loading";
 
   return (
-    <main className="klef-screen bg-sidebar relative flex min-h-svh flex-col items-center justify-center gap-6 px-4 py-10">
+    <main className="klef-screen klef-canvas bg-sidebar flex min-h-svh flex-col items-center justify-center gap-6 px-4 py-10">
+      <CanvasField />
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
