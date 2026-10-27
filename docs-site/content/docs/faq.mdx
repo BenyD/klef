@@ -13,7 +13,7 @@ No. Files are encrypted on your device before upload, with a key derived from a 
 
 ## What can a coding agent see?
 
-Key names, file names and counts. No Klef command prints a value, and the agent cannot unlock the vault; you do that at a terminal. The env file the CLI writes is plaintext on disk, though, so an agent that reads it directly would see the values. The instructions `klef setup` writes tell agents not to. See [Using Klef with Claude Code and Cursor](/docs/guides/coding-agents/).
+Key names, file names and counts. No Klef command prints a value, and the agent cannot unlock a device on its own; you approve that in the browser, or at a terminal. The env file the CLI writes is plaintext on disk, though, so an agent that reads it directly would see the values. The instructions `klef setup` writes tell agents not to. See [Using Klef with Claude Code and Cursor](/docs/guides/coding-agents/).
 
 ## I forgot my passphrase.
 
@@ -33,7 +33,7 @@ No. Klef is personal: one account, one vault. There is no sharing or team access
 
 ## What does the CLI need?
 
-Node.js 22.18 or newer. It runs on macOS, Linux and Windows. The unlock agent, which lets one passphrase cover a run of commands, is not available on Windows yet; there, each command asks for the passphrase.
+Node.js 22.18 or newer. It runs on macOS, Linux and Windows. Unlocking at login keeps the key in the OS keychain on all three; only the time-limited `klef unlock --for`, which needs the unlock agent, is not available on Windows yet.
 
 ## Which files can I store?
 
