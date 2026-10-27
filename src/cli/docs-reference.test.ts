@@ -7,7 +7,7 @@ import { COMMANDS, GLOBAL_FLAGS, topicHelp } from "./commands-table.ts";
 // every command and flag the CLI has must be on the page, and the error and
 // exit codes must match what `klef help` prints.
 
-const DOCS = path.join(import.meta.dirname, "../../docs-site/src/content/docs/cli");
+const DOCS = path.join(import.meta.dirname, "../../docs-site/content/docs/cli");
 const page = (name: string) => readFile(path.join(DOCS, name), "utf8");
 
 /** The text of one `### klef <name>` section. */
@@ -22,7 +22,7 @@ function section(markdown: string, name: string): string {
 
 describe("docs-site CLI reference", () => {
   it("has a section for every command, naming each of its flags", async () => {
-    const commands = await page("commands.md");
+    const commands = await page("commands.mdx");
     for (const c of COMMANDS.filter((c) => !c.hidden)) {
       const text = section(commands, c.name);
       expect(text, `klef ${c.name}`).not.toBe("");
@@ -32,12 +32,12 @@ describe("docs-site CLI reference", () => {
   });
 
   it("lists every global flag", async () => {
-    const overview = await page("index.md");
+    const overview = await page("index.mdx");
     for (const f of GLOBAL_FLAGS) expect(overview).toContain(`--${f.name}`);
   });
 
   it("documents the same error codes and exit codes as `klef help`", async () => {
-    const json = await page("json.md");
+    const json = await page("json.mdx");
     const helpCodes = [...topicHelp("json", "klef").matchAll(/^ {2}([a-z_]+) {2,}/gm)].map((m) => m[1]);
     const docCodes = [...json.matchAll(/^\| `([a-z_]+)` \|/gm)].map((m) => m[1]);
     expect(docCodes.sort()).toEqual(helpCodes.sort());
