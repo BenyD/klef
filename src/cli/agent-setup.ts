@@ -73,12 +73,29 @@ value, which is what makes it safe for you to run.
   pipe or pass one to the CLI. It reads the passphrase from the terminal on
   purpose, so it cannot pass through you.
 - To start the app, run the tests, or run any script that needs the
-  variables, prefer \`${cli} run -- <command>\` over pulling: it puts the
-  variables straight into that command's environment, writes nothing to
-  disk, and replaces any secret value the command prints with
-  \`[klef:redacted]\` before it reaches you. Pull only when a file on disk
-  is really needed (a tool that reads \`.env\` itself and cannot take the
-  environment).
+  variables, use \`${cli} run -- <command>\` instead of reading the file:
+  it puts the variables straight into that command's environment, and
+  replaces any secret value the command prints with \`[klef:redacted]\`
+  before it reaches you. With \`--from-vault\` it needs no file on disk
+  at all. Pull only when a tool reads \`.env\` itself and cannot take
+  the environment.
+
+### Using a value without reading it
+
+When a task needs a variable's value (testing an API key, running a query
+against \`DATABASE_URL\`, starting the app), never open the env file. Run the
+command through Klef, which puts the variables in its environment:
+
+    ${cli} run -- npm run dev
+    ${cli} run --only ANTHROPIC_API_KEY -- node scripts/check-key.js
+    ${cli} run --only DATABASE_URL -- sh -c 'psql "$DATABASE_URL" -c "select 1"'
+    ${cli} run --from-vault -- pnpm test
+
+Wrap any \`$NAME\` in \`sh -c '...'\` with single quotes, so your own shell does
+not expand it (to nothing) before Klef runs. Klef prints no value, and masks
+every value from the file in the command's output; still prefer commands that
+report success or failure over ones that print a variable (\`echo\`, \`env\`,
+\`printenv\`, a debug log of its config), and never pass \`--no-redact\`.
 
 ### Which files are synced
 
@@ -97,7 +114,7 @@ unlocked, each file's state (\`in-sync\`, \`edited-here\`, \`changed-in-vault\`,
 ### Commands
 
     ${cli} status --json         # the one call to start with
-    ${cli} run -- npm run dev    # run with the variables, no file, output redacted
+    ${cli} run -- npm run dev    # run with the variables, output redacted
     ${cli} sync --dry-run --json # what a sync would do, writing nothing
     ${cli} sync --yes            # pull or push each file, whichever side changed
     ${cli} diff --all --json     # which keys differ (names, never values)

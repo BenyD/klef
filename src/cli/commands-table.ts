@@ -167,21 +167,29 @@ export const COMMANDS: CommandSpec[] = [
   {
     name: "run",
     group: "Everyday",
-    args: "[flags] -- <command...>",
-    summary: "Run a command with the vault's variables, and no file on disk",
+    args: "[flags] -- <command> [args...]",
+    summary: "Run a command with an env file's variables, without opening the file",
     description:
-      "Decrypts the env file in memory, starts the command with its variables in the " +
-      "environment (the file wins over a variable already set), and forwards the command's " +
-      "output with every secret value replaced by [klef:redacted]. Nothing is written to " +
-      "disk, so there is no .env for anyone to read. The exit code is the command's own; " +
-      "Ctrl-C and SIGTERM are passed on to it. Under --json its output goes to stderr.",
-    flags: [FILE, ALL, { name: "no-redact", description: "Forward the output as it is, values included (warns)" }],
-    examples: [
-      ["klef run -- npm run dev", "The linked file's variables, output redacted"],
-      ["klef run --file .env.production -- node build.js", "Another file"],
-      ["klef run --all -- pnpm test", "Every file in .klef.json; a later file wins a shared key"],
+      "Starts the command with the linked file's variables (or --file's) in its environment, " +
+      "read from the local file, or decrypted from the vault in memory with --from-vault, so " +
+      "nothing need be on disk. The file wins over a variable already set. The command's " +
+      "output comes back through klef with every value replaced by [klef:redacted], so a key " +
+      "the app logs never reaches the terminal or an agent; --no-redact passes it through as " +
+      "it is. The exit code is the command's own. Values are decoded as dotenv loaders do; " +
+      "there is no ${VAR} expansion inside the file. Under --json the output goes to stderr.",
+    flags: [
+      { name: "file", value: "name", description: "Which env file (default: the linked one)" },
+      ALL,
+      { name: "only", value: "KEY,KEY", description: "Pass only these variables" },
+      { name: "from-vault", description: "Use the vault's copy instead of the local file (needs the vault unlocked)" },
+      { name: "no-redact", description: "Forward the output as it is, values included (warns)" },
     ],
-    json: "{ files: [ { file, variables, version } ], exitCode, redactions, redacted }",
+    examples: [
+      ["klef run -- npm run dev", "The app, with .env.local loaded and its output redacted"],
+      ["klef run --only DATABASE_URL -- sh -c 'psql \"$DATABASE_URL\" -c \"select 1\"'", "One variable in a query; single quotes so your shell does not expand it first"],
+      ["klef run --file .env.production --from-vault -- node scripts/check.js", "The vault's production values, nothing on disk"],
+    ],
+    json: "{ files: [ { file, source, variables } ], variables, exitCode, redactions, redacted }  source: local | vault",
   },
   {
     name: "push",
@@ -418,7 +426,10 @@ export function commandHelp(spec: CommandSpec, cli: string): string {
     spec.description ?? spec.summary,
     "",
     "Usage",
-    `  ${cli} ${spec.name}${spec.args ? ` ${spec.args}` : ""}${usageFlags}`,
+    // Flags go before a `--` that hands the rest to another program.
+    spec.args?.startsWith("--")
+      ? `  ${cli} ${spec.name}${usageFlags} ${spec.args}`
+      : `  ${cli} ${spec.name}${spec.args ? ` ${spec.args}` : ""}${usageFlags}`,
   ];
   if (spec.aliases?.length) lines.push("", "Aliases", `  ${spec.aliases.join(", ")}`);
   if (spec.flags.length) lines.push("", "Flags", ...table(spec.flags.map((f) => [flagLabel(f), f.description])));

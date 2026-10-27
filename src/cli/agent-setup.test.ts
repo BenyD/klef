@@ -29,7 +29,7 @@ describe("instructionsBody", () => {
   });
 
   it("covers status, run, pull --all, push --all, and unlock", () => {
-    for (const sub of ["status", "run -- npm run dev", "run -- <command>", "pull --all", "push --all --yes", "unlock", "list --json"]) {
+    for (const sub of ["status", "run -- npm run dev", "run -- <command>", "run --from-vault -- pnpm test", "pull --all", "push --all --yes", "unlock", "list --json"]) {
       expect(body).toContain(`${CLI} ${sub}`);
     }
   });

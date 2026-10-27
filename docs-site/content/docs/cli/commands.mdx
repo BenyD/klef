@@ -143,30 +143,6 @@ With `--all`, every file is checked before anything is written, so it writes all
 
 JSON `data`: `{ files: [ { file, path, variables, version } ] }`
 
-### klef run
-
-Runs a command with the vault's variables in its environment and no file on disk. The env file is decrypted in memory, parsed as dotenv would, and merged over the current environment (the file wins). The command's output is forwarded with every secret value replaced by `[klef:redacted]`, and its exit code is passed through. Ctrl-C and SIGTERM are passed on to it. See [klef run](/docs/cli/run/) for the rules.
-
-```bash
-klef run [flags] -- <command...>
-```
-
-| Flag | Does |
-| --- | --- |
-| `--file <name>` | One env file in the vault, by name |
-| `--all` | Every file listed in `.klef.json`, merged, the later file winning a shared key |
-| `--no-redact` | Forward the output as it is, values included (warns) |
-
-```bash
-klef run -- npm run dev                          # the linked file's variables, output redacted
-klef run --file .env.production -- node build.js  # another file
-klef run --all -- pnpm test                       # every file in .klef.json
-```
-
-Under `--json` the command's output goes to stderr, so stdout carries one object.
-
-JSON `data`: `{ files: [ { file, variables, version } ], exitCode, redactions, redacted }`
-
 ### klef push
 
 Saves local env files to the vault as new versions. It shows what will change in line counts and asks once for all of them. Every earlier version is kept, so a push can be undone in the web app. An empty local file is refused.
@@ -209,6 +185,37 @@ klef diff --all --exit-code  # exit 10 if anything differs, for scripts
 ```
 
 JSON `data`: `{ files: [ { file, path, state, reason, onlyLocal, onlyVault, changed } ] }`. `state` uses the same words as `sync`'s `action`.
+
+### klef run
+
+Runs a command with an env file's variables in its environment, so nothing, and no coding agent, has to open the file to use what is in it: starting the app, running the tests, a one-off query against `DATABASE_URL`. It reads the local file by default, which needs no unlock; `--from-vault` decrypts the vault's copy in memory instead, so nothing need be on disk. The command's output comes back through klef with every value from the file replaced by `[klef:redacted]`. See [klef run](/docs/cli/run/) for the rules.
+
+```bash
+klef run [flags] -- <command> [args...]
+```
+
+| Flag | Does |
+| --- | --- |
+| `--file <name>` | Which env file (default: the linked one) |
+| `--all` | Every file listed in `.klef.json`, merged, the later file winning a shared key |
+| `--only <KEY,KEY>` | Pass only these variables |
+| `--from-vault` | Use the vault's copy instead of the local file (needs the vault unlocked) |
+| `--no-redact` | Forward the output as it is, values included (warns) |
+
+```bash
+klef run -- npm run dev                                                   # the app, with .env.local loaded
+klef run --only DATABASE_URL -- sh -c 'psql "$DATABASE_URL" -c "select 1"'  # one variable in a query
+klef run --file .env.production --from-vault -- node scripts/check.js     # the vault's production values
+```
+
+- **Put the command after `--`**, so its flags are its own. klef also stops reading its own flags at the first word that is not one, so `klef run npm run dev --port 3000` works too.
+- **Use `sh -c '...'` with single quotes** for a command that mentions `$NAME`. Otherwise your own shell expands it, to nothing, before klef runs.
+- **The output is redacted, the exit code is the command's.** stdin is the command's own. klef prints one line of its own on stderr (`klef: 3 variables from .env.local; ...`, none with `-q`) and no value. With `--no-redact` the command gets the terminal back and its output passes through unmasked, with a warning.
+- Values are decoded the way dotenv loaders read them: quotes removed, inline ` #` comments dropped. There is no `${VAR}` expansion inside the file. File values take precedence over variables already set in your environment.
+
+Under `--json` the command's output goes to stderr, so stdout carries one object.
+
+JSON `data`: `{ files: [ { file, source, variables } ], variables, exitCode, redactions, redacted }`. `source` is `local` or `vault`.
 
 ## Unlock
 

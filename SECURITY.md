@@ -93,6 +93,16 @@ added later is browser-only until someone deliberately opens it.
 
 ## What the CLI will not do
 
+`klef run` is the one command that hands values to something else: the
+program it starts gets them in its environment. Its output comes back
+through klef, which replaces every value it handed over with
+`[klef:redacted]` before the terminal, a log or an agent sees it; only
+`--no-redact` passes the output through unmasked, and warns. Values under
+5 characters, and settings such as `true` or `production`, are not masked.
+Agent instructions tell agents to use `klef run` rather than opening the env
+file, which would put every value in their context at once, and never to
+pass `--no-redact`.
+
 - **It never prints a secret value.** There is no `klef get`, no `--print`.
   `pull` writes a file at mode `0600` and reports a count; `push` reports how
   many lines changed. Errors are redacted on the way out as a backstop.
