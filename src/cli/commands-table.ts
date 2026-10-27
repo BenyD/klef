@@ -189,6 +189,30 @@ export const COMMANDS: CommandSpec[] = [
     json: "{ files: [ { file, path, state, reason, onlyLocal, onlyVault, changed } ] }",
   },
   {
+    name: "run",
+    group: "Everyday",
+    args: "-- <command> [args...]",
+    summary: "Run a command with an env file's variables, without opening the file",
+    description:
+      "Starts the command with the linked file's variables (or --file's) in its environment, " +
+      "read from the local file, or decrypted from the vault with --from-vault. stdin, stdout, " +
+      "stderr and the exit code pass straight through, unmasked: klef prints no value, but the " +
+      "command gets them all and can print any of them. To use a variable inside the command, " +
+      "wrap it in sh -c '...' so your own shell does not expand $NAME before klef runs. Values " +
+      "are decoded as dotenv loaders do; there is no ${VAR} expansion inside the file.",
+    flags: [
+      { name: "file", value: "name", description: "Which env file (default: the linked one)" },
+      { name: "only", value: "KEY,KEY", description: "Pass only these variables" },
+      { name: "from-vault", description: "Use the vault's copy instead of the local file (needs the vault unlocked)" },
+    ],
+    examples: [
+      ["klef run -- npm run dev", "The app, with .env.local loaded"],
+      ["klef run --only DATABASE_URL -- sh -c 'psql \"$DATABASE_URL\" -c \"select 1\"'", "One variable in a query; single quotes so your shell does not expand it first"],
+      ["klef run --file .env.production --from-vault -- node scripts/check.js", "The vault's production values"],
+    ],
+    json: "(passes the command's output through; --json is not supported)",
+  },
+  {
     name: "unlock",
     group: "Unlock",
     summary: "Unlock this device with the passphrase, once",
@@ -396,7 +420,10 @@ export function commandHelp(spec: CommandSpec, cli: string): string {
     spec.description ?? spec.summary,
     "",
     "Usage",
-    `  ${cli} ${spec.name}${spec.args ? ` ${spec.args}` : ""}${usageFlags}`,
+    // Flags go before a `--` that hands the rest to another program.
+    spec.args?.startsWith("--")
+      ? `  ${cli} ${spec.name}${usageFlags} ${spec.args}`
+      : `  ${cli} ${spec.name}${spec.args ? ` ${spec.args}` : ""}${usageFlags}`,
   ];
   if (spec.aliases?.length) lines.push("", "Aliases", `  ${spec.aliases.join(", ")}`);
   if (spec.flags.length) lines.push("", "Flags", ...table(spec.flags.map((f) => [flagLabel(f), f.description])));
