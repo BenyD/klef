@@ -1,36 +1,21 @@
-import { useId } from "react";
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import { GITHUB } from "./source";
 
-// The woven asterisk, as in src/web/components/KlefMark.tsx: three loops,
-// each cut by the ones drawn after it so the weave works in currentColor,
-// the top loop in ember.
-const LOOP = { x: 38, y: 12, width: 24, height: 76, rx: 12 };
-const ANGLES = [0, 60, 120];
+// The Klef mark, "Strand": three bars woven into an asterisk, the last in
+// ember. The path data is src/web/lib/strand.ts's STRAND_PATHS, copied here
+// because the docs site does not import from the app; `pnpm test` checks the
+// app's copy against the brand package.
+const STRAND_PATHS = [
+  "M67 17.091 L67 10 A8 8 0 0 0 51 10 L51 26.329 Z M51 51.732 L51 90 A8 8 0 0 0 67 90 L67 42.494 Z",
+  "M70 81.177 L76.141 84.722 A8 8 0 0 0 84.141 70.866 L70 62.702 Z M48 50 L14.859 30.866 A8 8 0 0 0 6.859 44.722 L48 68.475 Z",
+  "M13 51.732 L6.859 55.278 A8 8 0 0 0 14.859 69.134 L29 60.97 Z M51 48.268 L84.141 29.134 A8 8 0 0 0 76.141 15.278 L35 39.03 Z",
+];
 
 function Mark() {
-  const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   return (
-    <svg viewBox="0 0 100 100" fill="none">
-      <defs>
-        {ANGLES.slice(0, -1).map((_, i) => (
-          <mask key={i} id={`${id}-${i}`} maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
-            <rect width="100" height="100" fill="white" />
-            {ANGLES.slice(i + 1).map((a) => (
-              <rect key={a} {...LOOP} stroke="black" strokeWidth="18" transform={`rotate(${a} 50 50)`} />
-            ))}
-          </mask>
-        ))}
-      </defs>
-      {ANGLES.map((a, i) => (
-        <g key={a} mask={i < ANGLES.length - 1 ? `url(#${id}-${i})` : undefined}>
-          <rect
-            {...LOOP}
-            stroke={i === ANGLES.length - 1 ? "var(--primary)" : "currentColor"}
-            strokeWidth="9"
-            transform={`rotate(${a} 50 50)`}
-          />
-        </g>
+    <svg viewBox="-8 -8 116 116">
+      {STRAND_PATHS.map((d, i) => (
+        <path key={d} d={d} fill={i === STRAND_PATHS.length - 1 ? "var(--primary)" : "currentColor"} />
       ))}
     </svg>
   );

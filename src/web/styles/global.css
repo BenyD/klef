@@ -276,9 +276,9 @@
   }
 }
 
-/* The splash (see components/Splash.tsx): the mark weaves itself, one loop
+/* The splash (see components/Splash.tsx): the mark weaves itself, one strand
    after another, then a hairline keeps moving so a slow network still reads
-   as loading rather than stuck. The loops are the mark's <g> children, in
+   as loading rather than stuck. The strands are the mark's <g> children, in
    drawing order; transform-box lets them turn about the viewBox centre. */
 @keyframes klef-splash-in {
   from {

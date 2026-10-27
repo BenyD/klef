@@ -21,13 +21,14 @@ diverged it is marked inline.
 |---|---|
 | Access tokens | `db/migrations/0012_access_tokens.sql`, `src/api/access-token.ts`, `src/api/tokens.ts` |
 | Token management UI | Settings → Security → Developer |
-| CLI | `src/cli/` — `login`, `logout`, `status`, `link`, `pull`, `push`, `unlock`, `lock` |
+| CLI | `src/cli/` — `login`, `logout`, `status`, `link`, `pull`, `push`, `run`, `unlock`, `lock` |
 | Unlock agent | `src/cli/agent.ts`, `agent-client.ts`, `agent-spawn.ts`, `socket-dir.ts`, `vault-key.ts` |
 | Agent timeout | `klef unlock --for 8h`: 15 minutes by default, up to 7 days (`MAX_LOCK_MINUTES` in `src/shared/lock-policy.ts`) |
 | Multi-file sync | `files` in `.klef.json` (`src/cli/project-config.ts`), `push --all`, `pull --all` |
 | Two-way sync | `sync`, `diff`, `restore`; `src/cli/sync-plan.ts` decides, `project-sync.ts` carries it out, `sync-state.ts` remembers |
 | Default files | `link` records `.env.local` and `.env.production` (`src/cli/default-files.ts`) |
 | Platform audit | `klef audit [vercel\|github\|cloudflare] [--json]`: key names only, read-only (`src/cli/audit.ts`) |
+| Run with the variables | `klef run [--from-vault] -- <command>`: the file (local, or decrypted in memory) injected into the child's environment, values masked in its output (`src/cli/commands/run.ts`, `redact.ts`, `dotenv-values.ts`) |
 | Machine output | `--json` on every command: one envelope with `ok`, `data` or `error.code` + `next`; fixed exit codes (`src/cli/ui.ts`, `klef help json`, `klef help exit-codes`) |
 | Published package | `@klefsh/cli`, one bundled file, zero required dependencies |
 | Browser sign-in | `db/migrations/0013_device_authorizations.sql`, `src/api/device.ts`, `/cli` |
