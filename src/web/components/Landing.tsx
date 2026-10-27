@@ -1,20 +1,33 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router";
-import { Check, ChevronRight, Copy, Search } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  Bot,
+  Check,
+  ChevronDown,
+  ChevronsUpDown,
+  Copy,
+  KeyRound,
+  LayoutGrid,
+  PanelLeft,
+  Plus,
+  Search,
+  Server,
+  X,
+} from "lucide-react";
 import { MarketingLayout } from "./MarketingLayout.tsx";
-import { AgentPrompts } from "./AgentPrompts.tsx";
+import { AgentPrompts, OnboardAgentPill } from "./AgentPrompts.tsx";
 import { KlefMark } from "./KlefMark.tsx";
 import { PixelField } from "./PixelField.tsx";
 import { Reveal } from "./Reveal.tsx";
-import { Cmd, Out, StepTabs, Yes } from "./LandingTerminal.tsx";
+import { Cmd, Done, Out, StepTabs, Yes } from "./LandingTerminal.tsx";
 
 // The landing page: a hero, two sections and a closing line. The detail
 // lives on its own pages (/compare, /security, /docs). Every transcript is
 // the CLI's real output and none shows a value, because the CLI never prints
 // one. The page is prerendered, so nothing here touches a browser API at
 // render time.
-
-const GITHUB = "https://github.com/BenyD/klef";
 
 export function Landing() {
   return (
@@ -27,11 +40,6 @@ export function Landing() {
       </main>
     </MarketingLayout>
   );
-}
-
-/** A leading chevron, the way every button and text link here points. */
-export function Chev() {
-  return <ChevronRight className="m-chev" aria-hidden="true" />;
 }
 
 function Hero() {
@@ -60,16 +68,17 @@ function Hero() {
           </p>
           <div className="m-actions-row m-beat">
             <Link to="/auth" className="m-btn m-btn-ink">
-              <Chev />
               Get started free
+              <ArrowRight className="m-arrow" />
             </Link>
             <Link to="/docs" className="m-btn m-btn-soft">
-              <Chev />
+              <BookOpen />
               Read the docs
             </Link>
           </div>
-          <div className="m-beat">
+          <div className="m-beat m-hero-tools">
             <CopyCommand />
+            <OnboardAgentPill />
           </div>
         </div>
 
@@ -87,7 +96,7 @@ const VAULT_ROWS: [string, number][] = [
   ["SENTRY_DSN", 11],
 ];
 
-/** Which keys each file defines, for the comparison card. */
+/** Which keys each environment defines, for the comparison card. */
 const COMPARE_ROWS: [string, boolean, boolean][] = [
   ["DATABASE_URL", true, true],
   ["STRIPE_SECRET_KEY", true, true],
@@ -156,11 +165,12 @@ function HeroStage() {
           <Cmd>klef sync</Cmd>
           <Out>.env.local       edited here</Out>
           <Out>.env.production  changed in the vault</Out>
+          <Out>Push .env.local: 14 variables (+1 lines)</Out>
           <Out>
-            Push .env.local? [y/N] <Yes />
+            Push? [y/N] <Yes />
           </Out>
-          <Out tone="ok">Pushed 14 variables (+1 lines) to .env.local</Out>
-          <Out tone="ok">Wrote 9 variables to .env.production</Out>
+          <Done>Pushed 14 variables (+1 lines) to .env.local (version 3f9a2c1d)</Done>
+          <Done>Wrote 9 variables to .env.production</Done>
         </pre>
       </Window>
     </div>
@@ -178,102 +188,165 @@ function Window({ id, className, front, children }: { id: number; className: str
   );
 }
 
-function Sidebar({ active }: { active: "production" | "compare" }) {
+/**
+ * The app's sidebar as it is: workspace switcher, the search field, the two
+ * fixed rows, then the project tree with files in mono.
+ */
+function Sidebar() {
   return (
     <aside className="m-app-side">
       <div className="m-app-ws">
-        <KlefMark accent="var(--m-accent)" />
-        <b>personal</b>
+        <span className="m-app-tile">P</span>
+        <span className="m-app-ws-text">
+          <b>personal</b>
+          <span>3 projects</span>
+        </span>
+        <ChevronsUpDown />
       </div>
       <div className="m-app-search">
         <Search />
         Search
         <kbd>&#8984;K</kbd>
       </div>
-      <p className="m-label">Projects</p>
+      <ul className="m-app-nav">
+        <li>
+          <LayoutGrid />
+          All projects
+        </li>
+        <li>
+          <KeyRound />
+          Find a key
+        </li>
+      </ul>
+      <p className="m-label">
+        Projects
+        <Plus />
+      </p>
       <ul className="m-app-tree">
-        <li className="m-app-open">lensdrop</li>
+        <li className="m-app-open">
+          <span className="m-app-proj">L</span>
+          lensdrop
+          <ChevronDown />
+        </li>
         <li className="m-app-file">.env.local</li>
-        <li className={active === "production" ? "m-app-file m-app-active" : "m-app-file"}>.env.production</li>
-        <li>klef</li>
-        <li>portfolio</li>
+        <li className="m-app-file m-app-active">.env.production</li>
+        <li className="m-app-file m-app-add">
+          <Plus />
+          New file
+        </li>
+        <li>
+          <span className="m-app-proj">K</span>
+          klef
+        </li>
+        <li>
+          <span className="m-app-proj">P</span>
+          portfolio
+        </li>
       </ul>
     </aside>
   );
 }
 
+/** The content header: sidebar trigger, then the breadcrumb. */
+function AppHead({ children }: { children: ReactNode }) {
+  return (
+    <div className="m-app-head">
+      <PanelLeft className="m-app-trigger" />
+      <span className="m-app-crumb">
+        <span className="m-app-tile m-app-tile-sm">P</span>personal
+      </span>
+      <span className="m-app-sep">/</span>
+      <span className="m-app-crumb">
+        <span className="m-app-proj">L</span>lensdrop
+      </span>
+      <span className="m-app-sep">/</span>
+      {children}
+    </div>
+  );
+}
+
+/** A file open: tabs for the open files, then the key table, values masked. */
 function VaultCard() {
   return (
     <>
-      <Sidebar active="production" />
+      <Sidebar />
       <div className="m-app-panel">
-        <div className="m-app-head">
-          <span>lensdrop</span>
-          <span className="m-app-sep">/</span>
-          <b>.env.production</b>
-          <span className="m-app-status">Synced</span>
+        <AppHead>
+          <b className="m-app-crumb m-mono">
+            .env.production
+            <ChevronDown />
+          </b>
+          <span className="m-app-status">Saved</span>
+        </AppHead>
+        <div className="m-app-tabs">
+          <span className="m-app-tab">.env.local</span>
+          <span className="m-app-tab m-app-tab-active">
+            .env.production
+            <X />
+          </span>
         </div>
-        <table className="m-vault">
-          <thead>
-            <tr>
-              <th>Key</th>
-              <th>Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            {VAULT_ROWS.map(([key, n], r) => (
-              <tr key={key} style={{ "--d": `${120 + r * 60}ms` } as CSSProperties}>
-                <td className="m-mono">{key}</td>
-                <td className="m-mono m-masked">{"\u2022".repeat(n)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="m-app-foot">9 variables, 0 values shown</div>
+        <ul className="m-env">
+          {VAULT_ROWS.map(([key, n], r) => (
+            <li key={key} style={{ "--d": `${120 + r * 60}ms` } as CSSProperties}>
+              <span className="m-env-key">{key}</span>
+              <span className="m-env-eq">=</span>
+              <span className="m-env-val">{"\u2022".repeat(n)}</span>
+            </li>
+          ))}
+          <li className="m-env-add">
+            <Plus />
+            <span>KEY</span>
+            <span className="m-env-eq">=</span>
+            <span>value</span>
+          </li>
+        </ul>
       </div>
     </>
   );
 }
 
+/** The compare dialog over the project: keys by environment, names only. */
 function CompareCard() {
   return (
     <>
-      <Sidebar active="compare" />
+      <Sidebar />
       <div className="m-app-panel">
-        <div className="m-app-head">
-          <span>lensdrop</span>
-          <span className="m-app-sep">/</span>
-          <b>Compare</b>
-          <span className="m-app-status m-app-status-quiet">Names only</span>
-        </div>
-        <table className="m-vault m-compare">
-          <thead>
-            <tr>
-              <th>Key</th>
-              <th>local</th>
-              <th>production</th>
-            </tr>
-          </thead>
-          <tbody>
-            {COMPARE_ROWS.map(([key, local, prod], r) => (
-              <tr key={key} style={{ "--d": `${120 + r * 60}ms` } as CSSProperties}>
-                <td className="m-mono">{key}</td>
-                {[local, prod].map((has, c) => (
-                  <td key={c}>
-                    {has ? (
-                      <span className="m-chk" style={{ "--d": `${260 + r * 60 + c * 40}ms` } as CSSProperties}>
-                        <Check />
-                      </span>
-                    ) : (
-                      <span className="m-none">&mdash;</span>
-                    )}
-                  </td>
-                ))}
+        <AppHead>
+          <b className="m-app-crumb">Compare environments</b>
+        </AppHead>
+        <div className="m-dialog">
+          <div className="m-dialog-head">
+            <b>Compare environments</b>
+            <span>Keys across lensdrop's environments. Decrypted in your browser only.</span>
+          </div>
+          <table className="m-vault m-compare">
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>development</th>
+                <th>production</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="m-app-foot">2 keys differ, 0 values shown</div>
+            </thead>
+            <tbody>
+              {COMPARE_ROWS.map(([key, local, prod], r) => (
+                <tr key={key} style={{ "--d": `${120 + r * 60}ms` } as CSSProperties}>
+                  <td className="m-mono">{key}</td>
+                  {[local, prod].map((has, c) => (
+                    <td key={c}>
+                      {has ? (
+                        <span className="m-chk" style={{ "--d": `${260 + r * 60 + c * 40}ms` } as CSSProperties}>
+                          <Check />
+                        </span>
+                      ) : (
+                        <span className="m-none">&mdash;</span>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
   );
@@ -297,7 +370,7 @@ function HowItWorks() {
             </p>
           </div>
           <Link to="/docs/quickstart" className="m-btn m-btn-soft">
-            <Chev />
+            <BookOpen />
             Quickstart
           </Link>
         </Reveal>
@@ -339,7 +412,7 @@ function Agents() {
               </h2>
             </div>
             <Link to="/docs/guides/coding-agents" className="m-btn m-btn-paper">
-              <Chev />
+              <Bot />
               Agent guide
             </Link>
           </Reveal>
@@ -412,9 +485,16 @@ function CopyCommand() {
         <span className="t-prompt">$ </span>
         {SETUP}
       </span>
-      <button type="button" className="m-cmd-copy" onClick={() => void copy()} aria-label="Copy the setup command">
-        {copied ? <Check /> : <Copy />}
-        {copied ? "Copied" : "Copy"}
+      <button
+        type="button"
+        className="m-cmd-copy"
+        onClick={() => void copy()}
+        aria-label={copied ? "Copied" : "Copy the setup command"}
+        data-copied={copied || undefined}
+      >
+        <span key={copied ? "check" : "copy"} className="m-copy-glyph">
+          {copied ? <Check /> : <Copy />}
+        </span>
       </button>
     </span>
   );
@@ -433,13 +513,13 @@ function Closing() {
         </p>
         <div className="m-actions-row">
           <Link to="/auth" className="m-btn m-btn-ink">
-            <Chev />
             Get started free
+            <ArrowRight className="m-arrow" />
           </Link>
-          <a href={`${GITHUB}#self-hosting`} target="_blank" rel="noreferrer" className="m-btn m-btn-soft">
-            <Chev />
+          <Link to="/docs/guides/self-hosting" className="m-btn m-btn-soft">
+            <Server />
             Self-host guide
-          </a>
+          </Link>
         </div>
       </Reveal>
     </section>

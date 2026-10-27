@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { ArrowUp, ChevronRight, Menu, X } from "lucide-react";
+import { ArrowRight, ArrowUp, Menu, X } from "lucide-react";
 import { KlefMark } from "./KlefMark.tsx";
 import { ThemeGlyph } from "./ThemeToggle.tsx";
 import { useThemeSwitch } from "../lib/use-theme-switch.ts";
@@ -83,8 +83,8 @@ function SiteHeader() {
             GitHub
           </a>
           <Link to="/auth" className="m-btn m-btn-ink">
-            <ChevronRight className="m-chev" aria-hidden="true" />
             Get started free
+            <ArrowRight className="m-arrow" />
           </Link>
           <button
             type="button"
@@ -194,19 +194,7 @@ function SiteFooter() {
       </div>
 
       <div className="m-wrap m-footer-base">
-        <span className="m-label">
-          &copy; {new Date().getFullYear()} Klef. Built by{" "}
-          <a
-            href="https://beny.one"
-            target="_blank"
-            rel="noreferrer"
-            className="marketing-credit"
-          >
-            <img src="/beny.png" alt="" className="marketing-credit-avatar" />
-            Beny Dishon K
-          </a>
-        </span>
-        <span className="m-label m-footer-mid">No analytics. No trackers.</span>
+        <span className="m-label">&copy; {new Date().getFullYear()} Klef</span>
         <span className="m-footer-tools">
           <a href="#top" className="m-icon-btn" aria-label="Back to top">
             <ArrowUp />
