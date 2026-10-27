@@ -163,6 +163,32 @@ describe("klef setup <targets>", () => {
 });
 
 describe("klef setup (everything)", () => {
+  it("ends with each file's state and what to run next, not just 'already here'", async () => {
+    await writeFile(path.join(cwd, ".klef.json"), JSON.stringify({ workspace: "Personal", project: "lensdrop", file: ".env.local", environment: null, files: [{ file: ".env.local" }, { file: ".env.production" }] }));
+    await writeFile(path.join(cwd, ".env.local"), "A=1\n");
+    await writeFile(path.join(cwd, ".env.production"), "A=1\n");
+    const code = await run("setup --yes", yes, {
+      account: async () => ({ email: "me@example.com", tree: TREE }),
+      states: async () => [
+        { file: ".env.local", path: ".env.local", local: true, inVault: true, state: "in-sync" },
+        { file: ".env.production", path: ".env.production", local: true, inVault: true, state: "unknown" },
+      ],
+    });
+    expect(code).toBe(0);
+    expect(output).toEqual(expect.arrayContaining([
+      "4/4  Every file is on disk",
+      "     .env.local       in sync",
+      "     .env.production  on disk, not yet compared",
+      "  klef diff --all  compare them with the vault, by key",
+    ]));
+  });
+
+  it("records the CLI's version as minVersion when it writes .klef.json", async () => {
+    await run("setup --project lensdrop --yes", yes, { account: async () => ({ email: "me@example.com", tree: TREE }), unlock: async () => 0 });
+    const config = JSON.parse(await readFile(path.join(cwd, ".klef.json"), "utf8"));
+    expect(config.minVersion).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
   it("signs in, links the whole project, writes agent files, unlocks, and pulls", async () => {
     let signedIn = false;
     const login = vi.fn(async () => {
@@ -197,6 +223,26 @@ describe("klef setup (everything)", () => {
     expect(await exists(path.join(cwd, ".cursor/rules/klef.mdc"))).toBe(true);
     expect(unlock).toHaveBeenCalledOnce();
     expect(pulled).toEqual([".env.production->.env.production", ".env.local->.env.local"]);
+  });
+
+  it("ends with the deploy platforms' names compared, as counts only", async () => {
+    const audit = async () => [
+      { platform: "vercel" as const, environment: "production", label: "Vercel Production", file: ".env.production", compareTo: "file" as const, status: "ok" as const, reason: null, onlyOnPlatform: ["OLD_KEY"], onlyLocal: [], both: ["A"] },
+      { platform: "vercel" as const, environment: "development", label: "Vercel Development", file: ".env.local", compareTo: "file" as const, status: "empty" as const, reason: "x", onlyOnPlatform: [], onlyLocal: [], both: [] },
+      { platform: "github" as const, environment: null, label: "GitHub Actions secrets", file: ".github/workflows", compareTo: "workflows" as const, status: "skipped" as const, reason: "gh is not installed" },
+    ];
+    expect(await run("setup", yes, { audit })).toBe(0);
+    const text = output.join("\n");
+    expect(text).toContain("Deploy platforms (names only)");
+    expect(text).toContain("Vercel Production: 1 only there");
+    expect(text).toContain("Vercel Development: unused environment");
+    expect(text).not.toContain("OLD_KEY");
+    expect(text).not.toContain("GitHub");
+  });
+
+  it("finishes even when the audit fails", async () => {
+    expect(await run("setup", yes, { audit: async () => { throw new Error("boom"); } })).toBe(0);
+    expect(output.join("\n")).not.toContain("Deploy platforms");
   });
 
   it("skips every finished step on a second run, and never overwrites a local file", async () => {

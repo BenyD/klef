@@ -72,7 +72,7 @@ The scripts are static: completing a command never runs klef.
 | Settings | `~/.config/klef/config.json`: `{ "rememberKey": false }` turns remembering off, as `klef login --no-remember` does |
 | Sync records | `~/.config/klef/sync-state.json`, mode `0600`: per local file, a version id, a modification time and a size |
 | Unlock agent socket | `$XDG_RUNTIME_DIR/klef-agent.sock`, or `~/.config/klef/run/agent.sock` where that is unset (as on macOS). The directory must be owned by you and closed to everyone else |
-| Repo link | `.klef.json` in the repo, committed, names only |
+| Repo link | `.klef.json` in the repo, committed, names only. Its optional `minVersion` is the oldest CLI the repo expects |
 
 `~/.config/klef` is the default. It is `$XDG_CONFIG_HOME/klef` when that is set, `%APPDATA%\klef` on Windows, and whatever `KLEF_CONFIG_DIR` says above all.
 

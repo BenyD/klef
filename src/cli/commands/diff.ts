@@ -55,6 +55,8 @@ export async function diff(
       onlyLocal: keys?.onlyLocal ?? [],
       onlyVault: keys?.onlyVault ?? [],
       changed: keys?.changed ?? [],
+      declaredUnsetLocal: keys?.declaredLocal ?? [],
+      declaredUnsetVault: keys?.declaredVault ?? [],
     });
   }
   emit({ files: out });

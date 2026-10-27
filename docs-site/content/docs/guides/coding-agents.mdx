@@ -7,7 +7,7 @@ A coding agent can run the Klef CLI for you: pull the env files a repo needs, pu
 
 ## Why this is safe to hand an agent
 
-- **No command prints a secret value.** There is no `klef get` and no `--print`. `pull` writes a file and reports a count. `push` reports how many lines changed. `diff` and `sync` name keys, never values. Errors are redacted on the way out as a backstop.
+- **No command prints a secret value.** There is no `klef get` and no `--print`. `pull` writes a file and reports a count. `push` reports how many lines changed. `diff` and `sync` name keys, never values. Errors are redacted on the way out as a backstop. The one command that hands values to anything is `klef run`, which puts them in another program's environment; that program's output is not masked, so the instructions tell the agent which commands never to run that way.
 - **The agent cannot unlock on its own.** Unlocking a device takes you: approving `klef login` in the browser with your passkey or passphrase, or typing the passphrase into `klef unlock` at a terminal. The passphrase is never read from a flag, a pipe or an environment variable, so the process that started the CLI can neither supply it nor see it. When a device is locked, the CLI stops and says so, and the agent runs `klef login` for you to approve.
 - **Files land where `.klef.json` says.** `pull` and `push` refuse absolute paths and `../`, so an agent cannot be talked into writing plaintext somewhere else or uploading an arbitrary file.
 - **A token is not a secret.** The CLI's access token reaches ciphertext and names only.
@@ -31,7 +31,7 @@ Along with signing in, linking and pulling, setup offers to write instructions f
 | Claude Code, always loaded | `CLAUDE.md` | When asked |
 | Other agents | `AGENTS.md` | When asked |
 
-The instructions tell the agent how this repo's env files are synced (status, sync, pull, push, unlock), how to read the CLI's `--json` errors, and that it must never read or print a secret value. Commit them with the repo so every later session starts out knowing.
+The instructions tell the agent how this repo's env files are synced (status, sync, pull, push, unlock), how to use a value without reading it (`klef run`), how to read the CLI's `--json` errors, and that it must never read or print a secret value. Commit them with the repo so every later session starts out knowing.
 
 Choose the files with targets:
 
@@ -74,11 +74,23 @@ The CLI never waits on a prompt an agent cannot answer. It detects Claude Code, 
 | --- | --- | --- |
 | `locked`, `no_terminal` | 4 | Runs `klef login` and asks you to approve it in the browser (or to run `klef unlock` yourself), and waits |
 | `confirmation_required` | 2 | Says what will change, gets your yes in the chat, then runs the `next` command, which adds `--yes` |
-| `conflict` | 5 | Shows you the key names in `data` and lets you choose; `next` holds the pull and push that settle it |
+| `conflict` | 5 | Shows you the key names in `data` and lets you choose; `next` holds the pull and push that keep one side whole, and `klef sync --merge --dry-run` shows what merging by key would give each side. A key whose value differs on both sides is yours to settle, with `klef set NAME`, which prompts you and not the agent |
 | `not_signed_in`, `not_linked` | 3, 6 | Runs `klef setup`, which opens the browser for you to approve |
+| `outdated` | 1 | The repo's `.klef.json` asks for a newer CLI; reruns the command as `npx @klefsh/cli@latest ...` |
 
 Nothing is written when a command stops this way. The full list of codes is in [JSON output and exit codes](/docs/cli/json/).
 
+## Using a value without reading it
+
+When a task needs a value, such as testing an API key or querying the database, the agent should run the command through Klef instead of opening the env file:
+
+```bash
+klef run --only ANTHROPIC_API_KEY -- node scripts/check-key.js
+klef run --only DATABASE_URL -- sh -c 'psql "$DATABASE_URL" -c "select 1"'
+```
+
+The command gets the variables in its environment, and the agent sees only the command's own output. That output is not masked, so the instructions setup writes tell the agent never to run a command that prints a variable. See [`klef run`](/docs/cli/commands/#klef-run).
+
 ## What agents should not do
 
-Even with Klef, the env file on disk is plaintext. An agent that runs `cat .env.local` puts the values in its context. The instructions setup writes tell it not to; keep that rule in your own prompts as well.
+Even with Klef, the env file on disk is plaintext. An agent that runs `cat .env.local` puts the values in its context. The instructions setup writes tell it not to, and to use `klef run` when it needs a value; keep that rule in your own prompts as well.

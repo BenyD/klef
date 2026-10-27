@@ -12,7 +12,7 @@ klef audit --json      # for agents and scripts
 klef audit --exit-code # exit 10 when any names differ
 ```
 
-With `--json`, the result is in `data.targets`: one entry per scope with `onlyOnPlatform`, `onlyLocal` and `both`, and a `status` of `ok`, `no-local-file`, `skipped` or `unavailable`. See [Commands](/docs/cli/commands/#klef-audit).
+With `--json`, the result is in `data.targets`: one entry per scope with `onlyOnPlatform`, `onlyLocal` and `both`, and a `status` of `ok`, `no-local-file`, `empty`, `skipped` or `unavailable`. See [Commands](/docs/cli/commands/#klef-audit).
 
 ## What is compared
 
@@ -23,15 +23,40 @@ Each platform environment is compared with the local file for the same environme
 | Vercel | Development | `.env.local` |
 | Vercel | Preview | `.env.preview` |
 | Vercel | Production | `.env.production` |
-| GitHub Actions | `production` environment secrets | `.env.production` |
-| GitHub Actions | Repository secrets | `.env.production` |
-| Cloudflare Workers | Worker secrets | `.env.production` |
+| GitHub Actions | Repository and environment secrets | What `.github/workflows` references |
+| Cloudflare Workers | Each Worker's secrets | The Worker's `.dev.vars` or `.env.production`, else the repo's `.env.production` |
 
 When a linked repo keeps an environment under a different name, such as production in a plain `.env` marked production, that file is used instead. See [Environments](/docs/concepts/environments/). Vercel Preview is checked only when the repo has a `.env.preview`.
 
-A platform is checked only when the directory is set up for it: a `.vercel/project.json` for Vercel, a `.git` directory for GitHub, and a `wrangler.jsonc`, `wrangler.json` or `wrangler.toml` for Cloudflare. Anything else is reported as skipped.
+A platform is checked only when the directory is set up for it: a `.vercel/project.json` for Vercel, a `.git` directory for GitHub, and a wrangler config for Cloudflare. Anything else is reported as skipped.
 
-For each scope, audit reports the names only on the platform and the names only in the local file, and counts the names in both. GitHub upper-cases secret names, so they are matched without regard to case; the other platforms match exactly.
+For each scope, audit reports the names only on the platform and the names only in the local file, and counts the names in both. An environment that holds nothing at all is one line, `unused environment`, rather than every local name.
+
+### GitHub Actions and your workflows
+
+A workflow only sees the secrets it names, so GitHub is compared with `.github/workflows/*.yml` rather than with a whole env file. Audit reads every `secrets.NAME` (and `secrets['NAME']`) there, and every `environment:` a job runs in, then lists:
+
+- **referenced in workflows, not set**: a job will get an empty value.
+- **set, never referenced**: probably left over.
+
+The secrets set are the repository's plus those of each environment the workflows name. `GITHUB_TOKEN` is provided by GitHub and never counted. GitHub upper-cases secret names, so they are matched without regard to case; the other platforms match exactly. A repo without workflows falls back to comparing `.env.production` with the `production` environment and repository secrets.
+
+### Every Worker in the repo
+
+Audit looks for `wrangler.json`, `wrangler.jsonc` and `wrangler.toml` up to four directories deep (skipping `node_modules` and hidden directories), and runs `wrangler secret list` in each Worker's own directory, so `workers/image` and `containers/ai` are checked against their own secrets.
+
+### Choosing the file for a scope
+
+When a scope's file is somewhere else, map it in `.klef.json` under `audit`:
+
+```json
+"audit": {
+  "vercel:preview": "apps/web/.env.preview",
+  "cloudflare:workers/image": "workers/image/.env.production"
+}
+```
+
+Keys are `vercel:development`, `vercel:preview`, `vercel:production`, `github:repository`, `github:<environment>`, and `cloudflare:<worker directory>` (`cloudflare:.` for the root Worker). Values are paths inside the repo.
 
 ## Safe by construction
 

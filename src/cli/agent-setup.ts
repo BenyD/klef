@@ -48,7 +48,7 @@ export function isSetupTarget(value: string): value is SetupTarget {
 /** One line for the description fields that decide when an agent loads this. */
 const SUMMARY =
   "Sync this project's .env files with the Klef vault using the klef CLI " +
-  "(status, sync, pull, push, login) without ever reading or printing a secret value.";
+  "(status, sync, pull, push, run, login) without ever reading or printing a secret value.";
 
 /**
  * The shared body. `cli` is how the user reaches the CLI ("klef" or
@@ -73,12 +73,29 @@ value, which is what makes it safe for you to run.
   pipe or pass one to the CLI. It reads the passphrase from the terminal on
   purpose, so it cannot pass through you.
 
+### Using a value without reading it
+
+When a task needs a variable's value (testing an API key, running a query
+against \`DATABASE_URL\`, starting the app), never open the env file. Run the
+command through Klef, which puts the variables in its environment:
+
+    ${cli} run -- npm run dev
+    ${cli} run --only ANTHROPIC_API_KEY -- node scripts/check-key.js
+    ${cli} run --only DATABASE_URL -- sh -c 'psql "$DATABASE_URL" -c "select 1"'
+
+Wrap any \`$NAME\` in \`sh -c '...'\` with single quotes, so your own shell does
+not expand it (to nothing) before Klef runs. Klef prints no value, but the
+command's output reaches you unmasked: never run one that prints a variable
+(\`echo\`, \`env\`, \`printenv\`, a debug log of its config). Prefer commands that
+report success or failure, not the value.
+
 ### Which files are synced
 
 \`.klef.json\` (safe to read and commit: names only) links this directory to a
 project in the vault. \`file\` is the default env file, and the optional
 \`files\` list is everything \`--all\` covers, each with the local \`path\` it
-lives at.
+lives at. If it sets \`minVersion\` and a command says the CLI is older than
+that, run it as \`npx @klefsh/cli@latest <command>\` instead.
 
 ### Start with status
 
@@ -114,8 +131,13 @@ agent: where it would need a person, it stops with one of these codes.
   needs a yes. Say what will change (the plan is in the output), get a yes in
   the chat, then run the \`next\` command, which adds \`--yes\`.
 - **\`conflict\` (exit 5)**: both sides changed and nothing was written. Show
-  the user which keys differ (in \`data\`) and let them choose; \`next\` holds
-  the pull and push that settle it.
+  the user which keys differ (in \`data\`) and let them choose: \`next\` holds
+  the pull and push that keep one side whole, and \`${cli} sync --merge
+  --dry-run\` shows what merging by key would give each side. A whole-file
+  push or pull drops the other side's extra keys, so prefer the merge when
+  both sides added keys. A key whose value differs needs the user: they
+  settle it with \`${cli} set NAME\` (which prompts them, not you) or
+  choose a side.
 - **\`not_signed_in\` or \`not_linked\` (exit 3 or 6)**: run \`${cli} setup\`.
   Sign-in opens the browser for the user to approve; when it needs a choice
   from the user, it stops with the exact command to rerun once they answer.

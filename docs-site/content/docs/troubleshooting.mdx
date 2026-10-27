@@ -39,6 +39,10 @@ The key kept on this device could not decrypt the vault, for example because the
 
 A command that writes, such as `push`, `sync`, `restore` or `setup`, needed a confirmation and nobody could answer it: no terminal, `--json`, `--no-input`, `CI`, or an agent ran it (exit 2, `confirmation_required`). Check what it said it would change, then rerun the command it printed, which adds `--yes`.
 
+### "This repo expects klef ... or newer"
+
+`.klef.json` carries a `minVersion`, written by whichever `link` or `setup` created it, and an older CLI refuses to run in the repo (exit 1, `outdated`) rather than misread the file. Run the command as `npx @klefsh/cli@latest <command>`, or update a global install with `npm install -g @klefsh/cli`. The check compares versions locally; there is no network call.
+
 ### "Unknown flag" or "Unknown command"
 
 The CLI rejects anything it does not recognise rather than ignoring it (exit 2), and suggests the closest match. `klef help <command>` lists a command's flags.
