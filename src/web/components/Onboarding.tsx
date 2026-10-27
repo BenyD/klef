@@ -182,7 +182,7 @@ export function Onboarding({ email }: { email: string }) {
             <form onSubmit={onCreate} noValidate>
               <StepHeader
                 title="Create your master passphrase"
-                description="This passphrase encrypts everything in your vault. It's separate from your login and never leaves your device."
+                description="Encrypts your vault. Separate from your login, and it never leaves your device."
               />
               <FieldGroup className="mt-5">
                 <Field>
@@ -246,7 +246,7 @@ export function Onboarding({ email }: { email: string }) {
             <div>
               <StepHeader
                 title="Save your recovery key"
-                description="You'll only see this key once, and it's the only way back in if you forget your passphrase. Klef can't reset it for you."
+                description="Shown once. It is the only way back in if you forget your passphrase."
               />
               <div className="mt-5 flex flex-col gap-4">
                 <RecoveryKeyPanel
@@ -328,23 +328,23 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
     <div className="flex flex-col">
       <StepHeader
         title="Welcome to Klef"
-        description="Let's set up your encrypted vault. It takes about a minute."
+        description="Your vault takes a minute to set up."
       />
       <div className="mt-6 flex flex-col gap-4">
         <Point
           icon={<Lock className="size-4" />}
           title="Encrypted in your browser"
-          body="Your secrets are encrypted before they leave this device, so Klef's servers only ever store ciphertext."
+          body="Encrypted before it leaves this device. The server only holds ciphertext."
         />
         <Point
           icon={<KeyRound className="size-4" />}
           title="A passphrase only you know"
-          body="It's separate from your login and never leaves your device, so Klef never sees it."
+          body="Separate from your login. Klef never sees it."
         />
         <Point
           icon={<LifeBuoy className="size-4" />}
           title="A recovery key as backup"
-          body="If you ever forget your passphrase, your recovery key is the only way back in. Klef can't reset it for you."
+          body="The only way back in if you forget the passphrase. Klef cannot reset it."
         />
       </div>
       <Button className="mt-7 w-full" onClick={onNext}>

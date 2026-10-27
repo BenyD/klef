@@ -1,7 +1,9 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Check, Copy } from "lucide-react";
+import { siClaude, siCursor, siGithubcopilot, type SimpleIcon } from "simple-icons";
 import {
   AGENT_PROMPTS,
+  DEFAULT_PROMPT,
   promptText,
   type AgentPrompt,
 } from "../lib/agent-prompts.ts";
@@ -50,11 +52,11 @@ export function AgentPrompts() {
   return (
     <div className="marketing-agent" id="prompts">
       <div className="marketing-agent-head">
-        <h3>Or start from a prompt</h3>
-        <p>
-          Paste one into Claude Code or Cursor. Prefer your own terminal? Run{" "}
-          <code>npx @klefsh/cli setup</code>.
-        </p>
+        <div>
+          <h3>Or start from a prompt</h3>
+          <p>Paste one into Claude Code or Cursor.</p>
+        </div>
+        <CopyPromptButton prompt={active} className="m-icon-btn m-icon-btn-band marketing-agent-copy" />
       </div>
 
       <div>
@@ -81,10 +83,6 @@ export function AgentPrompts() {
               {prompt.label}
             </button>
           ))}
-          <CopyPromptButton
-            prompt={active}
-            className="m-btn m-btn-sm m-btn-paper marketing-agent-copy"
-          />
         </div>
 
         <div
@@ -102,9 +100,11 @@ export function AgentPrompts() {
 }
 
 /**
- * Copies a prompt to the clipboard. Shared by the hero CTA and the prompt
- * panel, which differ only in styling — so the "Copied" feedback, the failure
- * handling, and the label can't drift between the two.
+ * Copies a prompt to the clipboard. Shared by the hero pill and the prompt
+ * panel, which differ only in styling, so the feedback and the failure
+ * handling cannot drift between the two. The feedback is the glyph alone: it
+ * turns into a check that pops in (the span is re-keyed so the animation
+ * replays), and the label, if any, stays put.
  */
 export function CopyPromptButton({
   prompt,
@@ -136,10 +136,43 @@ export function CopyPromptButton({
       type="button"
       onClick={() => void copy()}
       className={className}
-      aria-label={`Copy the ${prompt.label} prompt`}
+      aria-label={copied ? "Copied" : `Copy the ${prompt.label} prompt`}
+      data-copied={copied || undefined}
     >
-      {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-      {copied ? "Copied" : (children ?? "Copy")}
+      {children}
+      <span key={copied ? "check" : "copy"} className="m-copy-glyph">
+        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+      </span>
     </button>
+  );
+}
+
+const AGENT_MARKS: { icon: SimpleIcon; label: string; own?: boolean }[] = [
+  // Claude's mark in its own colour (close to ember); the others follow the
+  // text colour, since their brand colour is black.
+  { icon: siClaude, label: "Claude Code", own: true },
+  { icon: siCursor, label: "Cursor" },
+  { icon: siGithubcopilot, label: "GitHub Copilot" },
+];
+
+/**
+ * The pill in the hero: copies the onboarding prompt, which has an agent
+ * take the user from nothing to a linked repo, stopping for the parts only
+ * the user can do (signing in, the passphrase, pasting the files).
+ */
+export function OnboardAgentPill() {
+  return (
+    <CopyPromptButton prompt={DEFAULT_PROMPT} className="m-agent-pill">
+      <span className="m-agent-marks" aria-hidden="true">
+        {AGENT_MARKS.map((m) => (
+          <span key={m.label} className="m-agent-mark" style={m.own ? { color: `#${m.icon.hex}` } : undefined}>
+            <svg viewBox="0 0 24 24" width="12" height="12">
+              <path d={m.icon.path} fill="currentColor" />
+            </svg>
+          </span>
+        ))}
+      </span>
+      Onboard your agent
+    </CopyPromptButton>
   );
 }

@@ -191,7 +191,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
       }),
     );
     toast.success("Agent prompt copied", {
-      description: "Paste it into Claude Code or Cursor once. Later sessions in that repo already know Klef.",
+      description: "Paste it into Claude Code or Cursor once.",
     });
   }
 
@@ -480,9 +480,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
                     {relativeTime(created)}
                   </time>
                   {v.isCurrent && (
-                    <Badge variant="secondary" className="font-normal">
-                      current
-                    </Badge>
+                    <Badge variant="outline">Current</Badge>
                   )}
                 </span>
                 <time
@@ -992,9 +990,9 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
           <DialogHeader>
             <DialogTitle>Replace unsaved edits?</DialogTitle>
             <DialogDescription>
-              Loading this version replaces your unsaved edits to{" "}
+              This replaces your unsaved edits to{" "}
               <span className="font-mono text-xs">{file.name}</span>. The
-              current saved version is not affected.
+              saved version stays as it is.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="items-center gap-3 sm:justify-between">
