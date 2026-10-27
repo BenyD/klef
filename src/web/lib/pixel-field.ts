@@ -85,11 +85,11 @@ export function pixelField({ cols, rows, count, seed }: PixelFieldOptions): Pixe
 
     const tone = pick(rnd, TONES);
     const solid = tone === "solid" || tone === "ember-solid";
-    const blink = rnd() < 0.08;
+    const blink = rnd() < 0.12;
     // Movers stay off the last two columns and rows, so their loop stays in
     // the field.
     const canWalk = col < cols - 2 && row < rows - 2 && row > 1 && col > 1;
-    const walks = canWalk && !blink && rnd() < 0.22;
+    const walks = canWalk && !blink && rnd() < 0.34;
 
     cells.push({
       col,
@@ -97,7 +97,7 @@ export function pixelField({ cols, rows, count, seed }: PixelFieldOptions): Pixe
       tone,
       floor: solid ? 0.1 : 0.06,
       peak: round(solid ? 0.35 + rnd() * 0.3 : 0.3 + rnd() * 0.4),
-      duration: round(4 + rnd() * 10, 1),
+      duration: round(3 + rnd() * 7, 1),
       delay: round(-rnd() * 14, 1),
       enter: Math.floor(rnd() * 10) * 90,
       blink,
@@ -105,7 +105,7 @@ export function pixelField({ cols, rows, count, seed }: PixelFieldOptions): Pixe
         ? {
             walk: {
               name: WALKS[Math.floor(rnd() * WALKS.length)]!,
-              duration: round(10 + rnd() * 8, 1),
+              duration: round(8 + rnd() * 6, 1),
               delay: round(-rnd() * 10, 1),
             },
           }
