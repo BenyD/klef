@@ -13,7 +13,7 @@ No. Files are encrypted on your device before upload, with a key derived from a 
 
 ## What can a coding agent see?
 
-Key names, file names and counts. No Klef command prints a value, and the agent cannot unlock a device on its own; you approve that in the browser, or at a terminal. The env file the CLI writes is plaintext on disk, though, so an agent that reads it directly would see the values. The instructions `klef setup` writes tell agents not to. See [Using Klef with Claude Code and Cursor](/docs/guides/coding-agents/).
+Key names, file names and counts. No Klef command prints a value, and the agent cannot unlock a device on its own; you approve that in the browser, or at a terminal. The env file the CLI writes is plaintext on disk, though, so an agent that reads it directly would see the values. The instructions `klef setup` writes tell agents not to, and to use `klef run` when a task needs a value: it starts a program with the variables in its environment, and the agent sees only that program's output. See [Using Klef with Claude Code and Cursor](/docs/guides/coding-agents/).
 
 ## I forgot my passphrase.
 

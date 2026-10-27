@@ -24,11 +24,12 @@ Linking writes `.klef.json`. `setup` records every file the vault project has; `
   "files": [
     { "file": ".env.local", "path": ".env.local" },
     { "file": ".env.production", "path": ".env.production" }
-  ]
+  ],
+  "minVersion": "0.6.0"
 }
 ```
 
-`file` is the one plain `klef pull` and `klef push` use when no `--file` is given; `environment` is the label set on that file in the vault, if any. **Commit `.klef.json`.** It holds names only, and it is how a new machine knows what to restore. **Do not commit the env files.** Make sure your env files are in `.gitignore` before the first pull. The agent instructions `klef setup` writes tell an agent to check this too.
+`file` is the one plain `klef pull` and `klef push` use when no `--file` is given; `environment` is the label set on that file in the vault, if any; `minVersion` is the CLI that wrote the file, and an older CLI refuses to run in the repo until updated. **Commit `.klef.json`.** It holds names only, and it is how a new machine knows what to restore. **Do not commit the env files.** Make sure your env files are in `.gitignore` before the first pull. The agent instructions `klef setup` writes tell an agent to check this too.
 
 ### Files that live elsewhere
 
@@ -43,6 +44,15 @@ A monorepo, or a vault file whose local name differs, gets a different `path`:
 ```
 
 `file` is the name in the vault; `path` is where it lives on disk, relative to the repo, and defaults to the vault name when left out. Paths must stay inside the directory: absolute paths and `../` are refused.
+
+### Monorepos
+
+`klef scan` lists env files in the checkout that `.klef.json` does not list yet, and warns about any git does not ignore. Add one with `klef link --add`:
+
+```bash
+klef scan
+klef link --add apps/web/.env.local   # synced as web.env.local
+```
 
 ## Sync
 
@@ -84,6 +94,27 @@ $ klef sync
 ### How sync knows what changed
 
 Each machine keeps `~/.config/klef/sync-state.json` (mode `0600`). For each local file it records the vault version the file last matched, and the file's modification time and size at that moment. Not a hash of the contents: a hash of a short env file would be a guessable fingerprint of its values, and "edited since?" needs only the time and size.
+
+### Merging instead of choosing a side
+
+A conflict offers to keep one side whole, which drops any key only the other side has. When both sides added keys, merge them by key instead:
+
+```bash
+klef sync --merge --dry-run   # what each side would gain
+klef sync --merge
+```
+
+On a first sync on this machine, each side gains the keys only the other has. After that, the merge is three-way, against the version this machine last synced: whichever side changed a key wins, and a key one side deleted stays deleted. A key whose value differs on both sides still stops the merge, by name. Settle it with `klef set NAME`, which prompts you for the value, then merge again.
+
+### Bringing back one key
+
+If a whole-file push already dropped a key, take it back from an earlier version, without touching anything else:
+
+```bash
+klef list --versions                            # newest first: ids and dates
+klef recover PROBE_GALLERY_ID --from 3f9a2c1b   # into the local file
+klef push
+```
 
 ## Checking without syncing
 
