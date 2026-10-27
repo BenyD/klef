@@ -33,7 +33,9 @@ function builtDocs(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = (req.url ?? "").split("?")[0] ?? "";
-        if (url !== "/docs" && !url.startsWith("/docs/")) return next();
+        // /docs, /docs/..., and /docs.data, the index route's loader data,
+        // which sits beside the folder.
+        if (!/^\/docs(\/|\.|$)/.test(url)) return next();
         const rel = url.replace(/\/$/, "");
         const candidates = [rel, `${rel}.html`, `${rel}/index.html`].map((r) => path.join(root, r));
         for (const file of candidates) {

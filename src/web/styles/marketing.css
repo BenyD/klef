@@ -630,9 +630,15 @@
 .m-stage .m-app .m-shot-body {
   grid-template-columns: 148px minmax(0, 1fr);
 }
-.m-stage .m-app-user,
 .m-stage .m-app-head > :nth-child(2),
 .m-stage .m-app-head > :nth-child(3) {
+  display: none;
+}
+.m-stage .m-app-user {
+  height: 32px;
+  padding-left: 4px;
+}
+.m-stage .m-app-user .m-app-ws-text span {
   display: none;
 }
 .m-stage .m-dialog {
@@ -764,6 +770,15 @@
   background: var(--m-fill-strong);
   font-size: 10px;
   font-weight: 500;
+}
+.m-app-user .m-app-ws-text {
+  min-width: 0;
+}
+.m-app-user .m-app-ws-text b,
+.m-app-user .m-app-ws-text span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .m-app-user .m-app-ws-text b {
   font-weight: 500;
@@ -1714,102 +1729,6 @@
   }
   .m-edge {
     --px: 16px;
-  }
-}
-
-/* The agent prompts, as one more card in the band: title and the copy
-   glyph on one row, the three prompts as tabs, the chosen prompt below with
-   a fade where it runs past the box. */
-.marketing-agent {
-  margin-top: 16px;
-  overflow: hidden;
-  border: 1px solid var(--m-band-line);
-  border-radius: var(--m-r-lg);
-}
-.marketing-agent-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 16px 10px 20px;
-}
-.marketing-agent-head h3 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 500;
-}
-.marketing .marketing-agent-head p {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--m-band-muted);
-}
-.marketing-agent-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  padding: 0 14px 10px;
-  border-bottom: 1px solid var(--m-band-line);
-}
-.marketing .marketing-agent-tab {
-  appearance: none;
-  height: 30px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: var(--m-r);
-  background: transparent;
-  color: var(--m-band-muted);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease-quick),
-    color var(--duration-fast) var(--ease-quick);
-}
-.marketing .marketing-agent-tab:hover,
-.marketing .marketing-agent-tab[aria-selected="true"] {
-  background: var(--m-band-line);
-  color: var(--m-band-fg);
-}
-.marketing-agent-panel {
-  padding: 14px 20px 20px;
-}
-.marketing .marketing-agent-desc {
-  margin: 0 0 10px;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--m-band-muted);
-}
-.marketing-agent-prompt {
-  margin: 0;
-  max-height: 200px;
-  overflow: auto;
-  padding: 14px;
-  border-radius: var(--m-r);
-  background: var(--m-band-fill);
-  color: var(--m-band-fg);
-  font-family: var(--m-mono);
-  font-size: 12px;
-  line-height: 1.7;
-  font-variant-ligatures: none;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  /* The fade says there is more below; scrolling reveals it. */
-  -webkit-mask-image: linear-gradient(#000 calc(100% - 40px), transparent);
-  mask-image: linear-gradient(#000 calc(100% - 40px), transparent);
-}
-
-@media (max-width: 520px) {
-  .marketing-agent-head {
-    padding: 14px 12px 8px 16px;
-  }
-  .marketing .marketing-agent-tab {
-    padding: 0 8px;
-    font-size: 12px;
-  }
-  .marketing-agent-panel {
-    padding: 12px 16px 16px;
   }
 }
 

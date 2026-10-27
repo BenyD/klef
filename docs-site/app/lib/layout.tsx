@@ -21,10 +21,23 @@ function Mark() {
   );
 }
 
-/** The Klef tile, the wordmark, then "Docs". The mark matches the marketing header. */
+/**
+ * The mark, the wordmark, then "Docs". Clicking it leaves the docs for the
+ * marketing home. The docs are their own React Router app with no route for
+ * "/", so the click is turned into a full page load; the href stays "/" for
+ * middle-click and open-in-new-tab.
+ */
 function Title() {
   return (
-    <span className="klef-title">
+    <span
+      className="klef-title"
+      onClick={(event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        window.location.assign("/");
+      }}
+    >
       <span className="klef-mark" aria-hidden="true">
         <Mark />
       </span>
@@ -36,7 +49,7 @@ function Title() {
 
 export function baseOptions(): BaseLayoutProps {
   return {
-    nav: { title: <Title />, url: "/docs" },
+    nav: { title: <Title />, url: "/" },
     githubUrl: GITHUB,
     themeSwitch: { mode: "light-dark" },
   };
