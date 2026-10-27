@@ -33,6 +33,7 @@ import {
 import { getPrfSecret } from "./lib/passkey-prf.ts";
 import { WrongPassphraseError } from "./vault-context.ts";
 import { clearDek, loadDek, saveDek, touchDek } from "./dek-store.ts";
+import { takePrefetchedVault } from "./app-prefetch.ts";
 import { rememberedKeyMaxAgeMs } from "./lib/auto-lock.ts";
 import { VaultContext, type VaultStatus } from "./vault-context.ts";
 
@@ -62,7 +63,7 @@ export function VaultProvider({
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
-    fetchVault()
+    (takePrefetchedVault(userId) ?? fetchVault())
       .then(async (res) => {
         if (cancelled) return;
         keyMaterial.current = res.keyMaterial ?? null;
