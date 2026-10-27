@@ -35,18 +35,17 @@ html {
   font-weight: 600;
   white-space: nowrap;
 }
+/* The bare woven mark, as in the marketing header: no tile, top loop in ember. */
 .klef-mark {
-  display: inline-grid;
-  place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: var(--radius);
-  background: var(--primary);
-  color: var(--primary-foreground);
+  display: inline-flex;
+  color: var(--foreground);
 }
 .klef-mark svg {
-  width: 0.875rem;
-  height: 0.875rem;
+  width: 1.375rem;
+  height: 1.375rem;
+}
+.klef-wordmark {
+  letter-spacing: -0.035em;
 }
 .klef-docs-label {
   color: var(--muted-foreground);
