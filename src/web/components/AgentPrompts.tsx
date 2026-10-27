@@ -52,8 +52,11 @@ export function AgentPrompts() {
   return (
     <div className="marketing-agent" id="prompts">
       <div className="marketing-agent-head">
-        <h3>Or start from a prompt</h3>
-        <p>Paste one into Claude Code or Cursor.</p>
+        <div>
+          <h3>Or start from a prompt</h3>
+          <p>Paste one into Claude Code or Cursor.</p>
+        </div>
+        <CopyPromptButton prompt={active} className="m-icon-btn m-icon-btn-band marketing-agent-copy" />
       </div>
 
       <div>
@@ -80,7 +83,6 @@ export function AgentPrompts() {
               {prompt.label}
             </button>
           ))}
-          <CopyPromptButton prompt={active} className="m-icon-btn m-icon-btn-band marketing-agent-copy" />
         </div>
 
         <div
