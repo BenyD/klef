@@ -185,6 +185,14 @@ describe("link", () => {
     expect(config.file).toBe(".env");
     expect(config.files).toBeUndefined();
   });
+
+  it("keeps the audit map when relinking", async () => {
+    await save(".env.local", LOCAL);
+    const audit = { "vercel:preview": "apps/web/.env.preview" };
+    await writeFile(path.join(cwd, ".klef.json"), JSON.stringify({ workspace: "Personal", project: "lensdrop", file: ".env.local", environment: null, audit }));
+    expect(await link(parseArgs(["link", "Personal", "lensdrop"]), env, cwd)).toBe(0);
+    expect(JSON.parse(await local(".klef.json")).audit).toEqual(audit);
+  });
 });
 
 describe("sync", () => {

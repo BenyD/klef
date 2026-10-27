@@ -190,6 +190,7 @@ export function App() {
           {import.meta.env.DEV && (
             <Route path="/dev/design" element={<DesignLab />} />
           )}
+          {import.meta.env.DEV && <Route path="/dev/splash" element={<Splash />} />}
           {import.meta.env.DEV && (
             <Route path="/dev/cli" element={<CliLab />} />
           )}
