@@ -12,6 +12,7 @@ Klef's web app deploys continuously from `main`; the CLI is versioned on npm as 
 - `klef sync --merge`: settles a conflict key by key instead of keeping one side whole. First sync on a machine: each side gains the keys only the other has. After that: three-way against the last-synced version, so deleted keys stay deleted. Stops only on keys whose values differ.
 - `klef set NAME`: sets one variable in the local file, the value typed at the terminal with echo off, never on the command line.
 - `klef recover NAME --from <version>` and `klef list --versions`: bring one key back from an earlier vault version.
+- **A sharper `klef audit`.** GitHub secrets are compared with what `.github/workflows` references: referenced but not set, and set but never referenced. Every Worker in the repo is audited against its own secrets. An environment with nothing set is one "unused environment" line. `.klef.json` can map a scope to its file under `audit`. `klef setup` ends with the same check as counts.
 
 ## Unreleased
 

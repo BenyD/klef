@@ -72,6 +72,9 @@ export async function link(
   // The oldest CLI this link expects: kept if the repo already says, else
   // this one, which is what wrote everything above.
   config.minVersion = existing?.minVersion ?? CLI_VERSION;
+  // Which file `audit` compares each platform with is about this checkout,
+  // not the vault project, so it survives a re-link.
+  if (existing?.audit) config.audit = existing.audit;
   const changed = existing === null || serializeProjectConfig(existing) !== serializeProjectConfig(config);
   const written = changed ? await writeProjectConfig(cwd, config) : path.join(cwd, CONFIG_FILENAME);
 
