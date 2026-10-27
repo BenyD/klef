@@ -97,8 +97,8 @@ export function CompareEnvironmentsDialog({
         <DialogHeader>
           <DialogTitle>Compare environments</DialogTitle>
           <DialogDescription>
-            Which keys each environment in {project?.name} has, and where
-            values differ. Everything decrypts only in your browser.
+            Keys across {project?.name}'s environments, and where values
+            differ. Decrypted in your browser only.
           </DialogDescription>
         </DialogHeader>
 
@@ -191,8 +191,8 @@ export function CompareEnvironmentsDialog({
               </div>
               {report.drifted.length > 0 && (
                 <p className="text-muted-foreground text-xs">
-                  Some differences are intentional (a debug flag only in
-                  development, say). This just surfaces them.
+                  Some differences are meant to be, like a debug flag only
+                  in development.
                 </p>
               )}
             </TabsContent>
@@ -256,8 +256,7 @@ export function CompareEnvironmentsDialog({
                     </table>
                   </div>
                   <p className="text-muted-foreground text-xs">
-                    Only keys that differ appear here. Values decrypt in this
-                    browser and never reach the server.
+                    Only keys that differ are listed.
                   </p>
                 </>
               )}

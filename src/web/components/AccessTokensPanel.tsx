@@ -248,8 +248,7 @@ function CreateTokenDialog({
         {minted ? (
           <div className="flex flex-col gap-3">
             <p className="text-muted-foreground text-sm">
-              Copy this now; it won't be shown again. Klef stores only a hash
-              of it, so nobody, including us, can recover it later.
+              Copy it now. It won't be shown again.
             </p>
             <code className="bg-muted block overflow-x-auto rounded-md px-3 py-2 font-mono text-xs">
               {minted}
