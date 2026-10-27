@@ -153,9 +153,9 @@ export async function setup(
     unlocked = await deps.unlock();
   } catch (err) {
     if (!(err instanceof NoTerminalError || (err instanceof CliError && err.code === "no_terminal"))) throw err;
-    throw new CliError("locked", "Pulling needs the vault unlocked, and the passphrase is the user's to type.", {
-      hint: "Ask the user to run this in their own terminal, then pull:",
-      next: [command("unlock"), command("pull --all")],
+    throw new CliError("locked", "Pulling needs the vault unlocked on this device, and that needs the user.", {
+      hint: "Have the user approve a sign-in in the browser (it unlocks this device), or run klef unlock themselves, then pull:",
+      next: [{ command: command("login"), description: "the user approves in the browser, which unlocks this device" }, { command: command("unlock"), description: "or the user types the passphrase in their own terminal" }, { command: command("pull --all") }],
       data: report,
     });
   }

@@ -26,7 +26,7 @@ import {
   type Bytes,
 } from "./encoding.ts";
 
-const CURVE = { name: "ECDH", namedCurve: "P-256" } as const;
+export const CURVE = { name: "ECDH", namedCurve: "P-256" } as const;
 
 /**
  * The JWK fields this module exchanges, declared locally rather than using the
@@ -68,9 +68,14 @@ export async function generateSealKeypair(): Promise<SealKeypair> {
   };
 }
 
-async function sharedKey(
+/**
+ * The AES key two ECDH keys agree on, through HKDF with `info` as domain
+ * separation, so a key derived to seal one thing cannot open another.
+ */
+export async function sharedKey(
   privateKey: CryptoKey,
   publicJwk: DeviceJwk,
+  info: string = SEAL_INFO,
 ): Promise<CryptoKey> {
   const peer = await crypto.subtle.importKey("jwk", publicJwk, CURVE, false, []);
   // deriveBits then import, rather than deriving an HKDF key straight from
@@ -83,7 +88,7 @@ async function sharedKey(
       name: "HKDF",
       hash: "SHA-256",
       salt: new Uint8Array(0),
-      info: utf8ToBytes(SEAL_INFO),
+      info: utf8ToBytes(info),
     },
     shared,
     { name: AES.name, length: 256 },

@@ -15,19 +15,15 @@ Because each repo commits its `.klef.json`, a new machine only needs your repos 
 
 2. **Clone your repos** as usual, for example under `~/Developer`.
 
-3. **Sign in.** This opens your browser to approve the machine:
+3. **Sign in and unlock.** This opens your browser to approve the machine. Leave **Also unlock the CLI on this device** ticked and confirm with your passkey or passphrase there, so nothing asks again:
 
    ```bash
    klef login
    ```
 
-4. **Unlock**, so the passphrase is typed once for the whole restore:
+   If you approved without unlocking, run `klef unlock` once instead.
 
-   ```bash
-   klef unlock
-   ```
-
-5. **Restore** every linked checkout under a directory:
+4. **Restore** every linked checkout under a directory:
 
    ```bash
    klef restore ~/Developer
@@ -50,4 +46,4 @@ That makes restore safe to run again, and means a stale checkout can never overw
 
 ## On Windows
 
-The CLI runs on Windows, but the unlock agent does not yet, so `restore` and each other command ask for your passphrase themselves.
+The CLI runs on Windows, and unlocking at login works there too: the key is kept in the Windows Credential Manager. Only the time-limited `klef unlock --for` needs the unlock agent, which Windows does not have yet.

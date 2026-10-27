@@ -28,9 +28,12 @@ On failure:
   "command": "pull",
   "error": {
     "code": "locked",
-    "message": "The vault is locked, and only a person at a terminal can unlock it.",
-    "hint": "Ask the user to run this in their own terminal, then retry:",
-    "next": [ { "command": "klef unlock" } ]
+    "message": "The vault is locked on this device, and unlocking it needs the user.",
+    "hint": "Run klef login and have the user approve it in the browser (one passkey touch), or ask them to run klef unlock:",
+    "next": [
+      { "command": "klef login", "description": "the user approves in the browser, which unlocks this device" },
+      { "command": "klef unlock", "description": "or the user types the passphrase in their own terminal" }
+    ]
   },
   "exit": 4,
   "warnings": []
@@ -56,7 +59,7 @@ No value is ever in the output, in any field.
 | `unsafe_path` | A path outside this directory | 2 |
 | `not_signed_in` | No token on this machine | 3 |
 | `token_rejected` | The token expired or was revoked | 3 |
-| `locked` | The vault is locked; a person must run `klef unlock` | 4 |
+| `locked` | Locked on this device; the user approves `klef login` in the browser, or runs `klef unlock` | 4 |
 | `no_terminal` | A person must do this at a terminal | 4 |
 | `wrong_passphrase` | The passphrase did not unlock the vault | 4 |
 | `conflict` | Both sides changed, or `restore` left checkouts for `sync`; nothing conflicting was written | 5 |
@@ -99,14 +102,14 @@ Declining a confirmation at the terminal exits 1 and writes nothing.
     "version": "0.6.0",
     "server": "https://klef.sh",
     "account": { "signedIn": true, "email": "you@example.com", "tokenSource": "keychain", "tokenStatus": "valid" },
-    "vault": { "unlocked": false, "locksInSeconds": null, "problem": null },
+    "vault": { "unlocked": false, "unlockedBy": null, "keyStore": null, "locksInSeconds": null, "problem": null },
     "project": { "workspace": "Personal", "project": "lensdrop", "config": ".klef.json" },
     "files": [
       { "file": ".env.local", "path": ".env.local", "local": true, "inVault": true, "state": "edited-here" },
       { "file": ".env.production", "path": ".env.production", "local": true, "inVault": true, "state": "in-sync" }
     ],
     "next": [
-      { "command": "klef unlock", "description": "a person types the passphrase once" },
+      { "command": "klef login", "description": "the user approves in the browser, which unlocks this device" },
       { "command": "klef sync", "description": "bring the files in line" }
     ]
   },
@@ -114,4 +117,4 @@ Declining a confirmation at the terminal exits 1 and writes nothing.
 }
 ```
 
-Then, in short: run what `next` says; on `confirmation_required`, ask the user and run the `next` command (which adds `--yes`); on `locked`, ask the user to run `klef unlock` in their own terminal and wait; on `conflict`, show the user the key names in `data` and let them choose. `klef sync --dry-run --json` shows what a sync would do without writing anything. See [Using Klef with Claude Code and Cursor](/docs/guides/coding-agents/).
+Then, in short: run what `next` says; on `confirmation_required`, ask the user and run the `next` command (which adds `--yes`); on `locked`, run `klef login` and ask the user to approve it in the browser (or to run `klef unlock` in their own terminal), and wait; on `conflict`, show the user the key names in `data` and let them choose. `klef sync --dry-run --json` shows what a sync would do without writing anything. See [Using Klef with Claude Code and Cursor](/docs/guides/coding-agents/).

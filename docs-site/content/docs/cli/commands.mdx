@@ -36,7 +36,9 @@ JSON `data`: `{ signedIn, email, linked: { workspace, project, files }, agentFil
 
 ### klef login
 
-Shows a code, opens klef.sh to approve it, and waits. The token is stored in the OS keychain, or a `0600` file where there is none. It reaches ciphertext and names only: it cannot decrypt anything.
+Shows a code, opens klef.sh to approve it, and waits. On the approval page, **Also unlock the CLI on this device** (ticked by default) asks once for your passkey or passphrase and sends the vault key to this terminal, sealed so only it can open it. The CLI keeps that key in the OS keychain, so pull, push and sync never ask for the passphrase on this device. See [Unlocked once per device](/docs/concepts/sessions/#the-cli-unlocked-once-per-device).
+
+The token is stored the same way. On its own it reaches ciphertext and names only: it cannot decrypt anything.
 
 ```bash
 klef login [flags]
@@ -45,10 +47,19 @@ klef login [flags]
 | Flag | Does |
 | --- | --- |
 | `--paste` | Paste a token from Settings instead, for machines with no browser. It is read from the terminal, never a flag |
+| `--no-remember` | Never keep the vault key on this device. Persists until `--remember` |
+| `--remember` | Keep the vault key on this device again (the default) |
 
-The code, the link and the waiting go to stderr; the result goes to stdout.
+```bash
+klef login                  # approve in the browser, and unlock this device
+klef login --no-remember    # sign in, and keep no key here
+```
 
-JSON `data`: `{ email, tokenStore: "keychain" | "file" }`
+The code, the link and the waiting go to stderr; the result goes to stdout. A coding agent can run `klef login` too: you approve it in the browser, which is the human step, and the agent can then work without asking you for anything else.
+
+JSON `data`: `{ email, tokenStore: "keychain" | "file", unlocked }`
+
+
 
 ### klef link
 
@@ -88,7 +99,7 @@ klef status --json   # the same, for a script or an agent
 
 `klef status --json` is the one call an agent needs before anything else. Its `next` lists the commands that would move things on.
 
-JSON `data`: `{ version, server, account: { signedIn, email, tokenSource, tokenStatus }, vault: { unlocked, locksInSeconds, problem }, project: { workspace, project, config } | null, files: [ { file, path, local, inVault, state } ], next: [ { command, description } ] }`
+JSON `data`: `{ version, server, account: { signedIn, email, tokenSource, tokenStatus }, vault: { unlocked, unlockedBy: "remembered" | "agent" | null, keyStore, locksInSeconds, problem }, project: { workspace, project, config } | null, files: [ { file, path, local, inVault, state } ], next: [ { command, description } ] }`
 
 ### klef sync
 
@@ -206,7 +217,9 @@ klef run --file .env.production --from-vault -- node scripts/check.js     # the 
 
 ### klef unlock
 
-Type the passphrase once; later commands reuse it. It is read from the terminal only, never a flag, pipe or variable, so whatever ran klef cannot supply or see it. A background agent holds the key in memory and forgets it after 15 minutes without use, or as long as `--for` says. Not available on Windows yet; there, each command asks for the passphrase itself.
+Unlocks this device with the passphrase, for when the browser did not unlock it at login. The passphrase is read from the terminal only, never a flag, pipe or variable, so whatever ran klef cannot supply or see it. The key is then kept in the OS keychain, as after a browser unlock, and later commands never ask.
+
+With `--for`, or with remembering turned off, a background agent holds the key in memory instead and forgets it after that long without use (15 minutes by default). The agent is not available on Windows yet.
 
 ```bash
 klef unlock [flags]
@@ -214,20 +227,20 @@ klef unlock [flags]
 
 | Flag | Does |
 | --- | --- |
-| `--for <time>` | How long it lasts without use: `30m`, `8h`, `7d` (default 15 minutes, at most 7 days) |
+| `--for <time>` | Unlock for a while instead, held in memory: `30m`, `8h`, `7d` (at most 7 days) |
 
 ```bash
-klef unlock          # 15 minutes
-klef unlock --for 8h # a working day
+klef unlock          # unlock this device
+klef unlock --for 8h # only for a working day
 ```
 
-Run without a terminal, it stops with `no_terminal` (exit 4): a person has to type the passphrase. See [Staying signed in and unlocked](/docs/concepts/sessions/#the-clis-unlock-agent).
+Run without a terminal, it stops with `no_terminal` (exit 4): a person has to type the passphrase, or approve `klef login` in the browser. See [Staying signed in and unlocked](/docs/concepts/sessions/).
 
-JSON `data`: `{ unlocked: true, alreadyUnlocked, locksInSeconds }`
+JSON `data`: `{ unlocked: true, alreadyUnlocked, remembered, locksInSeconds }`
 
 ### klef lock
 
-Forgets the key now. Locking when already locked is fine and says so.
+Forgets the key on this device: the one kept in the keychain, and the unlock agent's. Every command then asks for the passphrase until the next unlock or browser sign-in. Locking when already locked is fine and says so. `klef logout` forgets the key too.
 
 ```bash
 klef lock
@@ -284,7 +297,7 @@ JSON `data`: `{ root, projects: [ { dir, workspace, project, files: [ { path, ac
 
 ### klef logout
 
-Forgets the stored token on this machine. The token stays valid until you revoke it in the web app (Settings, Security). If `KLEF_TOKEN` is set, klef still signs in with it, and says so.
+Forgets the stored token, and the vault key kept on this device. The token stays valid until you revoke it in the web app (Settings, Security). If `KLEF_TOKEN` is set, klef still signs in with it, and says so.
 
 ```bash
 klef logout

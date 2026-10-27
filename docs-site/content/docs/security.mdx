@@ -17,7 +17,7 @@ By design, and stated plainly:
 - **A weak passphrase.** Anyone with a copy of the database can try to guess it offline against your wrapped key. Argon2id makes each guess expensive, not impossible.
 - **Losing both the passphrase and the recovery key.** The data is then unrecoverable, which is what zero-knowledge means.
 - **Plaintext written by `klef pull`.** Writing the file is the point of the command. It is written `0600`, but after that it is an ordinary file on your machine. Keep env files out of git.
-- **Other processes while the CLI is unlocked.** After `klef unlock`, any process running as your user can ask the unlock agent to decrypt or encrypt until it locks. This is the same trade `ssh-agent` makes.
+- **Anything running as you on an unlocked device.** Once you unlock the CLI on a device (at `klef login` or with `klef unlock`), the vault key is kept in that device's OS keychain until `klef lock`, so any process running as your user there can decrypt your vault. That is the reach it already has over the `.env` files `klef pull` wrote there. A leaked access token, or a copy of Klef's database, still decrypts nothing. `klef login --no-remember` keeps no key, and `klef unlock --for` holds one only in memory, for a while.
 - **"Keep unlocked for 7 days".** While it is on, anyone using that browser profile, or code running in Klef's origin there, can decrypt the vault without the passphrase until it lapses. See [Staying signed in and unlocked](/docs/concepts/sessions/).
 
 ## Tokens cannot leak secrets
@@ -30,9 +30,21 @@ A token also cannot mint or revoke tokens, approve a CLI sign-in, rewrite vault 
 
 - **Never prints a secret value.** Errors are redacted on the way out as a backstop.
 - **Reads the passphrase from `/dev/tty` only**, and refuses to prompt on a stream whose echo it cannot disable.
-- **Cannot run unattended.** A person types the passphrase, for each command or into `klef unlock`.
+- **A person unlocks each device.** By approving `klef login` in the browser (passkey or passphrase) or typing the passphrase into `klef unlock`. After that the device stays unlocked until `klef lock`.
 - **Keeps `pull` and `push` inside the working directory.** Absolute paths and `../` are refused.
 - **Signs in through the browser.** `klef login` shows a short code to compare by eye with the one in the browser; the alphabet leaves out characters people misread. Between approval and collection, the new token is sealed to a key the CLI generated, so the stored row is useless to anyone reading the database, the operator included. Collection works once.
+
+### Unlocking at sign-in
+
+- When you approve `klef login` with **Also unlock the CLI on this device**, the page recovers the vault key in your browser from your passkey or passphrase. The tab's own key is non-extractable and stays so; the key bytes exist in the page only long enough to seal them.
+- They are sealed to a P-256 key pair the CLI generated for this login, with AES-GCM bound to the code shown on both screens, your user id and the CLI's public key. The private half never leaves the CLI, so the server, which stores the sealed copy with the sign-in request, cannot open it, and a copy opened against any other code, user or device fails.
+- It is handed over once, on the CLI's collecting poll, and cleared in the same update; an uncollected one is wiped when the request expires, after 10 minutes.
+- The device code would be the natural binding, but the browser never sees it (the server keeps only its hash), so the binding is the user code and your user id instead. The code comparison on both screens is what stops someone getting their own sign-in approved by you, and with this option that sign-in would also receive your key: check the code before you approve.
+
+### The remembered key
+
+- Kept in the OS keychain, or a `0600` file where there is none, scoped to one server and one vault, and imported as a non-extractable key each time it is used.
+- Forgotten by `klef lock` and `klef logout`, and automatically if it ever stops decrypting.
 
 ### The unlock agent
 
@@ -55,7 +67,7 @@ A token also cannot mint or revoke tokens, approve a CLI sign-in, rewrite vault 
 
 - Encryption keys exist only on the client during an unlocked session: in memory, and in IndexedDB as a non-extractable key until auto-lock.
 - No key material, passphrase or plaintext is ever sent to the server or logged.
-- Locking clears keys from memory, in the browser and in the CLI's unlock agent.
+- Locking clears keys from memory, in the browser and in the CLI's unlock agent; in the CLI it also forgets the key kept in the keychain.
 - The web app loads no analytics, trackers or third-party scripts.
 
 ## Can I trust the client code?
