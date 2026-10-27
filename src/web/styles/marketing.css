@@ -1118,8 +1118,13 @@
 
 @media (max-width: 520px) {
   .m-app .m-shot-body,
+  .m-stage .m-app .m-shot-body,
   .m-showcase .m-app .m-shot-body {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* The field would sit among the buttons at this width. */
+  .m-grid .m-hero-field {
+    display: none;
   }
   .m-app-side {
     display: none;
@@ -1556,8 +1561,10 @@
   border-radius: var(--m-r-lg) 0 0 0;
   animation: none;
 }
+/* As tall as the longest transcript, so switching steps never moves the
+   page. */
 .m-tint .m-term {
-  min-height: 280px;
+  min-height: 312px;
 }
 
 @media (max-width: 860px) {
@@ -1599,7 +1606,7 @@
     padding: 24px 0 0 16px;
   }
   .m-tint .m-term {
-    min-height: 0;
+    min-height: 410px;
     font-size: 12px;
   }
 }
@@ -2079,6 +2086,7 @@
 }
 .marketing .m-footer-copy a {
   color: var(--m-fg);
+  white-space: nowrap;
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-color: var(--m-line-strong);
