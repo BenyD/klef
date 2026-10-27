@@ -33,6 +33,7 @@ import { restore } from "./commands/restore.ts";
 import { setup, defaultSetupDeps } from "./commands/setup.ts";
 import { set } from "./commands/set.ts";
 import { recover } from "./commands/recover.ts";
+import { run } from "./commands/run.ts";
 import { AGENT_COMMAND } from "./agent-spawn.ts";
 import { runAgentProcess } from "./agent.ts";
 import { CLI_VERSION } from "./version.ts";
@@ -58,6 +59,7 @@ const RUN: Record<string, Run> = {
   restore: (args, env, cwd) => restore(args, env, cwd),
   unlock: (args, env) => unlock(args, env),
   lock: (_args, env) => lock(env),
+  run: (args, env, cwd) => run(args, env, cwd),
 };
 
 function resolveCwd(args: ParsedArgs): string {
@@ -122,7 +124,10 @@ async function main(args: ParsedArgs): Promise<number> {
     throw new CliError(
       "usage",
       `Unknown flag ${shown} for ${spec.name}.${bad.suggestion ? ` Did you mean --${bad.suggestion}?` : ""}`,
-      { next: [suggested(`help ${spec.name}`)] },
+      {
+        hint: spec.name === "run" ? "Put the command to run after --, so its flags are its own:" : undefined,
+        next: [suggested(spec.name === "run" ? "run -- <command> [args...]" : `help ${spec.name}`)],
+      },
     );
   }
 
