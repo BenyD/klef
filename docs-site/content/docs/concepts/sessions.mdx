@@ -7,7 +7,7 @@ Klef remembers the two gates separately: being signed in, and being unlocked.
 
 ## Sign-in lasts 30 days
 
-A browser sign-in is a session cookie (`HttpOnly`, `Secure`, `SameSite=Lax`) that lasts 30 days and slides forward when you use Klef, at most once a day. Being signed in reaches ciphertext and names, never a value.
+A browser sign-in is a session cookie (`HttpOnly`, `Secure`, `SameSite=Lax`) that lasts 30 days and slides forward when you use Klef, at most once a day. Being signed in reaches ciphertext and names, never a value. To spare a database lookup on every request, a signed copy of the session is cached in a second cookie for 5 minutes, so a session you revoke from another device can keep working on this one for up to 5 minutes.
 
 The CLI signs in with an [access token](#access-tokens) instead.
 
