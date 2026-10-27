@@ -185,6 +185,14 @@ describe("link", () => {
     expect(config.file).toBe(".env");
     expect(config.files).toBeUndefined();
   });
+
+  it("keeps the audit map when relinking", async () => {
+    await save(".env.local", LOCAL);
+    const audit = { "vercel:preview": "apps/web/.env.preview" };
+    await writeFile(path.join(cwd, ".klef.json"), JSON.stringify({ workspace: "Personal", project: "lensdrop", file: ".env.local", environment: null, audit }));
+    expect(await link(parseArgs(["link", "Personal", "lensdrop"]), env, cwd)).toBe(0);
+    expect(JSON.parse(await local(".klef.json")).audit).toEqual(audit);
+  });
 });
 
 describe("sync", () => {
@@ -252,6 +260,14 @@ describe("sync", () => {
       { command: "klef push --file .env.local", description: "keep this .env.local" },
     ]);
     expect(JSON.stringify((failure as CliError).data)).not.toContain(SECRET);
+  });
+
+  it("reports a conflict on --dry-run and exits 0, or 5 with --exit-code", async () => {
+    await writeFile(path.join(cwd, ".env.local"), "PORT=1\n");
+    expect(await sync(parseArgs(["sync", "--dry-run"]), env, cwd, prompt, yes)).toBe(0);
+    expect(output).toContain("Dry run: nothing written.");
+    expect(await sync(parseArgs(["sync", "--dry-run", "--exit-code"]), env, cwd, prompt, yes)).toBe(5);
+    expect(await local(".env.local")).toBe("PORT=1\n");
   });
 
   it("treats a differing file this machine never synced as a conflict", async () => {
