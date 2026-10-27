@@ -107,7 +107,11 @@ npm publish ./dist/cli --access public
 - Marketing pages (`/`, `/security`, `/terms`, `/privacy`) are plain-CSS
   (`marketing.css`), prerendered to static HTML at build time by
   `scripts/prerender.tsx` - keep them SSR-safe (no browser APIs at module
-  scope or render time).
+  scope or render time). The landing page prerenders to `home.html`, served
+  for `/` by the Worker; `index.html` stays the bare shell that `/app` and
+  workspace URLs fall back to.
+- Pages are lazy chunks (`lazyPage` in `App.tsx`); `main.tsx` preloads the
+  current route's chunk before the first render. Add a new route the same way.
 - **Docs live in `docs-site/`** (Fumadocs on React Router, prerendered;
   pages in `content/docs/*.mdx`, sidebar order in each folder's
   `meta.json`), served at `/docs` from the same deploy. `pnpm

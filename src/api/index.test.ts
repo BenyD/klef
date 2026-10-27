@@ -1,4 +1,5 @@
-import { SELF } from "cloudflare:test";
+import { env, SELF } from "cloudflare:test";
+import app from "./index.ts";
 import { describe, expect, it } from "vitest";
 
 // Worker integration test — runs inside workerd against a real local D1 with
@@ -25,5 +26,34 @@ describe("worker /api", () => {
     const res = await SELF.fetch("https://klef.test/api/nope");
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ ok: false, error: "Not found" });
+  });
+});
+
+// "/" runs the Worker first (run_worker_first) so it can serve the
+// prerendered landing from home.html; index.html stays the bare app shell.
+describe("worker /", () => {
+  const assets = (pages: Record<string, string>) =>
+    ({
+      fetch: async (input: RequestInfo | URL) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        const body = pages[url.pathname];
+        return body === undefined
+          ? new Response("not found", { status: 404 })
+          : new Response(body, { headers: { "content-type": "text/html" } });
+      },
+    }) as unknown as Fetcher;
+
+  it("serves home.html for the landing page", async () => {
+    const res = await app.request("/", {}, {
+      ...env,
+      ASSETS: assets({ "/home": "landing", "/": "shell" }),
+    });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("landing");
+  });
+
+  it("falls back to the assets' own / when there is no home.html", async () => {
+    const res = await app.request("/", {}, { ...env, ASSETS: assets({ "/": "shell" }) });
+    expect(await res.text()).toBe("shell");
   });
 });

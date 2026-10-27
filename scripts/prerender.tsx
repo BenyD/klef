@@ -23,7 +23,9 @@ import { Why } from "../src/web/components/Why.tsx";
 const DEFAULT_TITLE = "Klef - End-to-end encrypted .env sync";
 
 const ROUTES = [
-  { path: "/", file: "index.html", title: DEFAULT_TITLE, Page: Landing },
+  // Not index.html: that stays the bare shell the SPA routes fall back to.
+  // The Worker serves home.html for "/" (see src/api/index.ts).
+  { path: "/", file: "home.html", title: DEFAULT_TITLE, Page: Landing },
   { path: "/compare", file: "compare.html", title: "Compare - Klef", Page: Compare },
   { path: "/security", file: "security.html", title: "Security - Klef", Page: Security },
   { path: "/terms", file: "terms.html", title: "Terms - Klef", Page: Terms },
