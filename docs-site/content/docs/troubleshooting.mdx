@@ -27,9 +27,13 @@ A network error, not a problem with your data; nothing was changed. Check your c
 
 This device has not been unlocked yet, or was locked with `klef lock` (exit 4, `locked`). Run `klef login` and approve it in the browser with **Also unlock the CLI on this device** ticked, or run `klef unlock` yourself in a terminal. Either way the key is kept on this device and later commands, from anywhere, stop asking.
 
-### "The key remembered on this device no longer opens the vault"
+### "The key remembered on this device no longer opens the vault, so it was forgotten"
 
-The vault was reset or replaced since this device was unlocked. The old key was forgotten; unlock again with `klef login` or `klef unlock`.
+The key kept on this device could not decrypt the vault, for example because the vault was replaced since this device was unlocked. The CLI forgot it on the spot. Unlock again with `klef login` or `klef unlock`.
+
+### "A time-limited unlock needs the unlock agent, which Windows does not have yet"
+
+`klef unlock --for` holds the key in a background agent, and the agent is Unix-only. On Windows, run `klef unlock` without `--for`: the key is kept in the Windows Credential Manager until `klef lock`.
 
 ### "... needs a yes before it changes anything"
 
@@ -47,6 +51,10 @@ The token expired or was revoked (exit 3). Run `klef login` again. If `KLEF_TOKE
 
 Setup links a repo to a project that already has a file. Create the project and add a file at [klef.sh](https://klef.sh), then rerun setup.
 
+### `klef setup --global` says cursor can only be set up per project
+
+`--global` installs into your home directory, and only the Claude Code skill (`claude`) and a `~/.claude/CLAUDE.md` block (`claude-md`) have a home there. Name one of them: `klef setup claude --global`.
+
 ### `klef sync` stops with a conflict
 
 Both sides changed since this machine last synced, or this machine has never synced a file that already exists locally. Nothing was written. Look at the key names it printed, then run the pull or push command it suggests. Pushing keeps the vault's previous version in the history, so you can go back. See [Syncing](/docs/guides/sync/).
@@ -59,9 +67,9 @@ Both sides changed since this machine last synced, or this machine has never syn
 
 Exit 6. Run `klef setup` (or `klef link`) in the repo root, or point the command at the repo with `-C <dir>`.
 
-### `klef unlock` refuses to start
+### The unlock agent refuses to start
 
-The unlock agent keeps its socket in a directory only your user may own and read: `$XDG_RUNTIME_DIR`, or `~/.config/klef/run` where that is unset. If the directory's owner or permissions are wrong, the CLI refuses to use it. Fix them (owner you, mode `0700`) or remove the directory and let the CLI recreate it.
+`klef unlock --for`, or `klef unlock` with remembering turned off, starts the unlock agent, which keeps its socket in a directory only your user may own and read: `$XDG_RUNTIME_DIR`, or `~/.config/klef/run` where that is unset. If the directory's owner or permissions are wrong, the CLI refuses to use it, and `klef status` reports the problem on its Vault line. Fix them (owner you, mode `0700`) or remove the directory and let the CLI recreate it.
 
 ### `klef audit` reports a platform as unavailable
 

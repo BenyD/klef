@@ -27,9 +27,11 @@ Each platform environment is compared with the local file for the same environme
 | GitHub Actions | Repository secrets | `.env.production` |
 | Cloudflare Workers | Worker secrets | `.env.production` |
 
-When a linked repo keeps an environment under a different name, such as production in a plain `.env` marked production, that file is used instead. See [Environments](/docs/concepts/environments/).
+When a linked repo keeps an environment under a different name, such as production in a plain `.env` marked production, that file is used instead. See [Environments](/docs/concepts/environments/). Vercel Preview is checked only when the repo has a `.env.preview`.
 
-For each scope, audit reports the names only on the platform and the names only in the local file.
+A platform is checked only when the directory is set up for it: a `.vercel/project.json` for Vercel, a `.git` directory for GitHub, and a `wrangler.jsonc`, `wrangler.json` or `wrangler.toml` for Cloudflare. Anything else is reported as skipped.
+
+For each scope, audit reports the names only on the platform and the names only in the local file, and counts the names in both. GitHub upper-cases secret names, so they are matched without regard to case; the other platforms match exactly.
 
 ## Safe by construction
 
