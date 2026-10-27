@@ -121,7 +121,7 @@
 /* --- buttons ------------------------------------------------------------------ */
 
 /* 36px, 13px/500, the app's radius. One ink button per view; the rest are
-   soft (a quiet fill) or ghost. The chevron leads, the way links point. */
+   soft (a quiet fill), outlined or ghost. */
 .marketing .m-btn {
   display: inline-flex;
   align-items: center;
@@ -153,13 +153,6 @@
   width: 14px;
   height: 14px;
   flex: none;
-}
-.marketing .m-btn .m-chev {
-  margin-left: -4px;
-  opacity: 0.7;
-}
-.marketing .m-btn:has(.m-chev) {
-  padding-left: 10px;
 }
 
 /* The arrow nudges forward on hover; the one bit of motion a button gets. */
@@ -243,6 +236,13 @@
   width: 16px;
   height: 16px;
 }
+.marketing .m-icon-btn-band {
+  color: var(--m-band-muted);
+}
+.marketing .m-icon-btn-band:hover {
+  background: var(--m-band-line);
+  color: var(--m-band-fg);
+}
 
 /* --- header ------------------------------------------------------------------- */
 
@@ -308,9 +308,6 @@
 .marketing .m-actions .m-btn {
   height: 32px;
   padding-inline: 12px;
-}
-.marketing .m-actions .m-btn:has(.m-chev) {
-  padding-left: 8px;
 }
 
 .marketing .m-header .m-menu-btn {
@@ -484,9 +481,7 @@
 .m-hero-copy .m-beat:nth-child(5) {
   animation-delay: 300ms;
 }
-.m-hero-copy .m-cmd {
-  margin-top: -8px;
-}
+
 
 .marketing .m-eyebrow {
   display: inline-flex;
@@ -612,60 +607,97 @@
   color: var(--m-muted);
 }
 
-/* The app shell: canvas, sidebar, inset content panel. */
+/* The app shell, as the app draws it: the canvas, a sidebar with the
+   workspace switcher, the search field, two fixed rows and the project
+   tree, and the inset content panel with its breadcrumb header. */
 .m-app {
   background: var(--m-soft);
   font-size: 12px;
 }
 .m-app .m-shot-body {
   display: grid;
-  grid-template-columns: 152px minmax(0, 1fr);
+  grid-template-columns: 168px minmax(0, 1fr);
+}
+.m-app svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
 }
 .m-app-side {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 10px 8px;
+  padding: 8px;
   color: var(--m-muted);
 }
 .m-app-ws {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 28px;
+  height: 36px;
   padding: 0 6px;
   margin-bottom: 4px;
   color: var(--m-fg);
 }
-.m-app-ws svg {
-  width: 16px;
-  height: 16px;
+.m-app-ws-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
 }
-.m-app-ws b {
-  font-weight: 500;
+.m-app-ws-text b {
+  font-weight: 600;
+}
+.m-app-ws-text span {
+  font-size: 10px;
+  color: var(--m-muted);
+}
+.m-app-tile {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: var(--m-fg);
+  color: var(--m-bg);
+  font-size: 11px;
+  font-weight: 600;
+}
+.m-app-tile-sm {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  font-size: 8px;
+}
+.m-app-proj {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--m-fill-strong);
+  color: var(--m-fg);
+  font-size: 8px;
+  font-weight: 600;
 }
 .m-app-search {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 26px;
-  padding: 0 6px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--m-line);
   border-radius: var(--m-r);
-}
-.m-app-search svg {
-  width: 12px;
-  height: 12px;
+  background: var(--m-card);
 }
 .m-app-search kbd {
   margin-left: auto;
   font: inherit;
-  font-family: var(--m-mono);
   font-size: 10px;
+  letter-spacing: 0.04em;
 }
-.m-app-side .m-label {
-  margin: 10px 6px 4px;
-  font-size: 10px;
-}
+.m-app-nav,
 .m-app-tree {
   display: flex;
   flex-direction: column;
@@ -674,18 +706,34 @@
   padding: 0;
   list-style: none;
 }
+.m-app-nav {
+  margin-top: 4px;
+}
+.m-app-nav li,
 .m-app-tree li {
   display: flex;
   align-items: center;
+  gap: 6px;
   height: 26px;
   padding: 0 6px;
   border-radius: var(--m-r);
+  white-space: nowrap;
+}
+.m-app-side .m-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 6px 4px;
+  font-size: 10px;
 }
 .m-app-tree .m-app-open {
   color: var(--m-fg);
 }
+.m-app-tree .m-app-open svg:last-child {
+  margin-left: auto;
+}
 .m-app-tree .m-app-file {
-  margin-left: 10px;
+  margin-left: 13px;
   padding-left: 10px;
   border-left: 1px solid var(--m-line-strong);
   border-radius: 0 var(--m-r) var(--m-r) 0;
@@ -697,6 +745,11 @@
   color: var(--m-fg);
   font-weight: 500;
 }
+.m-app-tree .m-app-add {
+  font-family: inherit;
+  font-size: 11px;
+}
+
 .m-app-panel {
   display: flex;
   flex-direction: column;
@@ -709,15 +762,29 @@
 .m-app-head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   height: 36px;
-  padding: 0 12px;
+  padding: 0 10px;
   border-bottom: 1px solid var(--m-line);
   color: var(--m-muted);
+  white-space: nowrap;
 }
-.m-app-head b {
-  font-weight: 500;
+.m-app-trigger {
+  margin-right: 4px;
+}
+.m-app-crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 4px;
+  font-weight: 400;
+}
+.m-app-head b.m-app-crumb {
   color: var(--m-fg);
+  font-weight: 500;
+}
+.m-app-head .m-mono {
+  font-size: 11px;
 }
 .m-app-sep {
   color: var(--m-line-strong);
@@ -736,15 +803,95 @@
   border-radius: 999px;
   background: var(--m-ok);
 }
-.m-app-status-quiet::before {
-  background: var(--m-line-strong);
+
+/* Open files, as the app's tab strip. */
+.m-app-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--m-line);
 }
-.m-app-foot {
-  margin-top: auto;
-  padding: 8px 12px;
+.m-app-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--m-r);
+  font-family: var(--m-mono);
+  font-size: 11px;
+  color: var(--m-muted);
+}
+.m-app-tab-active {
+  background: var(--m-bg);
+  color: var(--m-fg);
+  box-shadow: 0 0 0 1px var(--m-line);
+}
+
+/* The key table: KEY = value rows, the app's divided list. */
+.m-env {
+  margin: 10px;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-r);
+}
+.m-env li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 10px;
   border-top: 1px solid var(--m-line);
   font-family: var(--m-mono);
-  font-size: 10px;
+  font-size: 11px;
+  animation: m-rise 480ms var(--ease-out) both;
+  animation-delay: var(--d);
+}
+.m-env li:first-child {
+  border-top: 0;
+}
+.m-env-key {
+  color: var(--syntax-key);
+}
+.m-env-eq {
+  color: var(--m-line-strong);
+}
+.m-env-val {
+  color: var(--m-muted);
+  letter-spacing: 0.12em;
+}
+.m-env .m-env-add {
+  gap: 6px;
+  border-top: 1px dashed var(--m-line-strong);
+  color: var(--m-muted);
+  animation: none;
+}
+
+/* The compare dialog, drawn in the panel. */
+.m-dialog {
+  margin: 10px;
+  overflow: hidden;
+  border: 1px solid var(--m-line);
+  border-radius: 8px;
+  box-shadow: var(--elevation-overlay);
+}
+.m-dialog-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--m-line);
+}
+.m-dialog-head b {
+  font-size: 12px;
+  font-weight: 500;
+}
+.m-dialog-head span {
+  font-size: 11px;
   color: var(--m-muted);
 }
 
@@ -763,7 +910,7 @@
   color: var(--m-muted);
 }
 .m-vault td {
-  height: 32px;
+  height: 30px;
   padding: 0 12px;
   border-top: 1px solid var(--m-line);
   white-space: nowrap;
@@ -774,10 +921,6 @@
 .m-vault tbody tr {
   animation: m-rise 480ms var(--ease-out) both;
   animation-delay: var(--d);
-}
-.m-vault .m-masked {
-  color: var(--m-muted);
-  letter-spacing: 0.12em;
 }
 .m-compare th:not(:first-child),
 .m-compare td:not(:first-child) {
@@ -830,6 +973,9 @@
 }
 .t-fg {
   color: var(--m-fg);
+}
+.t-dim {
+  color: var(--m-line-strong);
 }
 /* --diff-add rather than --success: it holds 4.5:1 on every surface here. */
 .t-ok {
@@ -1293,18 +1439,14 @@
   text-overflow: ellipsis;
 }
 .marketing .m-cmd-copy {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
   height: 30px;
-  padding: 0 10px;
   border: 0;
   border-radius: 4px;
   background: transparent;
   color: var(--m-muted);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 500;
   cursor: pointer;
   transition:
     background-color var(--duration-fast) var(--ease-quick),
@@ -1315,8 +1457,74 @@
   color: var(--m-fg);
 }
 .marketing .m-cmd-copy svg {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
+}
+
+/* The copy glyph: the check pops in when the copy lands (the span is
+   re-keyed, so the animation replays every time), in the ok colour. */
+.m-copy-glyph {
+  display: inline-grid;
+  place-items: center;
+  animation: m-pop 360ms var(--ease-spring) both;
+}
+[data-copied] .m-copy-glyph {
+  color: var(--m-ok);
+}
+
+/* The hero's tool row: the command and the agent pill. */
+.m-hero-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: -8px;
+}
+
+/* The agent pill: the three marks overlapping, the label, the copy glyph. */
+.marketing .m-agent-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 10px 0 6px;
+  border: 1px solid var(--m-line);
+  border-radius: 999px;
+  background: var(--m-card);
+  color: var(--m-fg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-quick),
+    background-color var(--duration-fast) var(--ease-quick);
+}
+.marketing .m-agent-pill:hover {
+  border-color: var(--m-line-strong);
+  background: var(--m-soft);
+}
+.marketing .m-agent-pill .m-copy-glyph {
+  color: var(--m-muted);
+}
+.marketing .m-agent-pill[data-copied] .m-copy-glyph {
+  color: var(--m-ok);
+}
+.m-agent-marks {
+  display: inline-flex;
+}
+.m-agent-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--m-line);
+  border-radius: 999px;
+  background: var(--m-card);
+  color: var(--m-fg);
+}
+.m-agent-mark + .m-agent-mark {
+  margin-left: -8px;
 }
 
 /* --- footer --------------------------------------------------------------------------- */
@@ -1422,9 +1630,6 @@
   }
   .marketing .m-footer-col a {
     padding: 6px 0;
-  }
-  .m-footer-mid {
-    display: none;
   }
 }
 
@@ -1849,7 +2054,9 @@
   .m-hl,
   .m-shot,
   .m-vault tbody tr,
+  .m-env li,
   .m-chk,
+  .m-copy-glyph,
   .m-term .t-line,
   .marketing-page {
     animation: none;

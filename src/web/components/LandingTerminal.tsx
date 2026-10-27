@@ -2,10 +2,12 @@ import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 // Terminal transcripts for the landing page.
 //
-// Every line is what the CLI prints (src/cli/commands, src/cli/output.ts),
-// down to the wording. None shows a value, because the CLI never prints one:
-// that is the claim the page makes, so an invented line with a secret in it
-// would undercut it. SSR-safe: the server renders the first step in full.
+// Every line is what the CLI prints (src/cli/commands/*, project-sync.ts,
+// ui.ts: say() plain, done() with the green check, step counters dimmed),
+// down to the wording and the indents. None shows a value, because the CLI
+// never prints one: that is the claim the page makes, so an invented line
+// with a secret in it would undercut it. SSR-safe: the server renders the
+// first step in full.
 
 export function Cmd({ children }: { children: ReactNode }) {
   return (
@@ -22,6 +24,21 @@ export function Out({ tone, children }: { tone?: "ok" | "fg"; children?: ReactNo
   const cls = tone ? `t-line t-${tone}` : "t-line";
   // An empty line still takes a row, like a blank line in a real terminal.
   return <span className={cls}>{children ?? " "}</span>;
+}
+
+/** A line the CLI prints through done(): the green check, then the text. */
+export function Done({ indent = "", children }: { indent?: string; children: ReactNode }) {
+  return (
+    <span className="t-line t-fg">
+      {indent}
+      <span className="t-ok">&#10003;</span> {children}
+    </span>
+  );
+}
+
+/** Dimmed text inside a line, like the step counter setup prints. */
+export function Dim({ children }: { children: ReactNode }) {
+  return <span className="t-dim">{children}</span>;
 }
 
 /** A typed answer at the end of a prompt line. */
@@ -44,16 +61,27 @@ const STEPS: Step[] = [
     lines: (
       <>
         <Cmd>npx @klefsh/cli setup</Cmd>
-        <Out>Step 1 of 4: signed in as you@example.com.</Out>
-        <Out>Step 2 of 4: linked to personal / lensdrop (2 files).</Out>
-        <Out>Step 3 of 4: instructions for Claude Code and Cursor.</Out>
-        <Out>  Create  ./.claude/skills/klef/SKILL.md</Out>
-        <Out>  Create  ./.cursor/rules/klef.mdc</Out>
+        <Out tone="fg">
+          <Dim>1/4</Dim>  Signed in as you@example.com
+        </Out>
+        <Out tone="fg">
+          <Dim>2/4</Dim>  Linked to personal / lensdrop (2 files)
+        </Out>
+        <Out>     Wrote .klef.json: names only, safe to commit.</Out>
+        <Out tone="fg">
+          <Dim>3/4</Dim>  Instructions for Claude Code and Cursor
+        </Out>
+        <Out>     create   ./.claude/skills/klef/SKILL.md</Out>
+        <Out>     create   ./.cursor/rules/klef.mdc</Out>
         <Out>
           Write 2 files? [y/N] <Yes />
         </Out>
-        <Out>Step 4 of 4: pull .env.local, .env.production.</Out>
-        <Out tone="ok">Wrote 14 variables to .env.local</Out>
+        <Done indent="     ">Wrote 2 files. New agent sessions pick them up</Done>
+        <Out tone="fg">
+          <Dim>4/4</Dim>  Pull .env.local, .env.production
+        </Out>
+        <Done>Wrote 14 variables to .env.local</Done>
+        <Done>Wrote 9 variables to .env.production</Done>
       </>
     ),
   },
@@ -66,12 +94,12 @@ const STEPS: Step[] = [
         <Cmd>klef sync</Cmd>
         <Out>.env.local       edited here</Out>
         <Out>.env.production  changed in the vault</Out>
-        <Out>About to push .env.local: 14 variables (+1 lines)</Out>
+        <Out>Push .env.local: 14 variables (+1 lines)</Out>
         <Out>
           Push? [y/N] <Yes />
         </Out>
-        <Out tone="ok">Pushed 14 variables (+1 lines) to .env.local (version 3f9a2c1d).</Out>
-        <Out tone="ok">Wrote 9 variables to .env.production</Out>
+        <Done>Pushed 14 variables (+1 lines) to .env.local (version 3f9a2c1d)</Done>
+        <Done>Wrote 9 variables to .env.production</Done>
       </>
     ),
   },
@@ -83,15 +111,15 @@ const STEPS: Step[] = [
       <>
         <Cmd>klef restore ~/Developer</Cmd>
         <Out>Linked checkouts under /Users/you/Developer:</Out>
-        <Out>  lensdrop  personal / lensdrop  (.env.local, .env.production)</Out>
-        <Out>  klef  personal / klef  (.env.local, .env.production)</Out>
+        <Out>  lensdrop  personal / lensdrop  <Dim>.env.local, .env.production</Dim></Out>
+        <Out>  klef      personal / klef      <Dim>.env.local, .env.production</Dim></Out>
         <Out>
           Restore these 2? [y/N] <Yes />
         </Out>
         <Out />
         <Out tone="fg">lensdrop</Out>
-        <Out tone="ok">  Wrote 14 variables to .env.local</Out>
-        <Out tone="ok">  Wrote 9 variables to .env.production</Out>
+        <Done indent="  ">Wrote 14 variables to .env.local</Done>
+        <Done indent="  ">Wrote 9 variables to .env.production</Done>
       </>
     ),
   },
@@ -102,7 +130,9 @@ const STEPS: Step[] = [
     lines: (
       <>
         <Cmd>klef audit vercel</Cmd>
-        <Out tone="fg">Vercel Production  (.env.production)</Out>
+        <Out tone="fg">
+          Vercel Production  <Dim>(.env.production)</Dim>
+        </Out>
         <Out>  only on Vercel: OLD_FLAG</Out>
         <Out>  only in .env.production: SENTRY_DSN</Out>
         <Out>  in both: 12</Out>
