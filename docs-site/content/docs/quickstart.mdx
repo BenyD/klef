@@ -35,11 +35,11 @@ npx @klefsh/cli setup
 
 `setup` does everything in one go, and skips whatever is already done:
 
-- **Signs in.** It opens your browser to approve this machine. Check that the short code in the terminal matches the one on the page.
-- **Links the repo** to a project in your vault, recording which env files belong to it in `.klef.json`. Commit that file; it holds names only.
-- **Offers to teach your coding agents.** It can write a Claude Code skill and a Cursor rule so later sessions know how to sync these files safely. See [Using Klef with Claude Code and Cursor](/docs/guides/coding-agents/).
-- **Unlocks** with your passphrase, typed into the terminal.
-- **Pulls** the files that are not on disk yet. Each one is written with mode `0600`, and the CLI reports how many variables it wrote, never what they are.
+- **Signs in.** It opens your browser to approve this machine. Check that the short code in the terminal matches the one on the page, and leave **Also unlock the CLI on this device** ticked: one passkey touch or your passphrase there, and this device is unlocked for every later command.
+- **Links the repo** to a project in your vault, recording every env file in that project in `.klef.json`. If your vault has more than one project, it asks which one. Commit that file; it holds names only.
+- **Offers to teach your coding agents.** It asks before writing a Claude Code skill and a Cursor rule, so later sessions know how to sync these files safely. See [Using Klef with Claude Code and Cursor](/docs/guides/coding-agents/).
+- **Unlocks**, if the sign-in did not already unlock this device: it asks for your passphrase at the terminal and keeps the key in your OS keychain.
+- **Pulls** the files that are not on disk yet. Each one is written with mode `0600`, and the CLI reports how many variables it wrote, never what they are. Files already on disk are left alone.
 
 To install the CLI globally instead of going through `npx`:
 
@@ -61,7 +61,7 @@ klef sync
 You can also move one direction explicitly with `klef pull` and `klef push`.
 
 <Callout type="info">
-When you approve `klef login` in the browser, keep **Also unlock the CLI on this device** ticked. One passkey touch (or your passphrase) there, and this device stays unlocked: pull, push and sync never ask for the passphrase, in your terminal or in a coding agent, until you run `klef lock`.
+Once a device is unlocked, at sign-in or with `klef unlock`, it stays unlocked: pull, push and sync never ask for the passphrase there, in your terminal or in a coding agent, until you run `klef lock`. See [Staying signed in and unlocked](/docs/concepts/sessions/#the-cli-unlocked-once-per-device).
 </Callout>
 
 ## Next

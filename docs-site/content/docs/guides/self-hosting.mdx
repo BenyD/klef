@@ -1,84 +1,126 @@
 ---
 title: Self-hosting on Cloudflare
-description: Run your own Klef on your own Cloudflare account, and point the CLI at it.
+description: Deploy your own Klef on your Cloudflare account, with Workers and D1, and point the CLI at it.
 ---
 
-Klef is one repository that deploys as one Cloudflare Worker with a D1 database. Hosting it yourself is a first-class use case, and the zero-knowledge guarantee holds the same way: as the operator, you still cannot read anything stored in it.
+Klef is one repository that deploys as one Cloudflare Worker with a D1 database. The web app, the API and these docs ship together. Hosting it yourself is a first-class use case, and the zero-knowledge guarantee holds the same way: as the operator, you can see workspace, project and file names and ciphertext, and nothing else.
 
 ## What you need
 
-- A Cloudflare account, with a domain on it if you want a custom one
-- Node.js 22.18 or newer and [pnpm](https://pnpm.io)
-- A Google OAuth client and a GitHub OAuth app, for sign-in
+- A Cloudflare account. Workers and D1 are both available on the free plan.
+- Node.js 22.18 or newer and [pnpm](https://pnpm.io).
+- A Google OAuth client and a GitHub OAuth app. The sign-in page offers both, and the Worker reads both pairs of credentials, so create both.
+- Optionally, a domain whose DNS is on Cloudflare. Without one, the Worker is served at a `workers.dev` address.
 
-## Deploy
+## 1. Fork, clone, install
+
+Fork [github.com/BenyD/klef](https://github.com/BenyD/klef), clone your fork, and install:
 
 ```bash
-# 1. Fork and clone the repo, then install
 pnpm install
+```
 
-# 2. Sign Wrangler in to your Cloudflare account
+## 2. Sign Wrangler in
+
+```bash
 pnpm exec wrangler login
+```
 
-# 3. Create your own D1 database and put its id in wrangler.jsonc
+Wrangler is a dev dependency of the repo, so `pnpm exec` runs that copy.
+
+## 3. Create the database
+
+```bash
 pnpm exec wrangler d1 create klef-db
+```
 
-# 4. Apply the schema to it
+Copy the `database_id` it prints into `wrangler.jsonc`, under `d1_databases`. The binding `DB`, the `database_name` and the `migrations_dir` stay as they are.
+
+## 4. Choose the address
+
+`wrangler.jsonc` routes the Worker to `klef.sh` with `custom_domain: true`. Edit the `routes` block:
+
+- **Your own domain:** put it in place of `klef.sh`. The zone must be active in the same Cloudflare account; on deploy, Cloudflare creates the DNS record and the certificate.
+- **No domain:** delete the `routes` block. The Worker then answers at `https://klef-web.<your-subdomain>.workers.dev`. Change `name` in the same file if you want a different hostname.
+
+Note the full `https://` origin. The next steps need it.
+
+## 5. Apply the schema
+
+```bash
 pnpm db:migrate:remote
+```
 
-# 5. Set the production secrets (never committed)
+That runs `wrangler d1 migrations apply klef-db --remote`: every file in `db/migrations` that has not been applied yet, in order.
+
+## 6. Create the OAuth apps
+
+| Provider | Where | Authorized redirect URI |
+| --- | --- | --- |
+| Google | [Google Cloud Console](https://console.cloud.google.com/apis/credentials), Create credentials, OAuth client ID, Web application | `https://<your-origin>/api/auth/callback/google` |
+| GitHub | GitHub, Settings, Developer settings, OAuth Apps, New OAuth App | `https://<your-origin>/api/auth/callback/github` |
+
+Keep each client id and secret for the next step.
+
+## 7. Set the secrets
+
+Each `wrangler secret put` reads the value from the terminal, so none of them is ever committed:
+
+```bash
 pnpm exec wrangler secret put BETTER_AUTH_SECRET    # openssl rand -base64 32
-pnpm exec wrangler secret put BETTER_AUTH_URL       # https://your-domain
+pnpm exec wrangler secret put BETTER_AUTH_URL       # https://<your-origin>, no trailing slash
 pnpm exec wrangler secret put GOOGLE_CLIENT_ID
 pnpm exec wrangler secret put GOOGLE_CLIENT_SECRET
 pnpm exec wrangler secret put GITHUB_CLIENT_ID
 pnpm exec wrangler secret put GITHUB_CLIENT_SECRET
+```
 
-# 6. Build and ship
+`BETTER_AUTH_URL` is the address people will use. Sign-in cookies are issued for it and passkeys are registered to its hostname, so changing it later invalidates every passkey.
+
+## 8. Deploy
+
+```bash
 pnpm deploy
 ```
 
-Before deploying, edit `wrangler.jsonc`:
-
-- `d1_databases[0].database_id`: the id from step 3.
-- `routes`: your own domain in place of `klef.sh`, or remove the block to use the `workers.dev` address. With `custom_domain: true`, Cloudflare creates the DNS record and certificate on deploy.
-
-## OAuth callbacks
-
-| Provider | Where | Callback URL |
-| --- | --- | --- |
-| Google | [Google Cloud Console](https://console.cloud.google.com/apis/credentials), OAuth client | `https://your-domain/api/auth/callback/google` |
-| GitHub | GitHub, Settings, Developer settings, OAuth Apps | `https://your-domain/api/auth/callback/github` |
-
-Passkeys are tied to the domain in `BETTER_AUTH_URL`, so set it to the address people will use.
-
-## Point the CLI at it
+That typechecks, builds the app, prerenders the marketing pages, builds the docs into the same bundle, and runs `wrangler deploy`. Then check the Worker is up and can reach D1:
 
 ```bash
-export KLEF_API_URL=https://your-domain
+curl https://<your-origin>/api/health
+```
+
+It answers with `"ok": true` and `"db": { "reachable": true, ... }`. Open the origin in a browser, sign in, and create your vault.
+
+## 9. Point the CLI at it
+
+The CLI talks to `https://klef.sh` unless `KLEF_API_URL` says otherwise. Set it wherever you run klef, for example in your shell profile:
+
+```bash
+export KLEF_API_URL=https://<your-origin>
 klef login
 ```
 
-`KLEF_API_URL` defaults to `https://klef.sh`. Everything else works the same.
+The token and the remembered vault key are kept per server, so one machine can use klef.sh and your instance side by side by switching the variable. `klef status` shows which server it is talking to. Everything else works the same.
 
 ## Updating
 
-Pull the upstream changes into your fork, then:
+Pull the upstream changes into your fork, then apply any new migrations and deploy again:
 
 ```bash
+pnpm install
 pnpm db:migrate:remote
 pnpm deploy
 ```
 
-Migrations live in `db/migrations` and apply in order. Stored data never needs re-encrypting: the crypto format is versioned, and newer code reads older versions.
+Stored data never needs re-encrypting: every blob carries a format version, and newer code reads older versions.
 
 ## Running it locally
 
 ```bash
 pnpm install
-cp .dev.vars.example .dev.vars     # fill in the auth secrets
+cp .dev.vars.example .dev.vars     # fill in the six values from step 7; BETTER_AUTH_URL is http://localhost:5173
 pnpm db:migrate:local
 pnpm dev                           # http://localhost:5173
 ```
 
-One dev server runs the web app and the Worker, against a local D1.
+One dev server runs the web app and the Worker against a local D1. Add `http://localhost:5173/api/auth/callback/google` and `http://localhost:5173/api/auth/callback/github` as redirect URIs on the OAuth apps, or make separate ones for development. The docs are not part of `pnpm dev`, so `/docs` is a 404 there; `pnpm docs:dev` serves them on their own.

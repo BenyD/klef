@@ -13,36 +13,37 @@ If you have not already, run setup from the repo root:
 npx @klefsh/cli setup
 ```
 
-Linking writes `.klef.json`. When the project has `.env.local` and `.env.production`, in the vault or on disk, both are recorded, so every later command covers both:
+Linking writes `.klef.json`. `setup` records every file the vault project has; `klef link` records the file you name plus `.env.local` and `.env.production` when the project has them, in the vault or on disk. Either way, every later command covers all of them:
 
 ```json
 {
-  "workspace": "personal",
+  "workspace": "Personal",
   "project": "my-app",
   "file": ".env.local",
   "environment": null,
   "files": [
-    { "file": ".env.local" },
-    { "file": ".env.production" }
-  ]
+    { "file": ".env.local", "path": ".env.local" },
+    { "file": ".env.production", "path": ".env.production" }
+  ],
+  "minVersion": "0.6.0"
 }
 ```
 
-**Commit `.klef.json`.** It holds names only, and it is how a new machine knows what to restore. **Do not commit the env files.** Make sure your env files are in `.gitignore` before the first pull. The agent instructions `klef setup` writes tell an agent to check this too.
+`file` is the one plain `klef pull` and `klef push` use when no `--file` is given; `environment` is the label set on that file in the vault, if any; `minVersion` is the CLI that wrote the file, and an older CLI refuses to run in the repo until updated. **Commit `.klef.json`.** It holds names only, and it is how a new machine knows what to restore. **Do not commit the env files.** Make sure your env files are in `.gitignore` before the first pull. The agent instructions `klef setup` writes tell an agent to check this too.
 
 ### Files that live elsewhere
 
-A monorepo, or a vault file whose local name differs, gets a `path`:
+A monorepo, or a vault file whose local name differs, gets a different `path`:
 
 ```json
 "files": [
-  { "file": ".env.local" },
-  { "file": ".env.production" },
+  { "file": ".env.local", "path": ".env.local" },
+  { "file": ".env.production", "path": ".env.production" },
   { "file": "mobile.env.local", "path": "apps/mobile/.env.local" }
 ]
 ```
 
-`file` is the name in the vault; `path` is where it lives on disk, relative to the repo. Paths must stay inside the directory: absolute paths and `../` are refused.
+`file` is the name in the vault; `path` is where it lives on disk, relative to the repo, and defaults to the vault name when left out. Paths must stay inside the directory: absolute paths and `../` are refused.
 
 ### Monorepos
 
@@ -65,11 +66,14 @@ For each file in `.klef.json`, `sync` decides on its own:
 | --- | --- | --- |
 | Edited here since it last matched | Unchanged | **Push** a new version |
 | Untouched since it last matched | Changed | **Pull** over the local copy |
+| Missing | Has a version | **Pull** |
+| Exists | Has the file, but no saved version yet | **Push** its first version |
+| Exists | Has no such file | **Create** it in the vault, then push |
 | Changed | Changed | **Conflict** |
 | Exists, never synced on this machine, differs | Any | **Conflict** |
-| Exists | Has no such file | **Create** it in the vault |
+| Empty | Any | **Conflict**: klef will not push an empty file |
 
-A push asks first; `klef sync --yes` answers for you. A conflict stops the whole run before anything is written to either side, and exits 5. `sync` prints which keys differ, by name and never by value, and the two commands that settle it: pull the vault's copy over yours, or push yours over the vault's. Because every push is a new version, choosing push loses nothing; the old version stays in the history.
+A push asks first; `klef sync --yes` answers for you. Answer no and the pulls still happen, each one over a file nobody has edited, and nothing is pushed. A conflict stops the whole run before anything is written to either side, and exits 5. `sync` prints which keys differ, by name and never by value, and the two commands that settle it: pull the vault's copy over yours, or push yours over the vault's. Because every push is a new version, choosing push loses nothing; the old version stays in the history.
 
 ```console
 $ klef sync
