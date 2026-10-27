@@ -120,17 +120,17 @@ klef push --all   # upload every linked file as a new version, one confirmation
 
 `pull` writes each file with mode `0600` and reports a count, such as `✓ Wrote 14 variables to .env.local`. `push` shows what changed, by count, and asks before uploading; `--yes` skips the question. Where nobody can answer it (a script, CI, an agent), push stops with the command to rerun with `--yes` instead of waiting.
 
-## Unlock once per session
+## Unlock once per device
 
-Every command that encrypts or decrypts needs the key. Without an unlock agent, each one asks for your passphrase at the terminal. To type it once:
+Every command that encrypts or decrypts needs the key. Approve `klef login` in the browser with **Also unlock the CLI on this device** ticked, or run `klef unlock` once, and the CLI keeps the key in your OS keychain: no command on this device asks for the passphrase again.
 
 ```bash
-klef unlock          # 15 idle minutes
-klef unlock --for 8h # a working day
-klef lock            # forget it now
+klef unlock          # if the browser did not unlock this device
+klef unlock --for 8h # only for a while, held in memory
+klef lock            # forget the key on this device
 ```
 
-See [Staying signed in and unlocked](/docs/concepts/sessions/#the-clis-unlock-agent).
+See [Staying signed in and unlocked](/docs/concepts/sessions/#the-cli-unlocked-once-per-device).
 
 ## Editing in the web app
 
