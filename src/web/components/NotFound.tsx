@@ -1,42 +1,28 @@
 import { Link } from "react-router";
-import { CipherField, Scramble } from "./Splash.tsx";
+import { KlefMark } from "./KlefMark.tsx";
 import { buttonVariants } from "./ui/button.tsx";
 
 /**
- * Catch-all route: anything that isn't a page or a workspace URL. Borrows the
- * splash's visual language: an ambient ciphertext field with the "404"
- * decrypting out of cipher glyphs.
+ * Catch-all route: anything that isn't a page or a workspace URL. The same
+ * canvas and mark as the splash, with the one line that matters.
  */
 export function NotFound() {
-  const reduced =
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
   return (
-    <div className="klef-screen relative flex min-h-svh flex-col items-center justify-center overflow-hidden px-4">
-      {!reduced && <CipherField />}
-
-      <div className="relative z-10 flex flex-col items-center gap-6 text-center">
-        {reduced ? (
-          <span className="tracking-wordmark text-foreground font-mono text-5xl font-bold">
-            404
-          </span>
-        ) : (
-          <Scramble
-            value="404"
-            mode="reveal"
-            className="tracking-wordmark text-foreground font-mono text-5xl font-bold"
-          />
-        )}
+    <div className="klef-screen bg-sidebar flex min-h-svh flex-col items-center justify-center px-4">
+      <div className="flex flex-col items-center gap-6 text-center">
+        <div className="text-muted-foreground">
+          <KlefMark className="size-10" accent="var(--primary)" />
+        </div>
         <div className="flex flex-col gap-1.5">
-          <h1 className="text-xl font-semibold">
-            Page not found
-          </h1>
+          <p className="text-muted-foreground font-mono text-xs tracking-wordmark" aria-hidden="true">
+            404
+          </p>
+          <h1 className="text-xl font-semibold">Page not found</h1>
           <p className="text-muted-foreground text-sm">
             There's nothing at this address.
           </p>
         </div>
-        <Link to="/" className={buttonVariants()}>
+        <Link to="/" className={buttonVariants({ variant: "outline" })}>
           Back to home
         </Link>
       </div>

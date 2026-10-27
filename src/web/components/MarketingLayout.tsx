@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { ArrowUp, Menu, X } from "lucide-react";
+import { ArrowRight, ArrowUp, Menu, X } from "lucide-react";
 import { KlefMark } from "./KlefMark.tsx";
 import { ThemeGlyph } from "./ThemeToggle.tsx";
 import { useThemeSwitch } from "../lib/use-theme-switch.ts";
@@ -19,7 +19,7 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
   );
 }
 
-/** The wordmark with the iris; the first blade in ember. */
+/** The wordmark with the woven asterisk; the top loop in ember. */
 export function Brand({ onClick }: { onClick?: () => void }) {
   return (
     <Link to="/" className="m-brand" onClick={onClick}>
@@ -29,32 +29,20 @@ export function Brand({ onClick }: { onClick?: () => void }) {
   );
 }
 
-// Plain anchors for the landing sections, not router links: from /security
-// they load the landing page and land on the section, which a Link with a
-// hash would not scroll to.
-const NAV: { label: string; href?: string; to?: string }[] = [
-  { label: "How it works", href: "/#how-it-works" },
-  { label: "Agents", href: "/#agents" },
-  { label: "Compare", to: "/compare" },
-  { label: "Security", to: "/security" },
+// The pages, in the header. The landing page's sections are not listed: the
+// page is short enough to scroll.
+const NAV: { label: string; to: string }[] = [
   { label: "Docs", to: "/docs" },
+  { label: "Security", to: "/security" },
+  { label: "Compare", to: "/compare" },
+  { label: "About", to: "/about" },
 ];
 
-function NavLink({ item, onClick }: { item: (typeof NAV)[number]; onClick?: () => void }) {
-  return item.to ? (
-    <Link to={item.to} onClick={onClick}>
-      {item.label}
-    </Link>
-  ) : (
-    <a href={item.href} onClick={onClick}>
-      {item.label}
-    </a>
-  );
-}
-
 /**
- * A sticky bar with a hairline under it. Phones get a menu button and a
- * sheet of links, closed by Escape, a link, or widening the window.
+ * A sticky bar with a hairline under it: the wordmark, the pages, and on the
+ * right GitHub and the one primary action (the auth page signs you in or
+ * creates the account, so there is no second button for it). Phones get a menu button
+ * and a sheet of links, closed by Escape, a link, or widening the window.
  */
 function SiteHeader() {
   const [open, setOpen] = useState(false);
@@ -83,16 +71,20 @@ function SiteHeader() {
 
         <nav className="m-nav" aria-label="Primary">
           {NAV.map((item) => (
-            <NavLink key={item.label} item={item} />
+            <Link key={item.label} to={item.to}>
+              {item.label}
+            </Link>
           ))}
         </nav>
 
         <div className="m-actions">
-          <Link to="/auth" className="m-btn m-btn-sm m-btn-line m-hide-sm">
-            Sign in
-          </Link>
-          <Link to="/auth" className="m-btn m-btn-sm m-btn-ink">
-            Get started free <span className="m-arrow" aria-hidden="true">&#8594;</span>
+          <a href={GITHUB} target="_blank" rel="noreferrer" className="m-btn m-btn-line m-hide-sm">
+            <GitHubIcon />
+            GitHub
+          </a>
+          <Link to="/auth" className="m-btn m-btn-ink">
+            Get started free
+            <ArrowRight className="m-arrow" />
           </Link>
           <button
             type="button"
@@ -110,7 +102,9 @@ function SiteHeader() {
       {open && (
         <nav id="m-menu" className="m-menu" aria-label="Menu">
           {NAV.map((item) => (
-            <NavLink key={item.label} item={item} onClick={close} />
+            <Link key={item.label} to={item.to} onClick={close}>
+              {item.label}
+            </Link>
           ))}
           <a href={GITHUB} target="_blank" rel="noreferrer" onClick={close}>
             GitHub
@@ -118,9 +112,6 @@ function SiteHeader() {
           <div className="m-menu-actions">
             <Link to="/auth" className="m-btn m-btn-ink" onClick={close}>
               Get started free
-            </Link>
-            <Link to="/auth" className="m-btn m-btn-line" onClick={close}>
-              Sign in
             </Link>
           </div>
         </nav>
@@ -136,33 +127,36 @@ const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
     title: "Product",
     links: [
       { label: "How it works", href: "/#how-it-works" },
-      { label: "For your agent", href: "/#agents" },
-      { label: "Compared", to: "/compare" },
-      { label: "Security model", to: "/security" },
+      { label: "For coding agents", href: "/#agents" },
+      { label: "Security", to: "/security" },
+      { label: "Compare", to: "/compare" },
     ],
   },
   {
     title: "Developers",
     links: [
-      { label: "Docs", to: "/docs" },
+      { label: "Documentation", to: "/docs" },
+      { label: "Quickstart", to: "/docs/quickstart" },
+      { label: "CLI reference", to: "/docs/cli" },
+      { label: "Self-hosting", to: "/docs/guides/self-hosting" },
       { label: "CLI on npm", href: "https://www.npmjs.com/package/@klefsh/cli", external: true },
-      { label: "Self-hosting", href: `${GITHUB}#self-hosting`, external: true },
-      { label: "GitHub", href: GITHUB, external: true },
     ],
   },
   {
     title: "Company",
     links: [
       { label: "About", to: "/about" },
+      { label: "GitHub", href: GITHUB, external: true },
+      { label: "Changelog", to: "/docs/changelog" },
       { label: "Report a vulnerability", href: `${GITHUB}/blob/main/SECURITY.md`, external: true },
     ],
   },
   {
     title: "Legal",
     links: [
-      { label: "Privacy", to: "/privacy" },
       { label: "Terms", to: "/terms" },
-      { label: "AGPL-3.0", href: `${GITHUB}/blob/main/LICENSE`, external: true },
+      { label: "Privacy", to: "/privacy" },
+      { label: "AGPL-3.0 licence", href: `${GITHUB}/blob/main/LICENSE`, external: true },
     ],
   },
 ];
@@ -173,10 +167,7 @@ function SiteFooter() {
       <div className="m-wrap m-footer-grid">
         <div className="m-footer-brand">
           <Brand />
-          <p>
-            End-to-end encrypted .env sync for one developer and their coding
-            agents. Open source, and self-hostable on Cloudflare.
-          </p>
+          <p>Encrypted .env sync for you and your coding agents.</p>
         </div>
 
         {FOOTER_COLUMNS.map((col) => (
@@ -203,19 +194,7 @@ function SiteFooter() {
       </div>
 
       <div className="m-wrap m-footer-base">
-        <span className="m-label">
-          &copy; {new Date().getFullYear()} Klef. Built by{" "}
-          <a
-            href="https://beny.one"
-            target="_blank"
-            rel="noreferrer"
-            className="marketing-credit"
-          >
-            <img src="/beny.png" alt="" className="marketing-credit-avatar" />
-            Beny Dishon K
-          </a>
-        </span>
-        <span className="m-label">No analytics. No trackers.</span>
+        <span className="m-label">&copy; {new Date().getFullYear()} Klef</span>
         <span className="m-footer-tools">
           <a href="#top" className="m-icon-btn" aria-label="Back to top">
             <ArrowUp />
@@ -240,8 +219,8 @@ export function GitHubIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      width="17"
-      height="17"
+      width="16"
+      height="16"
       fill="currentColor"
       aria-hidden="true"
     >
