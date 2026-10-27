@@ -76,14 +76,22 @@ export const COMMANDS: CommandSpec[] = [
   {
     name: "login",
     group: "Get started",
-    summary: "Sign in through the browser",
+    summary: "Sign in through the browser, and unlock this device",
     description:
-      "Shows a code, opens klef.sh to approve it, and waits. The token is stored in the OS " +
-      "keychain, or a 0600 file where there is none. It reaches ciphertext and names only: " +
-      "it cannot decrypt anything.",
-    flags: [{ name: "paste", description: "Paste a token from Settings instead, for machines with no browser" }],
-    examples: [["klef login", "Approve in the browser"]],
-    json: "{ email, tokenStore: \"keychain\" | \"file\" }",
+      "Shows a code, opens klef.sh to approve it, and waits. Approving there can also unlock " +
+      "this CLI: the page asks for your passkey or passphrase and sends the vault key sealed to " +
+      "this terminal, which keeps it in the OS keychain so pull, push and sync never ask. The " +
+      "token is stored the same way; on its own it reaches ciphertext and names only.",
+    flags: [
+      { name: "paste", description: "Paste a token from Settings instead, for machines with no browser" },
+      { name: "no-remember", description: "Never keep the vault key on this device (persists)" },
+      { name: "remember", description: "Keep the vault key on this device again (the default)" },
+    ],
+    examples: [
+      ["klef login", "Approve in the browser, and unlock this device"],
+      ["klef login --no-remember", "Sign in, and keep no key here"],
+    ],
+    json: "{ email, tokenStore: \"keychain\" | \"file\", unlocked }",
   },
   {
     name: "link",
@@ -120,7 +128,7 @@ export const COMMANDS: CommandSpec[] = [
     ],
     json:
       "{ version, server, account: { signedIn, email, tokenSource, tokenStatus }, " +
-      "vault: { unlocked, locksInSeconds }, project: { workspace, project, config } | null, " +
+      "vault: { unlocked, unlockedBy: \"remembered\" | \"agent\" | null, keyStore, locksInSeconds }, project: { workspace, project, config } | null, " +
       "files: [ { file, path, local, inVault, state } ], next: [ command ] }",
   },
   {
@@ -207,24 +215,29 @@ export const COMMANDS: CommandSpec[] = [
   {
     name: "unlock",
     group: "Unlock",
-    summary: "Type the passphrase once; later commands reuse it",
+    summary: "Unlock this device with the passphrase, once",
     description:
-      "Reads the passphrase from the terminal only, never a flag, pipe or variable, so whatever " +
-      "ran klef cannot supply or see it. A background agent holds the key in memory and forgets " +
-      "it after 15 minutes without use, or as long as --for says.",
-    flags: [{ name: "for", value: "time", description: "How long it lasts without use: 30m, 8h, 7d (default 15m)" }],
+      "For when the browser did not unlock this CLI at login. Reads the passphrase from the " +
+      "terminal only, never a flag, pipe or variable, so whatever ran klef cannot supply or see " +
+      "it, and keeps the vault key in the OS keychain so later commands never ask. With --for, " +
+      "or with remembering off, a background agent holds the key in memory instead and forgets " +
+      "it after that long without use.",
+    flags: [{ name: "for", value: "time", description: "Unlock for a while instead: 30m, 8h, 7d, held in memory" }],
     examples: [
-      ["klef unlock", "15 minutes"],
-      ["klef unlock --for 8h", "A working day"],
+      ["klef unlock", "Unlock this device"],
+      ["klef unlock --for 8h", "Only for a working day"],
     ],
-    json: "{ unlocked: true, alreadyUnlocked, locksInSeconds }",
+    json: "{ unlocked: true, alreadyUnlocked, remembered, locksInSeconds }",
   },
   {
     name: "lock",
     group: "Unlock",
-    summary: "Forget the key now",
+    summary: "Forget the key on this device",
+    description:
+      "Forgets the vault key kept in the keychain and stops the unlock agent. Every command then " +
+      "asks for the passphrase until the next unlock or browser sign-in.",
     flags: [],
-    examples: [["klef lock", "Lock until the next unlock"]],
+    examples: [["klef lock", "Lock this device"]],
     json: "{ locked: true, wasUnlocked }",
   },
   {
@@ -448,7 +461,7 @@ export function topicHelp(topic: (typeof TOPICS)[number], cli: string): string {
         ["1", "Failure: network, server, or something unexpected"],
         ["2", "Usage error, or a confirmation was needed and no one could answer (rerun with --yes)"],
         ["3", "Not signed in, or the token was rejected (klef login)"],
-        ["4", "Locked: the passphrase is needed and there is no terminal (klef unlock)"],
+        ["4", "Locked: this device needs unlocking (klef login in the browser, or klef unlock)"],
         ["5", "Conflict: both sides changed; nothing was written"],
         ["6", "Not found: not linked here, or no such workspace, project or file"],
         ["10", "Differences found, only with --exit-code (diff, audit)"],
@@ -468,6 +481,7 @@ export function topicHelp(topic: (typeof TOPICS)[number], cli: string): string {
         ["KLEF_NO_KEYCHAIN", "Store the token in a 0600 file instead of the OS keychain"],
         ["KLEF_CONFIG_DIR", "Where klef keeps state (default ~/.config/klef)"],
         ["KLEF_AGENT_SOCK", "Where the unlock agent's socket lives"],
+        ["KLEF_NO_REMEMBER", "Never keep the vault key on this device, for this run"],
         ["KLEF_NO_INPUT", "Never prompt, like --no-input"],
         ["CI", "Set by CI systems; klef then never prompts"],
         ["NO_COLOR", "No colour (https://no-color.org)"],
@@ -504,7 +518,7 @@ export function topicHelp(topic: (typeof TOPICS)[number], cli: string): string {
       ["unsafe_path", "A path outside this directory (exit 2)"],
       ["not_signed_in", "No token on this machine (exit 3)"],
       ["token_rejected", "The token expired or was revoked (exit 3)"],
-      ["locked", "The vault is locked; a person must run unlock (exit 4)"],
+      ["locked", "Locked on this device; the user approves klef login, or runs unlock (exit 4)"],
       ["no_terminal", "A person must do this at a terminal (exit 4)"],
       ["wrong_passphrase", "The passphrase did not unlock the vault (exit 4)"],
       ["conflict", "Both sides changed; nothing was written (exit 5)"],

@@ -81,7 +81,8 @@ you and every later agent session in this repo know how to sync its env files.
 Run \`npx @klefsh/cli setup\` and follow what it prints. It skips any step that
 is already done, so it is safe to run again. Along the way:
 
-1. Sign-in opens my browser. Tell me to approve it there and wait.
+1. Sign-in opens my browser. Tell me to approve it there with "Also unlock the
+   CLI on this device" ticked, and wait.
 2. If my vault has more than one project, it lists them by name and asks which
    one this repo is. Ask me, then rerun with the
    \`--workspace <workspace> --project <project>\` it suggests. That writes
@@ -90,17 +91,20 @@ is already done, so it is safe to run again. Along the way:
    Cursor rule (.cursor/rules/klef.mdc). Show me those paths and ask me first.
    Only once I say yes, rerun with \`--yes\`. They hold commands and rules,
    never a value.
-4. Pulling needs my master passphrase, which the CLI reads from the terminal so
-   it never passes through you. When it says so, give me
-   \`npx @klefsh/cli unlock\` to run myself and wait for me. Then run setup
-   again: it pulls only the files that are not on disk yet, so nothing I have
-   edited locally is overwritten, and it reports a count, never a value.
+4. Pulling needs this machine unlocked. If I approved the sign-in with that box
+   ticked, it already is. If setup says the vault is locked, run
+   \`npx @klefsh/cli login\` and tell me to approve it with the box ticked, or
+   give me \`npx @klefsh/cli unlock\` to run myself, and wait for me. My
+   passkey or passphrase goes into the browser or the terminal, never through
+   you. Then run setup again: it pulls only the files that are not on disk
+   yet, so nothing I have edited locally is overwritten, and it reports a
+   count, never a value.
 5. Check git does not track any env file it wrote:
    \`git ls-files --error-unmatch <path>\` should fail for each. If one is
    tracked, tell me immediately.
 
-From then on, the installed instructions cover status, pull, push, and unlock,
-so no later session needs this prompt. Don't ask me for my passphrase or access
+From then on, the installed instructions cover status, sync, pull, push and
+unlocking, so no later session needs this prompt. Don't ask me for my passphrase or access
 token, and don't open or print any env file.`,
   },
   {
@@ -200,9 +204,9 @@ export function pnpmScriptsIn(text: string): string[] {
  * The prompt offered from a file in the vault.
  *
  * Unlike the landing-page version this one already knows which project the
- * reader is looking at, so `setup` gets it by flag instead of asking. The
- * unlock is still handed back, since it stops for the passphrase and an agent
- * running it only reaches the no-terminal error.
+ * reader is looking at, so `setup` gets it by flag instead of asking.
+ * Unlocking stays the user's: approving the sign-in in the browser with the
+ * unlock box ticked, or running unlock themselves.
  */
 export function filePullPrompt(target: {
   workspace: string;
@@ -222,13 +226,15 @@ session already knows how.
 
 1. Run:
    ${setup}
-   If I'm not signed in, it opens my browser; tell me to approve it and wait.
+   If I'm not signed in, it opens my browser; tell me to approve it with "Also
+   unlock the CLI on this device" ticked, and wait.
 2. It wants to write a Claude Code skill and a Cursor rule. Show me the paths
    it lists and ask me. Only once I say yes, rerun it with --yes.
-3. When it asks for the passphrase, give me \`npx @klefsh/cli unlock\` to run
-   myself, and wait. The passphrase is read from the terminal, so it won't
-   work if you run it and I won't paste it to you. Then run the setup command
-   again; it pulls only the files that are not on disk yet.
+3. If it says the vault is locked, run \`npx @klefsh/cli login\` and tell me to
+   approve it with that box ticked, or give me \`npx @klefsh/cli unlock\` to run
+   myself, and wait. My passkey or passphrase goes into the browser or the
+   terminal, never to you. Then run the setup command again; it pulls only the
+   files that are not on disk yet.
 4. Check every env file it wrote is ignored by git:
    \`git ls-files --error-unmatch ${target.file}\` should fail. If it doesn't,
    tell me immediately.
