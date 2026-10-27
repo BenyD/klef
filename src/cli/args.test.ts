@@ -48,6 +48,22 @@ describe("parseArgs", () => {
     expect(args.flags.has("not-a-flag")).toBe(false);
   });
 
+  it("hands everything after run's first positional to the command being run", () => {
+    const args = parseArgs(["run", "--file", ".env", "npm", "start", "--port", "3000", "-q"]);
+    expect(args.command).toBe("run");
+    expect(flagValue(args, "file")).toBe(".env");
+    expect(args.positionals).toEqual(["npm", "start", "--port", "3000", "-q"]);
+    expect(args.flags.has("port")).toBe(false);
+    expect(args.flags.has("q")).toBe(false);
+  });
+
+  it("still takes run's own flags before the command, and -- as the boundary", () => {
+    const args = parseArgs(["run", "--all", "--json", "--", "node", "-e", "1"]);
+    expect(hasFlag(args, "all")).toBe(true);
+    expect(hasFlag(args, "json")).toBe(true);
+    expect(args.positionals).toEqual(["node", "-e", "1"]);
+  });
+
   it("reads short flags as booleans", () => {
     expect(hasFlag(parseArgs(["-h"]), "h", "help")).toBe(true);
     expect(hasFlag(parseArgs(["--help"]), "h", "help")).toBe(true);
