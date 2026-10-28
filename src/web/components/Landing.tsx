@@ -524,7 +524,7 @@ function HowItWorks() {
               changed.
             </p>
           </div>
-          <Link to="/docs/quickstart" className="m-btn m-btn-soft">
+          <Link to="/docs/quickstart/" className="m-btn m-btn-soft">
             <BookOpen />
             Quickstart
           </Link>
@@ -584,7 +584,7 @@ function Agents() {
                 <span className="m-dark-quiet">Your agent runs Klef. You hold the key.</span>
               </h2>
             </div>
-            <Link to="/docs/guides/coding-agents" className="m-btn m-btn-paper">
+            <Link to="/docs/guides/coding-agents/" className="m-btn m-btn-paper">
               <Bot />
               Agent guide
             </Link>
@@ -849,7 +849,7 @@ function Closing() {
             Get started free
             <ArrowRight className="m-arrow" />
           </Link>
-          <Link to="/docs/guides/self-hosting" className="m-btn m-btn-soft">
+          <Link to="/docs/guides/self-hosting/" className="m-btn m-btn-soft">
             <Server />
             Self-host guide
           </Link>

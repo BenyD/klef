@@ -1,8 +1,9 @@
 import { loader } from "fumadocs-core/source";
 import { flattenTree } from "fumadocs-core/page-tree";
 import { defineDocs } from "fumadocs-mdx/macro";
+import { pageHref } from "./urls";
 
-export const SITE = "https://klef.sh";
+export { SITE } from "./urls";
 export const GITHUB = "https://github.com/BenyD/klef";
 
 export const docs = defineDocs({
@@ -34,6 +35,6 @@ export async function asMarkdown(page: Page): Promise<string> {
   if (page.data.description) lines.push(`> ${page.data.description}`, "");
   // The raw file, less its frontmatter, which the lines above restate.
   const body = (await page.data.getText("raw")).replace(/^---\n[\s\S]*?\n---\n/, "");
-  lines.push(`Source: ${SITE}${page.url}`, "", body.trim(), "");
+  lines.push(`Source: ${pageHref(page.url)}`, "", body.trim(), "");
   return lines.join("\n");
 }
