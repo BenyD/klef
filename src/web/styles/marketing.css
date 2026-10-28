@@ -587,6 +587,7 @@
   animation: m-rise 560ms var(--ease-out) both;
 }
 .m-shot-body {
+  position: relative;
   height: 100%;
 }
 
@@ -625,39 +626,40 @@
   translate: 0 10px;
 }
 
-/* The hero's windows are small: a narrower sidebar, no user row, the
-   breadcrumb without the workspace, and the compare table sized to fit. */
+/* The hero's windows are small: a narrower sidebar, the breadcrumb without
+   the workspace, and the toolbar without its icon group. */
 .m-stage .m-app .m-shot-body {
-  grid-template-columns: 148px minmax(0, 1fr);
+  grid-template-columns: 164px minmax(0, 1fr);
+}
+.m-stage .m-app-foot {
+  gap: 4px;
+}
+.m-stage .m-app-user {
+  gap: 6px;
+  padding: 0 2px;
+}
+.m-stage .m-app-avatar {
+  width: 24px;
+  height: 24px;
+}
+.m-stage .m-app-lock {
+  width: 28px;
+  height: 28px;
 }
 .m-stage .m-app-head > :nth-child(2),
 .m-stage .m-app-head > :nth-child(3) {
   display: none;
 }
-.m-stage .m-app-user {
-  height: 32px;
-  padding-left: 4px;
-}
-.m-stage .m-app-user .m-app-ws-text span {
+.m-stage .m-btn-group {
   display: none;
 }
 .m-stage .m-dialog {
-  margin: 8px;
+  width: 90%;
+  gap: 8px;
+  padding: 12px;
 }
-.m-stage .m-compare {
-  table-layout: fixed;
-}
-.m-stage .m-compare th,
-.m-stage .m-compare td {
-  padding-left: 8px;
-  padding-right: 8px;
-}
-.m-stage .m-compare th:first-child {
-  width: 44%;
-}
-.m-stage .m-compare td:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
+.m-stage .m-dialog-head span {
+  display: none;
 }
 
 .m-shot-bar {
@@ -711,8 +713,8 @@
 .m-app-ws {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 36px;
+  gap: 9px;
+  height: 40px;
   padding: 0 6px;
   margin-bottom: 4px;
   color: var(--m-fg);
@@ -728,18 +730,19 @@
   font-weight: 600;
 }
 .m-app-ws-text span {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--m-muted);
 }
 .m-app-tile {
   display: inline-grid;
+  flex: none;
   place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
   background: var(--m-fg);
   color: var(--m-bg);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 .m-app-tile-sm {
@@ -752,27 +755,39 @@
   width: 14px;
   height: 14px;
 }
-.m-app-user {
+.m-app-foot {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 36px;
+  gap: 6px;
   margin-top: auto;
-  padding: 0 4px 0 6px;
+}
+.m-app-user {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 4px;
   color: var(--m-fg);
 }
+/* The app's avatar: the tile shape, not a circle, with a hairline. */
 .m-app-avatar {
   display: inline-grid;
+  flex: none;
   place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  background: var(--m-fill-strong);
-  font-size: 10px;
-  font-weight: 500;
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  border: 1px solid var(--m-line);
+  border-radius: 6px;
+  background: var(--muted);
+  color: var(--m-muted);
+  font-size: 11px;
 }
 .m-app-user .m-app-ws-text {
   min-width: 0;
+  line-height: 14px;
 }
 .m-app-user .m-app-ws-text b,
 .m-app-user .m-app-ws-text span {
@@ -783,9 +798,22 @@
 .m-app-user .m-app-ws-text b {
   font-weight: 500;
 }
-.m-app .m-app-lock {
-  margin-left: 6px;
+.m-app-user > svg {
   color: var(--m-muted);
+}
+/* Lock vault: an outline icon button, the account row's height. */
+.m-app-lock {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  box-sizing: border-box;
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-r);
+  background: var(--m-card);
+  color: var(--m-muted);
+  box-shadow: var(--elevation-raised);
 }
 .m-app-search {
   display: flex;
@@ -825,18 +853,19 @@
   border-radius: var(--m-r);
   white-space: nowrap;
 }
-.m-app-side .m-label {
+.m-app-group {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 10px 6px 4px;
-  font-size: 10px;
+  height: 26px;
+  margin: 8px 0 0;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--m-muted);
 }
 .m-app-tree .m-app-open {
   color: var(--m-fg);
-}
-.m-app-tree .m-app-open svg:last-child {
-  margin-left: auto;
 }
 .m-app-tree .m-app-file {
   margin-left: 13px;
@@ -869,8 +898,9 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 36px;
+  height: 40px;
   padding: 0 10px;
+  overflow: hidden;
   border-bottom: 1px solid var(--m-line);
   color: var(--m-muted);
   white-space: nowrap;
@@ -892,48 +922,132 @@
 .m-app-head .m-mono {
   font-size: 11px;
 }
-.m-app-sep {
-  color: var(--m-line-strong);
+.m-app-crumb-file {
+  min-width: 0;
 }
-.m-app-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  font-size: 11px;
+.m-app-crumb-file span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.m-app-status::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--m-ok);
+.m-app-crumb-file svg {
+  width: 10px;
+  height: 10px;
+  color: var(--m-muted);
+}
+.m-app .m-app-sep {
+  color: color-mix(in oklab, var(--m-muted) 60%, transparent);
 }
 
-/* Open files, as the app's tab strip. */
+/* Open files, as the app's tab strip: a tinted bar, the active tab raised
+   with its close button, the others keeping that space for theirs. */
 .m-app-tabs {
   display: flex;
   align-items: center;
   gap: 2px;
-  height: 32px;
+  height: 34px;
   padding: 0 6px;
   border-bottom: 1px solid var(--m-line);
+  background: color-mix(in oklab, var(--sidebar) 50%, transparent);
 }
 .m-app-tab {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   height: 24px;
-  padding: 0 8px;
+  padding: 0 26px 0 9px;
   border-radius: var(--m-r);
   font-family: var(--m-mono);
   font-size: 11px;
   color: var(--m-muted);
+  white-space: nowrap;
 }
 .m-app-tab-active {
-  background: var(--m-bg);
+  padding-right: 8px;
+  background: var(--m-card);
   color: var(--m-fg);
-  box-shadow: 0 0 0 1px var(--m-line);
+  box-shadow:
+    0 0 0 1px var(--m-line),
+    var(--elevation-raised);
+}
+.m-app-tab-active svg {
+  color: var(--m-muted);
+}
+
+/* The file toolbar: the code/table switch, the icon group, Save version. */
+.m-app-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--m-line);
+}
+.m-app-bar-end {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.m-seg {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 3px;
+  border-radius: var(--m-r);
+  background: var(--muted);
+  color: var(--m-muted);
+}
+.m-seg > span {
+  display: inline-grid;
+  place-items: center;
+  height: 100%;
+  padding: 0 6px;
+  border-radius: 4px;
+}
+.m-seg .is-on {
+  background: var(--m-card);
+  color: var(--m-fg);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 8%);
+}
+.m-seg-text {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 500;
+}
+.m-seg-text > span {
+  padding: 0 10px;
+}
+.m-btn-group {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-r);
+  background: var(--m-card);
+  color: var(--m-muted);
+  box-shadow: var(--elevation-raised);
+}
+.m-app .m-btn-group svg {
+  box-sizing: content-box;
+  padding: 7px;
+}
+.m-btn-group svg + svg {
+  border-left: 1px solid var(--m-line);
+}
+/* Disabled until something changes, as the app draws it. */
+.m-app-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: var(--m-r);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0.5;
 }
 
 /* The key table: KEY = value rows, the app's divided list. */
@@ -977,78 +1091,123 @@
   animation: none;
 }
 
-/* The compare dialog, drawn in the panel. */
+/* Compare environments, as the app opens it: a dialog over the dimmed
+   app, the Keys tab on, the drift line, and the table of which file has
+   each key. It opens the way the app's dialogs do, fading up from 95%. */
+.m-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  animation: m-fade 200ms var(--ease-quick) both;
+}
 .m-dialog {
-  margin: 10px;
-  overflow: hidden;
-  border: 1px solid var(--m-line);
-  border-radius: 8px;
-  box-shadow: var(--elevation-overlay);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(84%, 560px);
+  box-sizing: border-box;
+  padding: 14px;
+  translate: -50% -50%;
+  border-radius: 12px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--m-fg) 10%, transparent),
+    var(--elevation-modal);
+  animation: m-dialog-in 240ms var(--ease-out) both;
+}
+@keyframes m-dialog-in {
+  from {
+    opacity: 0;
+    scale: 0.95;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
 }
 .m-dialog-head {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--m-line);
+  gap: 4px;
 }
 .m-dialog-head b {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
 }
 .m-dialog-head span {
   font-size: 11px;
+  line-height: 1.45;
   color: var(--m-muted);
 }
-
-.m-vault {
+.m-drift {
+  margin: 0;
+  font-size: 11px;
+  color: var(--warning);
+}
+.m-compare-box {
+  overflow: hidden;
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-r);
+}
+.m-compare {
   width: 100%;
-  border-collapse: collapse;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 11px;
 }
-.m-vault th {
-  padding: 7px 12px;
-  font-size: 10px;
+.m-compare th {
+  overflow: hidden;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--m-line);
   font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  text-align: left;
-  color: var(--m-muted);
-}
-.m-vault td {
-  height: 30px;
-  padding: 0 12px;
-  border-top: 1px solid var(--m-line);
+  line-height: 1.3;
+  text-align: center;
   white-space: nowrap;
 }
-.m-vault td:first-child {
-  color: var(--syntax-key);
+.m-compare th span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--m-mono);
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--m-muted);
 }
-.m-vault tbody tr {
-  animation: m-rise 480ms var(--ease-out) both;
-  animation-delay: var(--d);
+.m-compare th:first-child {
+  width: 42%;
+  text-align: left;
 }
-.m-compare th:not(:first-child),
-.m-compare td:not(:first-child) {
+.m-compare td {
+  height: 25px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--m-line);
   text-align: center;
 }
-.m-chk {
-  display: inline-grid;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  background: color-mix(in oklab, var(--m-ok) 14%, transparent);
-  color: var(--m-ok);
-  animation: m-pop 420ms var(--ease-spring) both;
-  animation-delay: var(--d);
+.m-compare tr:last-child td {
+  border-bottom: 0;
 }
-.m-chk svg {
-  width: 11px;
-  height: 11px;
+.m-compare td:first-child {
+  overflow: hidden;
+  font-family: var(--m-mono);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.m-none {
-  color: var(--m-line-strong);
+.m-app .m-compare svg {
+  display: inline-block;
+  vertical-align: middle;
+  color: var(--success);
+}
+.m-compare .m-miss {
+  background: color-mix(in oklab, var(--warning) 10%, transparent);
+}
+.m-app .m-compare .m-miss svg {
+  color: color-mix(in oklab, var(--warning) 70%, transparent);
 }
 
 /* Transcripts. */
@@ -1182,6 +1341,24 @@
   line-height: 1.35;
   letter-spacing: -0.015em;
   font-weight: 500;
+}
+.marketing .m-evidence-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--m-fg);
+  text-decoration: none;
+}
+.m-evidence-link svg {
+  width: 14px;
+  height: 14px;
+  transition: translate var(--duration-fast) var(--ease-quick);
+}
+.m-evidence-link:hover svg {
+  translate: 3px 0;
 }
 .m-stats {
   display: grid;
@@ -1675,17 +1852,60 @@
   background: var(--m-band-fill);
   font-family: var(--m-mono);
   font-size: 12.5px;
-  line-height: 1.9;
+  line-height: 1.7;
   font-variant-ligatures: none;
   color: var(--m-band-muted);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.m-session .m-you {
+/* Claude Code's layout: a bullet before each tool call and reply, the
+   output hung under a corner, a blank line between turns. */
+.m-session .m-ln {
+  display: block;
+}
+.m-session .m-ln i {
+  display: inline-block;
+  font-style: normal;
+}
+.m-session .m-you,
+.m-session .m-tool,
+.m-session .m-say {
+  margin-top: 12px;
   color: var(--m-band-fg);
 }
-.m-session .m-call {
-  color: color-mix(in oklab, var(--m-ok) 70%, var(--m-band-fg));
+.m-session .m-ln:first-child {
+  margin-top: 0;
+}
+.m-session .m-tool,
+.m-session .m-say {
+  padding-left: 2ch;
+}
+.m-session .m-tool i,
+.m-session .m-say i {
+  width: 2ch;
+  margin-left: -2ch;
+}
+.m-session .m-tool i {
+  color: color-mix(in oklab, var(--m-ok) 80%, var(--m-band-fg));
+}
+.m-session .m-tool-err i {
+  color: color-mix(in oklab, var(--destructive) 80%, var(--m-band-fg));
+}
+.m-session .m-out {
+  padding-left: 5ch;
+}
+.m-session .m-out i {
+  width: 3ch;
+  margin-left: -3ch;
+}
+.m-session .m-err {
+  color: color-mix(in oklab, var(--destructive) 70%, var(--m-band-fg));
+}
+.m-session .m-faint {
+  color: color-mix(in oklab, var(--m-band-muted) 70%, transparent);
+}
+.m-session .m-ok {
+  color: color-mix(in oklab, var(--m-ok) 80%, var(--m-band-fg));
 }
 
 .m-facts {
@@ -2490,9 +2710,9 @@
   .m-hero-copy .m-beat,
   .m-hl,
   .m-shot,
-  .m-vault tbody tr,
   .m-env li,
-  .m-chk,
+  .m-scrim,
+  .m-dialog,
   .m-copy-glyph,
   .m-term .t-line,
   .marketing-page {
