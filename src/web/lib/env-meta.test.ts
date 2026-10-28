@@ -1,23 +1,30 @@
-// @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { ENV_META, envMeta } from "./env-meta.ts";
+import { effectiveEnvLabel, envLabel, envTag } from "./env-meta.ts";
 
-describe("envMeta", () => {
-  it("returns preset labels unchanged without overrides", () => {
-    expect(envMeta("production")).toEqual(ENV_META.production);
+describe("envLabel", () => {
+  it("capitalizes presets", () => {
+    expect(envLabel("production")).toBe("Production");
   });
 
   it("shows custom labels as typed", () => {
-    expect(envMeta("staging")).toEqual({ label: "staging" });
+    expect(envLabel("staging")).toBe("staging");
+  });
+});
+
+describe("envTag", () => {
+  it("stays quiet when the name already says it", () => {
+    expect(envTag(".env.production", "production")).toBeNull();
+    expect(envTag(".env.production", null)).toBeNull();
   });
 
-  it("applies renames to presets only", () => {
-    expect(envMeta("preview", { preview: "Staging" })).toEqual({
-      label: "Staging",
-    });
-    expect(envMeta("production", { preview: "Staging" })).toEqual(
-      ENV_META.production,
-    );
-    expect(envMeta("qa", { preview: "qa" })).toEqual({ label: "qa" });
+  it("labels a plain name given an environment", () => {
+    expect(envTag(".env", "production")).toBe("Production");
+  });
+});
+
+describe("effectiveEnvLabel", () => {
+  it("falls back to the environment the name implies", () => {
+    expect(effectiveEnvLabel(".env.production", null)).toBe("Production");
+    expect(effectiveEnvLabel("secrets.env", null)).toBeNull();
   });
 });
