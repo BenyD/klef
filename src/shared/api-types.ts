@@ -132,3 +132,13 @@ export interface AccessTokenSummary {
   expiresAt: string | null;
   createdAt: string;
 }
+
+/**
+ * A paid-plan reservation from /pricing. Intent only: nothing is charged.
+ * createdAt survives a switch between plans; the founding price goes by it.
+ */
+export interface PlanReservation {
+  plan: import("./plans.ts").PaidPlanId;
+  createdAt: string;
+  updatedAt: string;
+}

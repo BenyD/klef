@@ -29,6 +29,12 @@ const sections: DocSection[] = [
           a hash of each token with its name, when it was created, and when
           it was last used. The token itself is shown once and never stored.
         </li>
+        <li>
+          <strong>Plan reservations.</strong> If you reserve a paid plan on
+          the pricing page, Klef stores which plan and when, tied to your
+          account. Nothing is charged, and no payment details are collected.
+          Cancelling the reservation or deleting your account removes it.
+        </li>
       </ul>
     ),
   },

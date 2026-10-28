@@ -6,6 +6,7 @@ import { structure } from "./structure.ts";
 import { icon } from "./icon.ts";
 import { tokens } from "./tokens.ts";
 import { device } from "./device.ts";
+import { reservation } from "./reservation.ts";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -78,6 +79,12 @@ app.route("/api/tokens", tokens);
 app.use("/api/cli/device/pending/*", requireAuth, requireSession);
 app.use("/api/cli/device/approve", requireAuth, requireSession);
 app.route("/api/cli/device", device);
+
+// Paid-plan reservations from /pricing. Browser sessions only: reserving is a
+// person's choice on a web page, not something the CLI or a token should do.
+app.use("/api/reservation", requireAuth, requireSession);
+app.use("/api/reservation/*", requireAuth, requireSession);
+app.route("/api/reservation", reservation);
 
 // Favicon discovery for project icons (server-side because of CORS).
 app.use("/api/icon", requireAuth);

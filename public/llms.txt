@@ -34,6 +34,7 @@ Key facts:
 
 - [Home](https://klef.sh/): what Klef is and how it works
 - [Compare](https://klef.sh/compare): Klef against hosted secrets managers and encrypted .env in git, plus common questions
+- [Pricing](https://klef.sh/pricing): Free, Pro and Team plans; paid plans are a reservable pre-sale, and self-hosting is free forever
 - [Security](https://klef.sh/security): the zero-knowledge encryption design in detail
 - [Terms](https://klef.sh/terms): terms of service
 - [Privacy](https://klef.sh/privacy): what is stored and what never is

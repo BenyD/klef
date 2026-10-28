@@ -17,6 +17,7 @@ import { Toaster } from "./components/ui/sonner.tsx";
 // route's chunk before the first render (see preloadRoute).
 const Landing = lazyPage(() => import("./components/Landing.tsx").then((m) => m.Landing));
 const Compare = lazyPage(() => import("./components/Compare.tsx").then((m) => m.Compare));
+const Pricing = lazyPage(() => import("./components/Pricing.tsx").then((m) => m.Pricing));
 const Security = lazyPage(() => import("./components/Security.tsx").then((m) => m.Security));
 const Terms = lazyPage(() => import("./components/Terms.tsx").then((m) => m.Terms));
 const Privacy = lazyPage(() => import("./components/Privacy.tsx").then((m) => m.Privacy));
@@ -33,6 +34,7 @@ const DesignLab = lazyPage(() => import("./components/DesignLab.tsx").then((m) =
 const MARKETING: Record<string, { preload: () => Promise<void> }> = {
   "/": Landing,
   "/compare": Compare,
+  "/pricing": Pricing,
   "/security": Security,
   "/terms": Terms,
   "/privacy": Privacy,
@@ -61,6 +63,7 @@ export function preloadRoute(pathname: string): Promise<void> {
 const TITLES: Record<string, string> = {
   "/": "Klef - End-to-end encrypted .env sync",
   "/compare": "Compare - Klef",
+  "/pricing": "Pricing - Klef",
   "/security": "Security - Klef",
   "/terms": "Terms - Klef",
   "/privacy": "Privacy - Klef",
@@ -174,6 +177,7 @@ export function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/compare" element={<Compare />} />
+          <Route path="/pricing" element={<Pricing />} />
           <Route path="/security" element={<Security />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />

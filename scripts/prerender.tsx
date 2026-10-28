@@ -16,6 +16,7 @@ import { ThemeProvider } from "next-themes";
 import { Landing } from "../src/web/components/Landing.tsx";
 import { Security } from "../src/web/components/Security.tsx";
 import { Compare } from "../src/web/components/Compare.tsx";
+import { Pricing } from "../src/web/components/Pricing.tsx";
 import { Terms } from "../src/web/components/Terms.tsx";
 import { Privacy } from "../src/web/components/Privacy.tsx";
 import { Why } from "../src/web/components/Why.tsx";
@@ -27,6 +28,7 @@ const ROUTES = [
   // The Worker serves home.html for "/" (see src/api/index.ts).
   { path: "/", file: "home.html", title: DEFAULT_TITLE, Page: Landing },
   { path: "/compare", file: "compare.html", title: "Compare - Klef", Page: Compare },
+  { path: "/pricing", file: "pricing.html", title: "Pricing - Klef", Page: Pricing },
   { path: "/security", file: "security.html", title: "Security - Klef", Page: Security },
   { path: "/terms", file: "terms.html", title: "Terms - Klef", Page: Terms },
   { path: "/privacy", file: "privacy.html", title: "Privacy - Klef", Page: Privacy },

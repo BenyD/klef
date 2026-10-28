@@ -7,8 +7,8 @@ import { useThemeSwitch } from "../lib/use-theme-switch.ts";
 
 const GITHUB = "https://github.com/BenyD/klef";
 
-// Shared chrome for the public marketing pages (landing, compare, security,
-// terms, privacy, about): the header bar and the footer around the page.
+// Shared chrome for the public marketing pages (landing, compare, pricing,
+// security, terms, privacy, about): the header bar and the footer around the page.
 export function MarketingLayout({ children }: { children: ReactNode }) {
   return (
     <div className="marketing" id="top">
@@ -35,6 +35,7 @@ const NAV: { label: string; to: string }[] = [
   { label: "Docs", to: "/docs" },
   { label: "Security", to: "/security" },
   { label: "Compare", to: "/compare" },
+  { label: "Pricing", to: "/pricing" },
   { label: "About", to: "/about" },
 ];
 
@@ -138,6 +139,7 @@ const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
       { label: "For coding agents", href: "/#agents" },
       { label: "Security", to: "/security" },
       { label: "Compare", to: "/compare" },
+      { label: "Pricing", to: "/pricing" },
     ],
   },
   {
