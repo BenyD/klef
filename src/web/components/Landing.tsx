@@ -6,19 +6,24 @@ import {
   Bot,
   Box,
   Check,
-  ChevronDown,
+  ChevronRight,
   ChevronsUpDown,
+  Code,
   Copy,
+  Download,
   GitCompare,
   History,
   Import,
   KeyRound,
   LayoutGrid,
   Lock,
+  Minus,
   PanelLeft,
   Plus,
+  Save,
   Search,
   Server,
+  Table2,
   X,
 } from "lucide-react";
 import { GitHubIcon, MarketingLayout } from "./MarketingLayout.tsx";
@@ -115,6 +120,10 @@ function Evidence() {
               Agents leak secrets twice as often. Klef lets yours sync .env
               files without ever seeing a value.
             </h2>
+            <Link to="/compare" className="m-evidence-link">
+              How Klef compares
+              <ArrowRight />
+            </Link>
           </div>
           <ul className="m-stats">
             <li>
@@ -137,8 +146,8 @@ function Evidence() {
             <li>
               <b>0</b>
               <span>
-                values the Klef CLI prints. An ignore file does not stop an agent reading
-                .env from the terminal; <code>klef run</code> redacts them from its output.
+                values the Klef CLI prints, and <code>klef run</code> redacts them from your
+                app's output.
               </span>
               <Link to="/security">How Klef does it</Link>
             </li>
@@ -281,7 +290,7 @@ function Sidebar({ compact = false }: { compact?: boolean }) {
           Find a key
         </li>
       </ul>
-      <p className="m-label">
+      <p className="m-app-group">
         Projects
         <Plus />
       </p>
@@ -289,7 +298,6 @@ function Sidebar({ compact = false }: { compact?: boolean }) {
         <li className="m-app-open">
           <FrameworkIcon framework="nextjs" className="m-app-mark" />
           lensdrop
-          <ChevronDown />
         </li>
         <li className="m-app-file">.env.local</li>
         <li className="m-app-file m-app-active">.env.production</li>
@@ -310,14 +318,18 @@ function Sidebar({ compact = false }: { compact?: boolean }) {
           </li>
         )}
       </ul>
-      <div className="m-app-user">
-        <span className="m-app-avatar">B</span>
-        <span className="m-app-ws-text">
-          <b>Beny</b>
-          <span>you@example.com</span>
+      <div className="m-app-foot">
+        <div className="m-app-user">
+          <span className="m-app-avatar">S</span>
+          <span className="m-app-ws-text">
+            <b>Sam Lee</b>
+            <span>sam@example.com</span>
+          </span>
+          <ChevronsUpDown />
+        </div>
+        <span className="m-app-lock">
+          <Lock />
         </span>
-        <ChevronsUpDown />
-        <Lock className="m-app-lock" />
       </div>
     </aside>
   );
@@ -332,13 +344,64 @@ function AppHead({ children }: { children: ReactNode }) {
         <Box />
         personal
       </span>
-      <span className="m-app-sep">/</span>
+      <ChevronRight className="m-app-sep" />
       <span className="m-app-crumb">
         <FrameworkIcon framework="nextjs" className="m-app-mark" />
         lensdrop
       </span>
-      <span className="m-app-sep">/</span>
+      <ChevronRight className="m-app-sep" />
       {children}
+    </div>
+  );
+}
+
+/** The file crumb: its name, and the switcher between the project's files. */
+function FileCrumb() {
+  return (
+    <b className="m-app-crumb m-mono m-app-crumb-file">
+      <span>.env.production</span>
+      <ChevronsUpDown />
+    </b>
+  );
+}
+
+/** The open-file tabs: the active one raised, with its close button. */
+function FileTabs() {
+  return (
+    <div className="m-app-tabs">
+      <span className="m-app-tab">.env.local</span>
+      <span className="m-app-tab m-app-tab-active">
+        .env.production
+        <X />
+      </span>
+    </div>
+  );
+}
+
+/** The file's toolbar: code or table, the icon actions, Save version. */
+function FileToolbar() {
+  return (
+    <div className="m-app-bar">
+      <span className="m-seg">
+        <span>
+          <Code />
+        </span>
+        <span className="is-on">
+          <Table2 />
+        </span>
+      </span>
+      <span className="m-app-bar-end">
+        <span className="m-btn-group">
+          <Copy />
+          <Download />
+          <Bot />
+          <History />
+        </span>
+        <span className="m-app-save">
+          <Save />
+          Save version
+        </span>
+      </span>
     </div>
   );
 }
@@ -350,19 +413,10 @@ function VaultCard() {
       <Sidebar compact />
       <div className="m-app-panel">
         <AppHead>
-          <b className="m-app-crumb m-mono">
-            .env.production
-            <ChevronDown />
-          </b>
-          <span className="m-app-status">Saved</span>
+          <FileCrumb />
         </AppHead>
-        <div className="m-app-tabs">
-          <span className="m-app-tab">.env.local</span>
-          <span className="m-app-tab m-app-tab-active">
-            .env.production
-            <X />
-          </span>
-        </div>
+        <FileTabs />
+        <FileToolbar />
         <ul className="m-env">
           {VAULT_ROWS.map(([key, n], r) => (
             <li key={key} style={{ "--d": `${120 + r * 60}ms` } as CSSProperties}>
@@ -384,42 +438,65 @@ function VaultCard() {
 }
 
 /** The compare dialog over the project: keys by environment, names only. */
+/**
+ * Compare environments, as the app opens it: a dialog over the file, with
+ * the Keys tab on, the drift line, and which file has each key.
+ */
 function CompareCard() {
   return (
     <>
       <Sidebar compact />
       <div className="m-app-panel">
         <AppHead>
-          <b className="m-app-crumb">Compare environments</b>
+          <FileCrumb />
         </AppHead>
-        <div className="m-dialog">
-          <div className="m-dialog-head">
-            <b>Compare environments</b>
-            <span>Keys across lensdrop's environments. Decrypted in your browser only.</span>
-          </div>
-          <table className="m-vault m-compare">
+        <FileTabs />
+        <FileToolbar />
+      </div>
+      <div className="m-scrim" />
+      <div className="m-dialog">
+        <div className="m-dialog-head">
+          <b>Compare environments</b>
+          <span>
+            Keys across lensdrop's environments, and where values differ. Decrypted in your
+            browser only.
+          </span>
+        </div>
+        <span className="m-seg m-seg-text">
+          <span className="is-on">Keys</span>
+          <span>Values</span>
+        </span>
+        <p className="m-drift">2 keys missing from some environments.</p>
+        <div className="m-compare-box">
+          <table className="m-compare">
             <thead>
               <tr>
                 <th>Key</th>
-                <th>development</th>
-                <th>production</th>
+                <th>
+                  Development
+                  <span>.env.local</span>
+                </th>
+                <th>
+                  Production
+                  <span>.env.production</span>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {COMPARE_ROWS.map(([key, local, prod], r) => (
-                <tr key={key} style={{ "--d": `${120 + r * 60}ms` } as CSSProperties}>
-                  <td className="m-mono">{key}</td>
-                  {[local, prod].map((has, c) => (
-                    <td key={c}>
-                      {has ? (
-                        <span className="m-chk" style={{ "--d": `${260 + r * 60 + c * 40}ms` } as CSSProperties}>
-                          <Check />
-                        </span>
-                      ) : (
-                        <span className="m-none">&mdash;</span>
-                      )}
-                    </td>
-                  ))}
+              {COMPARE_ROWS.map(([key, local, prod]) => (
+                <tr key={key}>
+                  <td>{key}</td>
+                  {[local, prod].map((has, c) =>
+                    has ? (
+                      <td key={c}>
+                        <Check />
+                      </td>
+                    ) : (
+                      <td key={c} className="m-miss">
+                        <Minus />
+                      </td>
+                    ),
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -514,20 +591,36 @@ function Agents() {
           </Reveal>
 
           <Reveal className="m-band-grid" delay={80}>
+            {/* Claude Code's own layout around klef's real output: the locked
+                error (src/cli/common.ts) on the first try, then sync's plan
+                lines and the write, after the user unlocks. */}
             <pre className="m-session">
-              <span className="m-you">&gt; pull the latest env files</span>
-              {"\n"}
-              <span className="m-call">&#9679; Bash(klef sync)</span>
-              {"\n  This needs an interactive terminal. Run it yourself rather than through a script or agent.\n"}
-              <span className="m-you">
-                &#9679; The vault is locked. Run klef unlock in your own terminal and tell me when it is done.
+              <span className="m-ln m-you">&gt; pull the latest env files</span>
+              <span className="m-ln m-tool m-tool-err">
+                <i>&#9210;</i>Bash(klef sync)
               </span>
-              {"\n"}
-              <span className="m-you">&gt; done</span>
-              {"\n"}
-              <span className="m-call">&#9679; Bash(klef sync)</span>
-              {"\n  "}
-              <span className="m-call">Wrote 9 variables to .env.production</span>
+              <span className="m-ln m-out">
+                <i>&#9151;</i>Error: Exit code 4
+              </span>
+              <span className="m-ln m-out m-err">
+                &#10007; The vault is locked on this device, and unlocking it needs the user.
+              </span>
+              <span className="m-ln m-out m-faint">&hellip; +3 lines (ctrl+o to expand)</span>
+              <span className="m-ln m-say">
+                <i>&#9210;</i>The vault is locked on this machine. Run klef unlock in your own
+                terminal, then tell me.
+              </span>
+              <span className="m-ln m-you">&gt; done</span>
+              <span className="m-ln m-tool">
+                <i>&#9210;</i>Bash(klef sync)
+              </span>
+              <span className="m-ln m-out">
+                <i>&#9151;</i>.env.local       <span className="m-faint">in sync</span>
+              </span>
+              <span className="m-ln m-out">.env.production  changed in the vault</span>
+              <span className="m-ln m-out">
+                <span className="m-ok">&#10003;</span> Wrote 9 variables to .env.production
+              </span>
             </pre>
 
             <ul className="m-facts">
@@ -647,19 +740,10 @@ function Showcase() {
                 <Sidebar />
                 <div className="m-app-panel">
                   <AppHead>
-                    <b className="m-app-crumb m-mono">
-                      .env.production
-                      <ChevronDown />
-                    </b>
-                    <span className="m-app-status">Saved</span>
+                    <FileCrumb />
                   </AppHead>
-                  <div className="m-app-tabs">
-                    <span className="m-app-tab">.env.local</span>
-                    <span className="m-app-tab m-app-tab-active">
-                      .env.production
-                      <X />
-                    </span>
-                  </div>
+                  <FileTabs />
+                  <FileToolbar />
                   <div className="m-app-split">
                     <ul className="m-env">
                       {SHOWCASE_ROWS.map(([key, n]) => (
