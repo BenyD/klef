@@ -370,6 +370,9 @@ export function VaultHome({
   // after its tree has loaded; saving only starts after that, so switching
   // workspaces never writes one workspace's tabs under another's key.
   const restoredFor = useRef<string | null>(null);
+  // Tabs restored on load take over from the boot skeleton, which already
+  // drew their editor's placeholder lines; they keep drawing them at once.
+  const restoredIds = useRef<ReadonlySet<string>>(new Set());
   useEffect(() => {
     if (loading || !workspace || restoredFor.current === workspace.id) return;
     restoredFor.current = workspace.id;
@@ -393,6 +396,7 @@ export function VaultHome({
         return null;
       },
     );
+    restoredIds.current = new Set(restored.tabs.map((t) => t.id));
     setOpenFiles(restored.tabs);
     setSelected(restored.tabs.find((t) => t.id === restored.activeId) ?? null);
   }, [loading, workspace]);
@@ -749,7 +753,9 @@ export function VaultHome({
         }
         projects={projects}
         selectedFileId={selected?.id ?? null}
-        overviewActive={!selected}
+        // While loading, the overview is only active if no file is about
+        // to be restored over it (the skeleton draws the same).
+        overviewActive={!selected && !(loading && layoutHint.fileOpen)}
         canMoveProjects={workspaces.length > 1}
         onShowOverview={() => setSelected(null)}
         onOpenPalette={() => setPaletteOpen(true)}
@@ -965,6 +971,7 @@ export function VaultHome({
             >
               <FilePane
                 file={f}
+                instantSkeleton={restoredIds.current.has(f.id)}
                 onSaved={reload}
                 onDirtyChange={(dirty) => markDirty(f.id, dirty)}
               />

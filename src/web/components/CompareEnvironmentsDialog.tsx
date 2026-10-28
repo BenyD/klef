@@ -112,12 +112,7 @@ export function CompareEnvironmentsDialog({
             <span className="text-pretty">{error}</span>
           </div>
         ) : !report ? (
-          <CompareSkeleton
-            columns={
-              project?.files.filter((f) => detectFormat(f.name) === "dotenv")
-                .length ?? 0
-            }
-          />
+          <CompareSkeleton files={project?.files ?? []} />
         ) : report.columns.length < 2 ? (
           <Empty className="py-8">
             <EmptyHeader>
@@ -304,10 +299,16 @@ function DriftHead({
 
 /**
  * The Keys tab while the files decrypt: tab switch, summary line, and the
- * table with a column per dotenv file (known before decrypting) and rows of
- * the same 28px height as the real ones.
+ * table with a column per dotenv file and rows as tall as the real ones.
+ * Columns and their header lines are known before decrypting: a column
+ * labelled by its environment also names its file on a second line.
  */
-function CompareSkeleton({ columns }: { columns: number }) {
+function CompareSkeleton({ files }: { files: ProjectNode["files"] }) {
+  const dotenv = files.filter((f) => detectFormat(f.name) === "dotenv");
+  const columns = dotenv.length;
+  const twoLines = dotenv.some(
+    (f) => effectiveEnvironment(f.name, f.environment) !== null,
+  );
   // Fewer than two files ends in the empty state, not a table.
   if (columns < 2) {
     return (
@@ -320,7 +321,7 @@ function CompareSkeleton({ columns }: { columns: number }) {
     <div aria-busy="true" className="flex flex-col gap-3">
       <LoadingStatus>Decrypting environments</LoadingStatus>
       {/* TabsList: Keys / Values */}
-      <Skeleton className="h-8 w-[8.25rem] rounded-lg" />
+      <Skeleton className="h-8 w-[6.625rem] rounded-lg" />
       <p className="text-sm">
         <SkeletonText className="w-64" />
       </p>
@@ -331,7 +332,16 @@ function CompareSkeleton({ columns }: { columns: number }) {
               <th className="border-b px-3 py-2 text-left font-medium">Key</th>
               {Array.from({ length: columns }, (_, i) => (
                 <th key={i} className="border-b px-3 py-2 text-center">
-                  <SkeletonText className="w-20" />
+                  <span className="flex flex-col items-center">
+                    <span>
+                      <SkeletonText className="w-20" />
+                    </span>
+                    {twoLines && (
+                      <span className="text-xs">
+                        <SkeletonText className="w-24" />
+                      </span>
+                    )}
+                  </span>
                 </th>
               ))}
             </tr>

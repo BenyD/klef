@@ -109,6 +109,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip.tsx";
 interface Props {
   file: SelectedFile;
   onSaved: () => void;
+  /**
+   * Draw the editor's placeholder lines from the first frame instead of after
+   * a beat: for a tab restored on load, where the boot skeleton was already
+   * drawing them.
+   */
+  instantSkeleton?: boolean;
   /** Reports unsaved-draft state upward (drives the tab strip's dirty dot). */
   onDirtyChange?: (dirty: boolean) => void;
 }
@@ -122,7 +128,12 @@ type SidePanel = "review" | "history" | null;
 // - Raw/Table is a segmented switch (two views of the same draft)
 // - review and history share one docked side panel (resizable, persisted);
 //   phones present the same content as full-width sheets instead
-export function FilePane({ file, onSaved, onDirtyChange }: Props) {
+export function FilePane({
+  file,
+  instantSkeleton = false,
+  onSaved,
+  onDirtyChange,
+}: Props) {
   const { dek } = useVault();
   const isMobile = useIsMobile();
   const [stored, setStored] = useState("");
@@ -131,7 +142,8 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
   const [saving, setSaving] = useState(false);
   // The pane's own chrome stays up while the version decrypts; only the
   // editor's lines are placeholders, and only if the wait is noticeable.
-  const showEditorSkeleton = useDelayedLoading(loading, { minMs: 0 });
+  const delayedSkeleton = useDelayedLoading(loading, { minMs: 0 });
+  const showEditorSkeleton = loading && (instantSkeleton || delayedSkeleton);
   const [view, setView] = useState("editor");
   const [panel, setPanel] = useState<SidePanel>(null);
   const [history, setHistory] = useState<VersionSummary[] | null>(null);
