@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  ambiguousTabs,
   closeTabs,
   cycleTab,
   moveTab,
@@ -10,6 +9,7 @@ import {
   rightOf,
   serializeTabs,
   tabForDigit,
+  tabGroups,
   type Tab,
   type TabState,
 } from "./file-tabs.ts";
@@ -17,6 +17,7 @@ import {
 const tab = (id: string, name = `.env.${id}`, project = "web"): Tab => ({
   id,
   name,
+  projectId: `p-${project}`,
   project,
 });
 const [a, b, c, d] = [tab("a"), tab("b"), tab("c"), tab("d")];
@@ -31,6 +32,15 @@ describe("openTab", () => {
     const s = openTab(state("a", [a, b]), c);
     expect(ids(s)).toEqual(["a", "b", "c"]);
     expect(s.activeId).toBe("c");
+  });
+
+  it("places a tab after its project's last tab", () => {
+    const [w1, api1, w2] = [tab("w1"), tab("api1", ".env", "api"), tab("w2")];
+    expect(ids(openTab(state("w1", [w1, api1]), w2))).toEqual([
+      "w1",
+      "w2",
+      "api1",
+    ]);
   });
 
   it("focuses an already open tab without moving it", () => {
@@ -120,18 +130,6 @@ describe("tabForDigit", () => {
   });
 });
 
-describe("ambiguousTabs", () => {
-  it("flags tabs that share a file name with another open tab", () => {
-    const webProd = tab("w", ".env.production", "web");
-    const lensProd = tab("l", ".env.production", "Lensdrop");
-    const local = tab("x", ".env.local", "web");
-    expect([...ambiguousTabs([webProd, lensProd, local])].sort()).toEqual([
-      "l",
-      "w",
-    ]);
-  });
-});
-
 describe("serializeTabs / restoreTabs", () => {
   const known = new Map([a, b, c].map((t) => [t.id, t]));
   const resolve = (id: string) => known.get(id) ?? null;
@@ -153,5 +151,46 @@ describe("serializeTabs / restoreTabs", () => {
     expect(restoreTabs("not json", resolve)).toEqual(empty);
     expect(restoreTabs('{"ids":"a"}', resolve)).toEqual(empty);
     expect(restoreTabs("null", resolve)).toEqual(empty);
+  });
+});
+
+describe("project groups", () => {
+  const [w1, w2] = [tab("w1"), tab("w2")];
+  const api1 = tab("api1", ".env", "api");
+  const api2 = tab("api2", ".env.local", "api");
+
+  it("lists each project's run in order of its first tab", () => {
+    const groups = tabGroups([w1, api1, w2, api2]);
+    expect(groups.map((g) => g.project)).toEqual(["web", "api"]);
+    expect(groups.map((g) => g.tabs.map((t) => t.id))).toEqual([
+      ["w1", "w2"],
+      ["api1", "api2"],
+    ]);
+  });
+
+  it("keeps a dragged tab inside its own group", () => {
+    // Dropping w1 between the api tabs sends it back after w2.
+    expect(moveTab([w1, w2, api1, api2], 0, 2).map((t) => t.id)).toEqual([
+      "w2",
+      "w1",
+      "api1",
+      "api2",
+    ]);
+  });
+
+  it("moves a whole group when its tab is dragged to the front", () => {
+    expect(moveTab([w1, w2, api1, api2], 2, 0).map((t) => t.id)).toEqual([
+      "api1",
+      "api2",
+      "w1",
+      "w2",
+    ]);
+  });
+
+  it("regroups tabs restored from an ungrouped save", () => {
+    const all = new Map([w1, w2, api1].map((t) => [t.id, t]));
+    const raw = JSON.stringify({ ids: ["w1", "api1", "w2"], activeId: "w2" });
+    const restored = restoreTabs(raw, (id) => all.get(id) ?? null);
+    expect(ids(restored)).toEqual(["w1", "w2", "api1"]);
   });
 });
