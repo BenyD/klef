@@ -16,7 +16,7 @@ import {
 import { toast } from "sonner";
 import { isMacPlatform } from "../lib/auto-lock.ts";
 import { cn } from "../lib/utils.ts";
-import { useEffectiveEnvLabel, useEnvTag } from "../lib/env-meta.ts";
+import { effectiveEnvLabel, envTag } from "../lib/env-meta.ts";
 import { getRecentFileIds, sortByRecency } from "../lib/recent-files.ts";
 import {
   highlightRuns,
@@ -155,9 +155,6 @@ export function CommandPalette({
   onSearchKeys,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
-  // Search by the environment a file stands for, explicit or from its
-  // name, so "production" finds .env.production with nothing set on it.
-  const effectiveEnv = useEffectiveEnvLabel();
   const { resolvedTheme, setTheme } = useTheme();
   const { toggleSidebar } = useSidebar();
   const scope = useMemo(() => (workspace ? [workspace] : []), [workspace]);
@@ -191,7 +188,9 @@ export function CommandPalette({
             { text: file.name },
             { text: project.name, weight: 0.8 },
             {
-              text: effectiveEnv(file.name, file.environment) ?? "",
+              // Search by the environment a file stands for, explicit or from
+              // its name, so "production" finds .env.production unlabeled.
+              text: effectiveEnvLabel(file.name, file.environment) ?? "",
               weight: 0.6,
             },
           ],
@@ -209,7 +208,7 @@ export function CommandPalette({
     return entries.sort(
       (a, b) => (order.get(a.file.id) ?? 0) - (order.get(b.file.id) ?? 0),
     );
-  }, [projects, effectiveEnv, open]);
+  }, [projects, open]);
 
   const keys = useMemo(
     () =>
@@ -629,7 +628,7 @@ function RowTrail({
   file: EnvFileNode;
   environmentIndices?: readonly number[];
 }) {
-  const tag = useEnvTag()(file.name, file.environment);
+  const tag = envTag(file.name, file.environment);
   return (
     <CommandShortcut className="flex min-w-0 shrink items-center gap-3 tracking-normal">
       <span className="flex min-w-0 items-center gap-1.5">
