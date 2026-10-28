@@ -23,6 +23,6 @@ for await (const file of glob("**/content.md", { cwd: join(from, "llms.mdx") }))
 }
 
 // Single-fetch data for the text exports, which nothing navigates to.
-for (const file of ["llms.txt.data", "llms-full.txt.data", "search.json.data"]) {
+for (const file of ["llms.txt.data", "llms-full.txt.data", "sitemap.xml.data", "search.json.data"]) {
   await rm(join(to, "docs", file), { force: true });
 }
