@@ -25,7 +25,7 @@ function stubApi(replies: Reply[]) {
   return calls;
 }
 
-const reservation = (plan: "pro" | "team") => ({
+const reservation = (plan: "hosted" | "kit") => ({
   reservation: { plan, createdAt: "2026-10-28T00:00:00.000Z", updatedAt: "2026-10-28T00:00:00.000Z" },
 });
 
@@ -47,57 +47,68 @@ describe("Pricing", () => {
         <Pricing />
       </MemoryRouter>,
     );
-    expect(html).toContain("Self-hosting is free forever.");
-    expect(html).toContain("Reserve at $24 a year");
-    expect(html).toContain("Early price: $24 a year, for life.");
+    expect(html).toContain("Pay once. Use it for good.");
+    expect(html).toContain("Reserve at $29");
+    expect(html).toContain("Reserve the kit");
+    expect(html).toContain("Early price: $29.");
+    expect(html).not.toMatch(/subscription per|a month/);
     expect(html).not.toMatch(/[–—]/);
   });
 
-  it("shows all three plans with their prices", async () => {
+  it("shows two one-time plans and Team with no price", () => {
     stubApi([{ status: 401 }]);
     renderPage();
-    for (const name of ["Free", "Pro", "Team"]) {
+    for (const name of ["Hosted", "Self-host kit", "Team"]) {
       expect(screen.getByRole("heading", { name })).toBeTruthy();
     }
-    expect(screen.getByText("or $36 a year, 3 months free")).toBeTruthy();
-    expect(screen.getByText("or $108 a year, 3 months free")).toBeTruthy();
-    expect(screen.getByText("Coming soon")).toBeTruthy();
+    expect(screen.getByText("$49")).toBeTruthy();
+    expect(screen.getByText("$29")).toBeTruthy();
+    expect(screen.getByText("No price yet")).toBeTruthy();
+    expect(screen.getAllByText("once")).toHaveLength(2);
+  });
+
+  it("never offers a way to reserve Team", async () => {
+    stubApi([{ status: 200, body: { reservation: null } }]);
+    renderPage();
+    await screen.findByRole("button", { name: "Reserve at $29" });
+    expect(screen.queryByRole("button", { name: /team/i })).toBeNull();
+    expect(screen.getByText("Planned. Nothing to reserve yet.")).toBeTruthy();
   });
 
   it("sends a signed-out visitor to sign in instead of reserving", async () => {
     stubApi([{ status: 401 }]);
     renderPage();
-    const link = await screen.findByRole("link", { name: "Reserve at $24 a year" });
+    const link = await screen.findByRole("link", { name: "Reserve at $29" });
     expect(link.getAttribute("href")).toBe("/auth");
     expect(screen.queryByRole("button", { name: /reserve/i })).toBeNull();
   });
 
-  it("reserves Pro, then cancels, for a signed-in person", async () => {
+  it("reserves Hosted, then cancels, for a signed-in person", async () => {
     const calls = stubApi([
       { status: 200, body: { reservation: null } },
-      { status: 200, body: reservation("pro") },
+      { status: 200, body: reservation("hosted") },
       { status: 200, body: { reservation: null } },
     ]);
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Reserve at $24 a year" }));
-    await screen.findByText("Reserved. Nothing is charged until paid plans open.");
-    expect(calls[1]).toEqual({ method: "PUT", body: { plan: "pro" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Reserve at $29" }));
+    await screen.findByText("Reserved. Nothing is charged until it opens.");
+    expect(calls[1]).toEqual({ method: "PUT", body: { plan: "hosted" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel reservation" }));
-    await screen.findByRole("button", { name: "Reserve at $24 a year" });
+    await screen.findByRole("button", { name: "Reserve at $29" });
     expect(calls[2]?.method).toBe("DELETE");
   });
 
   it("offers to switch when the other plan is reserved", async () => {
     const calls = stubApi([
-      { status: 200, body: reservation("pro") },
-      { status: 200, body: reservation("team") },
+      { status: 200, body: reservation("hosted") },
+      { status: 200, body: reservation("kit") },
     ]);
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Switch reservation to Team" }));
-    await waitFor(() => expect(calls[1]).toEqual({ method: "PUT", body: { plan: "team" } }));
-    await screen.findByRole("button", { name: "Switch reservation to Pro" });
+    fireEvent.click(await screen.findByRole("button", { name: "Switch to the self-host kit" }));
+    await waitFor(() => expect(calls[1]).toEqual({ method: "PUT", body: { plan: "kit" } }));
+    await screen.findByRole("button", { name: "Switch to Hosted" });
   });
 
   it("says so when saving fails", async () => {
@@ -106,7 +117,7 @@ describe("Pricing", () => {
       { status: 500, body: { error: "database unavailable" } },
     ]);
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Reserve a Team spot" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Reserve the kit" }));
     const alerts = await screen.findAllByRole("alert");
     expect(alerts[0]?.textContent).toContain("database unavailable");
   });
