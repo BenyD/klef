@@ -4,10 +4,12 @@ import {
   ChevronDown,
   Copy,
   KeyRound,
-  Loader2,
   TriangleAlert,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useDelayedLoading } from "../lib/use-delayed-loading.ts";
+import { Spinner } from "./ui/spinner.tsx";
+import { LoadingStatus } from "./ui/loading-status.tsx";
 import { cn } from "../lib/utils.ts";
 import { isMacPlatform } from "../lib/auto-lock.ts";
 import { envLabel, envTag } from "../lib/env-meta.ts";
@@ -161,6 +163,9 @@ export function KeySearchDialog({
 
   const mac = isMacPlatform();
   const indexing = loading && keyed.length === 0;
+  // Decrypting is usually quick; say so only when it isn't.
+  const showIndexing = useDelayedLoading(indexing);
+  const showUpdating = useDelayedLoading(loading && !indexing);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
@@ -253,9 +258,17 @@ export function KeySearchDialog({
 
           <CommandList className="max-h-[min(60vh,32rem)] p-0">
             {indexing ? (
-              <div className="text-muted-foreground flex items-center justify-center gap-2 py-10 text-sm">
-                <Loader2 className="size-4 animate-spin" />
-                Reading key names...
+              <div
+                aria-busy="true"
+                className="text-muted-foreground flex h-25 items-center justify-center gap-2 text-sm"
+              >
+                <LoadingStatus>Reading key names</LoadingStatus>
+                {showIndexing && (
+                  <>
+                    <Spinner />
+                    <span aria-hidden="true">Reading key names...</span>
+                  </>
+                )}
               </div>
             ) : (
               <CommandEmpty>
@@ -338,7 +351,7 @@ export function KeySearchDialog({
               Copy name
             </span>
             <span className="ml-auto">
-              {loading && !indexing ? "Updating..." : "Names only, never values"}
+              {showUpdating ? "Updating..." : "Names only, never values"}
             </span>
           </div>
         </Command>

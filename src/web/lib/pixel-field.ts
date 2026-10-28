@@ -1,6 +1,6 @@
 // The pixel field: a scatter of square cells on a grid that breathe, and a
 // few that step from cell to cell or blink. Drawn behind the landing hero
-// and the splash. This module only decides where the cells go and how each
+// and the canvas screens. This module only decides where the cells go and how each
 // one moves; PixelField.tsx renders them and global.css animates them.
 //
 // Everything is derived from a seed, so the server and the browser produce

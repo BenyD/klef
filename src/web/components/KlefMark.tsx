@@ -6,8 +6,8 @@ import { STRAND_PATHS } from "../lib/strand.ts";
 // why the weave is cut into the paths rather than masked, lives in
 // lib/strand.ts; the brand package is generated from the same numbers.
 //
-// Each bar sits in its own <g> so the splash can draw them in one after
-// another (global.css, `.klef-splash-mark svg > g`). The viewBox leaves a
+// Each bar sits in its own <g>, so a strand can be styled or animated on
+// its own. The viewBox leaves a
 // margin around the 100-unit grid so the mark fills its box the way the
 // previous one did and existing layouts keep their proportions.
 export function KlefMark({

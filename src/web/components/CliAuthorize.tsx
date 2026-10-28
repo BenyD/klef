@@ -59,7 +59,8 @@ export function CliAuthorize({ userId, api = REAL_API }: { userId: string; api?:
   const prefilled = params.get("code") ?? "";
   const [typed, setTyped] = useState(prefilled);
   const [pending, setPending] = useState<Pending>({ state: "idle" });
-  const [busy, setBusy] = useState(false);
+  // Which decision is in flight, so only that button spins.
+  const [busy, setBusy] = useState<"approve" | "deny" | null>(null);
   const [offer, setOffer] = useState<UnlockOffer>({ available: false });
   const [unlockToo, setUnlockToo] = useState(true);
   const [method, setMethod] = useState<"passkey" | "passphrase">("passphrase");
@@ -116,7 +117,7 @@ export function CliAuthorize({ userId, api = REAL_API }: { userId: string; api?:
 
   async function decide(deny: boolean) {
     if (pending.state !== "found") return;
-    setBusy(true);
+    setBusy(deny ? "deny" : "approve");
     setUnlockError(null);
     try {
       let sealedVaultKey = null;
@@ -156,7 +157,7 @@ export function CliAuthorize({ userId, api = REAL_API }: { userId: string; api?:
       }
       setPending(deny ? { state: "denied" } : { state: "approved", unlocked: sealedVaultKey !== null });
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -230,7 +231,11 @@ export function CliAuthorize({ userId, api = REAL_API }: { userId: string; api?:
               {pending.state === "error" && (
                 <p className="text-destructive text-sm">{pending.message}</p>
               )}
-              <Button type="submit" disabled={pending.state === "loading" || !typed.trim()}>
+              <Button
+                type="submit"
+                loading={pending.state === "loading"}
+                disabled={!typed.trim()}
+              >
                 {pending.state === "loading" ? "Checking..." : "Continue"}
               </Button>
             </form>
@@ -306,17 +311,19 @@ export function CliAuthorize({ userId, api = REAL_API }: { userId: string; api?:
                 <Button
                   variant="outline"
                   className="flex-1"
-                  disabled={busy}
+                  loading={busy === "deny"}
+                  disabled={busy !== null}
                   onClick={() => void decide(true)}
                 >
                   Deny
                 </Button>
                 <Button
                   className="flex-1"
-                  disabled={busy || (unlocking && method === "passphrase" && passphrase === "")}
+                  loading={busy === "approve"}
+                  disabled={busy !== null || (unlocking && method === "passphrase" && passphrase === "")}
                   onClick={() => void decide(false)}
                 >
-                  {busy ? "Approving..." : unlocking ? "Approve and unlock" : "Approve"}
+                  {busy === "approve" ? "Approving..." : unlocking ? "Approve and unlock" : "Approve"}
                 </Button>
               </div>
               <p className="text-muted-foreground text-xs leading-relaxed">

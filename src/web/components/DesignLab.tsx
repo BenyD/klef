@@ -10,6 +10,10 @@ import {
   Trash2,
 } from "lucide-react";
 import { Badge } from "./ui/badge.tsx";
+import { Skeleton, SkeletonText } from "./ui/skeleton.tsx";
+import { Spinner } from "./ui/spinner.tsx";
+import { EditorSkeleton, OverviewSkeleton } from "./skeletons.tsx";
+import { SettingRowsSkeleton } from "./settings-layout.tsx";
 import { Button } from "./ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card.tsx";
 import {
@@ -345,6 +349,13 @@ export function DesignLab() {
       </Section>
 
       <Section
+        title="Loading"
+        hint="Skeletons for content-shaped waits, drawn with the real component's containers so nothing moves when it lands. Spinners for actions and short decrypts, shown only past 200ms and then for at least 500ms. The fast request below never shows one."
+      >
+        <LoadingSamples />
+      </Section>
+
+      <Section
         title="Overlays"
         hint="Menus open from their trigger and leave faster than they arrive; modals scale from their centre."
       >
@@ -468,5 +479,55 @@ export function DesignLab() {
         </div>
       </Section>
     </div>
+  );
+}
+
+// A request of a given length, so the delayed spinner's two thresholds can be
+// felt: the quick one finishes before a spinner is due, the slow one shows it.
+function FakeRequest({ ms, label }: { ms: number; label: string }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      variant="outline"
+      loading={busy}
+      onClick={() => {
+        setBusy(true);
+        window.setTimeout(() => setBusy(false), ms);
+      }}
+    >
+      <Save />
+      {label}
+    </Button>
+  );
+}
+
+function LoadingSamples() {
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <FakeRequest ms={120} label="Fast save (120ms)" />
+        <FakeRequest ms={1500} label="Slow save (1.5s)" />
+        <Spinner className="text-muted-foreground" />
+        <Spinner className="text-muted-foreground size-3" />
+      </div>
+      <div className="flex flex-wrap items-center gap-4 text-sm">
+        <Skeleton className="size-8" />
+        <span>
+          Text line: <SkeletonText className="w-24" />
+        </span>
+        <span className="text-xs">
+          <SkeletonText className="w-16" />
+        </span>
+      </div>
+      <div className="bg-card divide-y overflow-hidden rounded-lg border">
+        <SettingRowsSkeleton label="Loading rows" />
+      </div>
+      <div className="overflow-hidden rounded-lg border">
+        <EditorSkeleton />
+      </div>
+      <div className="flex rounded-lg border">
+        <OverviewSkeleton hint={{ files: [2, 1] }} />
+      </div>
+    </>
   );
 }

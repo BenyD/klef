@@ -2,6 +2,7 @@
 // it the crypto), plus the screens VaultGate picks between. App.tsx keeps the
 // session check in the entry chunk so it runs while this one downloads.
 
+import { useRef } from "react";
 import { VaultProvider } from "./vault-session.tsx";
 import { useVault } from "./vault-context.ts";
 import { Onboarding } from "./components/Onboarding.tsx";
@@ -38,17 +39,29 @@ function VaultGate({
   image?: string | null;
 }) {
   const { status } = useVault();
+  // Whether a screen of its own (unlock, setup) came before the vault. Only
+  // then is VaultHome a hand-off worth animating; straight from the boot
+  // skeleton it should fill in where that skeleton stood.
+  const handedOff = useRef(false);
+  if (status === "locked" || status === "needs-setup") handedOff.current = true;
   switch (status) {
     case "loading":
-      // Skeleton, not the splash: on reload the shell should appear in
-      // place instantly rather than flashing a brand moment.
+      // VaultHome drawn as placeholders: on reload the shell is there at
+      // once and fills in, rather than a loading screen of its own.
       return <AppShellSkeleton />;
     case "needs-setup":
       return <Onboarding email={email} />;
     case "locked":
       return <UnlockScreen />;
     case "unlocked":
-      return <VaultHome name={name} email={email} image={image} />;
+      return (
+        <VaultHome
+          name={name}
+          email={email}
+          image={image}
+          animateIn={handedOff.current}
+        />
+      );
     case "error":
       return <VaultLoadError />;
   }

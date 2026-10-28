@@ -51,7 +51,7 @@ export function PixelField({
   );
 }
 
-/** The field behind the canvas screens (splash, sign-in, unlock, CLI connect). */
+/** The field behind the canvas screens (sign-in, unlock, CLI connect). */
 export function CanvasField() {
   return <PixelField className="klef-canvas-field" cell={32} cols={40} rows={24} count={64} seed={5} />;
 }

@@ -218,8 +218,8 @@ export function UnlockScreen() {
               <Button
                 type="submit"
                 className="w-full"
+                loading={busy}
                 disabled={
-                  busy ||
                   !value ||
                   (mode === "recovery" && (!newPassphrase || !confirm))
                 }
@@ -237,7 +237,8 @@ export function UnlockScreen() {
               type="button"
               variant="outline"
               className="mt-3 w-full"
-              disabled={busy || passkeyBusy}
+              disabled={busy}
+              loading={passkeyBusy}
               onClick={() => void onPasskey()}
             >
               <Fingerprint />

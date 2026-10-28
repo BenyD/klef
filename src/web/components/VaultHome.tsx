@@ -141,7 +141,10 @@ import { Input } from "./ui/input.tsx";
 import { Kbd, KbdGroup } from "./ui/kbd.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip.tsx";
 import { Label } from "./ui/label.tsx";
-import { Skeleton } from "./ui/skeleton.tsx";
+import { SkeletonText, Skeleton } from "./ui/skeleton.tsx";
+import { LoadingStatus } from "./ui/loading-status.tsx";
+import { ContentSkeleton, WorkspaceSwitcherSkeleton } from "./skeletons.tsx";
+import { readLayoutHint, rememberLayout } from "../lib/layout-hint.ts";
 import {
   Combobox,
   ComboboxCollection,
@@ -218,12 +221,20 @@ export function VaultHome({
   name,
   email,
   image,
+  animateIn = true,
 }: {
   name: string;
   email: string;
   image?: string | null;
+  /**
+   * Enter with the screen hand-off. Off when the boot skeleton was on screen
+   * just before: that skeleton is this screen, so it should fill in, not
+   * fade in from nothing.
+   */
+  animateIn?: boolean;
 }) {
   const { tree, loading, error, reload } = useTree();
+  const [layoutHint] = useState(readLayoutHint);
   const { lock, recoveryConfirmed } = useVault();
   useAutoLock(lock);
   // The shortcut is a deliberate action, so it gets the dirty-draft guard
@@ -391,6 +402,7 @@ export function VaultHome({
       tabsKey(workspace.id),
       serializeTabs({ tabs: openFiles, activeId: selected?.id ?? null }),
     );
+    rememberLayout({ tabs: openFiles.length, fileOpen: selected !== null });
   }, [workspace, openFiles, selected]);
 
   const run = async (op: Promise<unknown>) => {
@@ -700,18 +712,22 @@ export function VaultHome({
   return (
     <SidebarProvider
       defaultOpen
-      className="klef-screen h-svh overflow-hidden"
+      className={cn(animateIn && "klef-screen", "h-svh overflow-hidden")}
     >
       <AppSidebar
         loading={loading}
         header={
-          <WorkspaceSwitcher
-            workspaces={workspaces}
-            workspace={workspace}
-            onPick={pickWorkspace}
-            onNew={openNewWorkspace}
-            onOpenSettings={() => setSettingsTab("workspace")}
-          />
+          loading ? (
+            <WorkspaceSwitcherSkeleton />
+          ) : (
+            <WorkspaceSwitcher
+              workspaces={workspaces}
+              workspace={workspace}
+              onPick={pickWorkspace}
+              onNew={openNewWorkspace}
+              onOpenSettings={() => setSettingsTab("workspace")}
+            />
+          )
         }
         footer={
           <>
@@ -822,8 +838,17 @@ export function VaultHome({
                 selected && "max-sm:hidden",
               )}
             >
-              <WorkspaceIcon workspace={workspace} />
-              <span className="truncate">{workspace?.name ?? "Workspace"}</span>
+              {loading ? (
+                <>
+                  <Skeleton className="size-4 shrink-0 rounded-sm" />
+                  <SkeletonText className="w-24" />
+                </>
+              ) : (
+                <>
+                  <WorkspaceIcon workspace={workspace} />
+                  <span className="truncate">{workspace?.name ?? "Workspace"}</span>
+                </>
+              )}
             </button>
             {selected && currentProject && (
               <>
@@ -946,19 +971,9 @@ export function VaultHome({
             </div>
           ))}
           {selected ? null : loading ? (
-            <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-8">
-              <div className="mb-6 flex items-center justify-between gap-4">
-                <div className="space-y-2">
-                  <Skeleton className="h-6 w-40" />
-                  <Skeleton className="h-4 w-20" />
-                </div>
-                <Skeleton className="h-7 w-28 rounded-md" />
-              </div>
-              <div className="flex flex-col gap-1">
-                {Array.from({ length: 6 }, (_, i) => (
-                  <Skeleton key={i} className="h-8 rounded-md" />
-                ))}
-              </div>
+            <div aria-busy="true" className="flex flex-1 flex-col">
+              <LoadingStatus>Loading projects</LoadingStatus>
+              <ContentSkeleton hint={layoutHint} />
             </div>
           ) : !workspace ? (
             // Unreachable through normal flows (setup seeds a workspace and

@@ -47,7 +47,12 @@ import {
 } from "./ui/alert-dialog.tsx";
 import { Badge } from "./ui/badge.tsx";
 import { Button } from "./ui/button.tsx";
-import { SettingNote, SettingRow, SettingsSection } from "./settings-layout.tsx";
+import {
+  SettingNote,
+  SettingRow,
+  SettingRowsSkeleton,
+  SettingsSection,
+} from "./settings-layout.tsx";
 import {
   Dialog,
   DialogContent,
@@ -138,7 +143,7 @@ export function AccessTokensPanel() {
       }
     >
       {sorted === null ? (
-        <SettingNote>Loading tokens...</SettingNote>
+        <SettingRowsSkeleton label="Loading tokens" />
       ) : sorted.length ? (
         sorted.map((token) => (
           <TokenRow
@@ -267,7 +272,12 @@ function TokenRow({
             aria-label="Token name"
             className="h-8"
           />
-          <Button type="submit" size="sm" disabled={busy || !name.trim()}>
+          <Button
+            type="submit"
+            size="sm"
+            loading={busy}
+            disabled={!name.trim()}
+          >
             Save
           </Button>
           <Button type="button" size="sm" variant="ghost" onClick={cancelRename}>
@@ -290,7 +300,7 @@ function TokenRow({
               size="sm"
               variant="destructive"
               onClick={revoke}
-              disabled={busy}
+              loading={busy}
             >
               {busy ? "Revoking..." : "Revoke"}
             </Button>
@@ -450,7 +460,8 @@ function RevokeUnusedDialog({
           <AlertDialogAction
             variant="destructive"
             onClick={revokeAll}
-            disabled={busy || tokens.length === 0}
+            loading={busy}
+            disabled={tokens.length === 0}
           >
             {busy ? "Revoking..." : `Revoke ${tokens.length}`}
           </AlertDialogAction>
@@ -584,7 +595,7 @@ function CreateTokenDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={busy || !name.trim()}>
+              <Button type="submit" loading={busy} disabled={!name.trim()}>
                 {busy ? "Creating..." : "Create token"}
               </Button>
             </DialogFooter>

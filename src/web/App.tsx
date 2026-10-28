@@ -7,7 +7,7 @@ import { shouldLoadDocs } from "./lib/docs-route.ts";
 import { lazyPage } from "./lib/lazy-page.tsx";
 import { MARKETING_PAGES } from "./lib/seo.ts";
 import { prefetchAppData } from "./app-prefetch.ts";
-import { Splash } from "./components/Splash.tsx";
+import { PendingScreen } from "./components/PendingScreen.tsx";
 import { AppShellSkeleton } from "./components/AppShellSkeleton.tsx";
 import { NotFound } from "./components/NotFound.tsx";
 import { TooltipProvider } from "./components/ui/tooltip.tsx";
@@ -125,7 +125,7 @@ function AppArea() {
 function CliRoute() {
   const { data: session, isPending } = useSession();
   const { pathname, search } = useLocation();
-  if (isPending) return <Splash />;
+  if (isPending) return <PendingScreen />;
   if (!session) {
     return <Navigate to="/auth" replace state={{ from: `${pathname}${search}` }} />;
   }
@@ -139,13 +139,13 @@ function DocsRoute() {
   useEffect(() => {
     if (leave) window.location.reload();
   }, [leave]);
-  return leave ? <Splash /> : <NotFound />;
+  return leave ? <PendingScreen /> : <NotFound />;
 }
 
 function AuthRoute() {
   const { data: session, isPending } = useSession();
   const from = useReturnPath();
-  if (isPending) return <Splash />;
+  if (isPending) return <PendingScreen />;
   if (session) return <Navigate to={from ?? "/app"} replace />;
   return <AuthPage />;
 }
@@ -155,7 +155,7 @@ function AuthRoute() {
 // stays up), so in practice this is the app's skeleton on a cold /app load.
 function RouteFallback() {
   const { pathname } = useLocation();
-  if (pathname === "/auth" || pathname === "/cli") return <Splash />;
+  if (pathname === "/auth" || pathname === "/cli") return <PendingScreen />;
   if (pathname in MARKETING) return null;
   return <AppShellSkeleton />;
 }
@@ -186,7 +186,6 @@ export function App() {
           {import.meta.env.DEV && (
             <Route path="/dev/design" element={<DesignLab />} />
           )}
-          {import.meta.env.DEV && <Route path="/dev/splash" element={<Splash />} />}
           {import.meta.env.DEV && (
             <Route path="/dev/cli" element={<CliLab />} />
           )}

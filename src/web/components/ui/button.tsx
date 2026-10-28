@@ -2,6 +2,8 @@ import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { useDelayedLoading } from "@/lib/use-delayed-loading"
+import { Spinner } from "@/components/ui/spinner"
 
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-interactive outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -42,18 +44,36 @@ const buttonVariants = cva(
   }
 )
 
+/**
+ * `loading` disables the button at once (no double submit) and marks it
+ * aria-busy; the spinner takes the place of its icon only if the wait
+ * outlasts a beat, so a fast request never flashes one.
+ */
 function Button({
   className,
   variant = "default",
   size = "default",
+  loading = false,
+  disabled,
+  children,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonPrimitive.Props &
+  VariantProps<typeof buttonVariants> & { loading?: boolean }) {
+  const spinning = useDelayedLoading(loading)
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(
+        buttonVariants({ variant, size, className }),
+        spinning && "[&>svg:not([data-slot=spinner])]:hidden"
+      )}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
-    />
+    >
+      {spinning && <Spinner />}
+      {children}
+    </ButtonPrimitive>
   )
 }
 
