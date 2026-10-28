@@ -11,6 +11,7 @@ import { CliError } from "./ui.ts";
 import { spawn } from "node:child_process";
 import { hostname, type as osType } from "node:os";
 import { DEVICE_POLL_INTERVAL_MS } from "../shared/device-code.ts";
+import { tidyMachineLabel } from "../shared/machine-label.ts";
 import {
   generateSealKeypair,
   isSealedToken,
@@ -34,9 +35,12 @@ interface StartResponse {
   interval: number;
 }
 
-/** Names this machine on the approval page, so the user knows what they are approving. */
+/**
+ * Names this machine on the approval page, so the user knows what they are
+ * approving, and in the web app's token list once they have.
+ */
 export function machineLabel(): string {
-  return `${osType()} on ${hostname()}`.slice(0, 60);
+  return tidyMachineLabel(`${osType()} on ${hostname()}`).slice(0, 60);
 }
 
 /**

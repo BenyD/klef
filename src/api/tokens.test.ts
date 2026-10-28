@@ -1,7 +1,7 @@
-import { SELF, env } from "cloudflare:test";
+import { SELF, applyD1Migrations, env } from "cloudflare:test";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import { MAX_TOKENS_PER_USER, tokens } from "./tokens.ts";
+import { MAX_TOKENS_PER_USER, currentToken, tokens } from "./tokens.ts";
 import { generateToken, hashToken, tokenDisplayPrefix } from "./access-token.ts";
 import type { AuthVariables } from "./middleware.ts";
 import type { AccessTokenSummary } from "../shared/api-types.ts";
@@ -164,6 +164,31 @@ describe("token routes", () => {
     const after = await appForUser("t6").request("/", undefined, env);
     expect(((await after.json()) as { tokens: unknown[] }).tokens).toHaveLength(0);
   });
+
+  it("renames a token, and won't rename someone else's", async () => {
+    await seedUser("t8");
+    await seedUser("t9");
+    const created = await appForUser("t8").request("/", post({ name: "macOS on mbp" }), env);
+    const { accessToken } = (await created.json()) as { accessToken: AccessTokenSummary };
+    const patch = (name: unknown) => ({
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+
+    const stranger = await appForUser("t9").request(`/${accessToken.id}`, patch("mine now"), env);
+    expect(stranger.status).toBe(404);
+
+    for (const bad of ["", "   ", "x".repeat(101), 42]) {
+      const res = await appForUser("t8").request(`/${accessToken.id}`, patch(bad), env);
+      expect(res.status).toBe(400);
+    }
+
+    const owner = await appForUser("t8").request(`/${accessToken.id}`, patch("  Work laptop "), env);
+    expect(owner.status).toBe(200);
+    const renamed = ((await owner.json()) as { accessToken: AccessTokenSummary }).accessToken;
+    expect(renamed).toEqual({ ...accessToken, name: "Work laptop" });
+  });
 });
 
 describe("token authentication", () => {
@@ -279,6 +304,43 @@ describe("what a token may not do", () => {
     expect(revoke.status).toBe(403);
   });
 
+  it("cannot rename tokens", async () => {
+    const token = await seedToken("cap5");
+    const res = await SELF.fetch("https://klef.test/api/tokens/whatever", {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ name: "renamed" }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("can revoke itself, and only itself, for klef logout", async () => {
+    const token = await seedToken("cap6");
+    const other = await seedToken("cap6");
+    const res = await SELF.fetch("https://klef.test/api/cli/token", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(200);
+    expect((await SELF.fetch("https://klef.test/api/me", bearer(token))).status).toBe(401);
+    expect((await SELF.fetch("https://klef.test/api/me", bearer(other))).status).toBe(200);
+  });
+
+  it("self-revocation needs a token", async () => {
+    const res = await SELF.fetch("https://klef.test/api/cli/token", { method: "DELETE" });
+    expect(res.status).toBe(401);
+    const session = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
+    session.use("*", async (c, next) => {
+      c.set("user", { id: "cap7", email: "cap7@test.dev", name: "Test" });
+      c.set("sessionId", "stub");
+      c.set("authKind", "session");
+      c.set("tokenId", null);
+      await next();
+    });
+    session.route("/", currentToken);
+    expect((await session.request("/", { method: "DELETE" }, env)).status).toBe(400);
+  });
+
   it("cannot rewrite the vault's key material", async () => {
     const token = await seedToken("cap4");
 
@@ -321,5 +383,53 @@ describe("token management routes", () => {
   it("the real app requires auth", async () => {
     const res = await SELF.fetch("https://klef.test/api/tokens");
     expect(res.status).toBe(401);
+  });
+});
+
+describe("migration 0015", () => {
+  it("names old login tokens after their machine", async () => {
+    await seedUser("mig1");
+    const approved = "2026-09-01T10:00:00.000Z";
+    const rows: [string, string, string][] = [
+      ["CLI (RG4R-9WNK)", approved, "Darwin on Benys-MacBook-Pro.local"],
+      ["CLI (AB2C-3DEF)", "2026-09-02T10:00:00.000Z", "a terminal"],
+      ["CLI (ZZZZ-9999)", "2026-09-03T10:00:00.000Z", ""],
+      ["CI deploy", "2026-09-04T10:00:00.000Z", ""],
+    ];
+    for (const [name, createdAt, label] of rows) {
+      await env.DB.prepare(
+        `INSERT INTO access_tokens (id, user_id, name, token_hash, prefix, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+        .bind(crypto.randomUUID(), "mig1", name, crypto.randomUUID(), "abcd1234", createdAt)
+        .run();
+      if (label) {
+        await env.DB.prepare(
+          `INSERT INTO device_authorizations
+             (id, device_hash, user_code, label, public_jwk, user_id, approved_at, expires_at, created_at)
+           VALUES (?, ?, ?, ?, '{}', ?, ?, ?, ?)`,
+        )
+          .bind(crypto.randomUUID(), crypto.randomUUID(), name.slice(5, 14), label, "mig1", createdAt, createdAt, createdAt)
+          .run();
+      }
+    }
+
+    const migration = env.TEST_MIGRATIONS.find((m) => m.name.startsWith("0015_"));
+    expect(migration).toBeDefined();
+    // Re-applying needs it out of the applied list first.
+    await env.DB.prepare("DELETE FROM d1_migrations WHERE name = ?").bind(migration!.name).run();
+    await applyD1Migrations(env.DB, [migration!]);
+
+    const names = await env.DB.prepare(
+      "SELECT name FROM access_tokens WHERE user_id = ? ORDER BY created_at",
+    )
+      .bind("mig1")
+      .all<{ name: string }>();
+    expect(names.results.map((r) => r.name)).toEqual([
+      "macOS on Benys-MacBook-Pro",
+      "CLI login",
+      "CLI login",
+      "CI deploy",
+    ]);
   });
 });

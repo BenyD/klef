@@ -44,6 +44,63 @@ export function tokenState(
   return remaining <= EXPIRING_SOON_MS ? "expiring" : "active";
 }
 
+/**
+ * A token nobody has used in this long is probably a machine that's gone, a
+ * login that was retried, or a test. It is flagged, never removed.
+ */
+export const UNUSED_AFTER_MS = 90 * DAY;
+
+/** The last sign of life: last use, or creation for a token never used. */
+function lastActivity(
+  token: Pick<AccessTokenSummary, "lastUsedAt" | "createdAt">,
+): number {
+  const used = token.lastUsedAt === null ? NaN : Date.parse(token.lastUsedAt);
+  return Number.isNaN(used) ? Date.parse(token.createdAt) : used;
+}
+
+/** Expired, or idle past `UNUSED_AFTER_MS`: what "Revoke unused" clears. */
+export function isUnused(
+  token: Pick<AccessTokenSummary, "lastUsedAt" | "createdAt" | "expiresAt">,
+  now = new Date(),
+): boolean {
+  if (tokenState(token, now) === "expired") return true;
+  const at = lastActivity(token);
+  return !Number.isNaN(at) && now.getTime() - at >= UNUSED_AFTER_MS;
+}
+
+/**
+ * Most recently active first, so the machine you're on sits at the top and
+ * the forgotten ones sink. Ties fall back to newest.
+ */
+export function sortTokens<
+  T extends Pick<AccessTokenSummary, "lastUsedAt" | "createdAt">,
+>(tokens: readonly T[]): T[] {
+  const key = (t: T) => lastActivity(t) || 0;
+  return [...tokens].sort(
+    (a, b) =>
+      key(b) - key(a) || Date.parse(b.createdAt) - Date.parse(a.createdAt),
+  );
+}
+
+/**
+ * `relativeTime` mid-sentence: "just now" and "3 days ago" lose their capital,
+ * a date ("Aug 3") keeps it. Lowercasing the lot read "Last used aug 3".
+ */
+function sinceInSentence(at: Date, now: Date): string {
+  const text = relativeTime(at, now);
+  return text === "Just now" || text.endsWith(" ago") ? text.toLowerCase() : text;
+}
+
+/** "Created 3 days ago" · "Created Aug 3". */
+export function describeCreated(
+  token: Pick<AccessTokenSummary, "createdAt">,
+  now = new Date(),
+): string {
+  const at = Date.parse(token.createdAt);
+  if (Number.isNaN(at)) return "Created";
+  return `Created ${sinceInSentence(new Date(at), now)}`;
+}
+
 /** "Never expires" · "Expired 3 days ago" · "Expires in 5 days". */
 export function describeExpiry(
   token: Pick<AccessTokenSummary, "expiresAt">,
@@ -78,7 +135,7 @@ export function describeLastUsed(
   if (token.lastUsedAt === null) return "Never used";
   const at = Date.parse(token.lastUsedAt);
   if (Number.isNaN(at)) return "Never used";
-  return `Last used ${relativeTime(new Date(at), now).toLowerCase()}`;
+  return `Last used ${sinceInSentence(new Date(at), now)}`;
 }
 
 /** How a token is identified in the list, since the token itself is gone. */
