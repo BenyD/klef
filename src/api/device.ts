@@ -12,7 +12,7 @@ import {
 import { isPublicJwk, sealToken } from "../shared/device-seal.ts";
 import { isSealedVaultKey } from "../shared/device-unlock.ts";
 import { bytesToBase64, utf8ToBytes } from "../shared/encoding.ts";
-import { tidyMachineLabel } from "../shared/machine-label.ts";
+import { tidyMachineLabel } from "../cli/machine-label.ts";
 
 // Browser sign-in for the CLI.
 //

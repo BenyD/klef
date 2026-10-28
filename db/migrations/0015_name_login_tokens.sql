@@ -4,7 +4,7 @@
 --
 -- A login's token is minted in the same statement batch that approves it, so
 -- its created_at equals the authorization's approved_at. The OS and hostname
--- tidying mirrors src/shared/machine-label.ts for the common cases.
+-- tidying mirrors src/cli/machine-label.ts for the common cases.
 
 UPDATE access_tokens
 SET name = COALESCE(

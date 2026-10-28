@@ -1,10 +1,11 @@
-// How a machine is named when the CLI signs in: on the approval page, and as
-// the name of the access token that login creates. Shared because older CLIs
-// send Node's raw `os.type()` ("Darwin on Benys-MacBook-Pro.local"), and the
-// server tidies those the same way the current CLI does before sending.
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// Kept free of runtime-emitting TypeScript: the CLI runs it through Node's
-// type stripping.
+// How a machine is named when the CLI signs in: on the approval page, and as
+// the name of the access token that login creates. The CLI owns it, since the
+// CLI may import only @klefsh/core from outside src/cli. The server imports it
+// too, because older CLIs send Node's raw `os.type()` ("Darwin on
+// Benys-MacBook-Pro.local") and it tidies those the same way; that is why this
+// file imports nothing and uses no Node APIs.
 
 /** Node's `os.type()` values, as people call them. */
 const OS_NAMES: Record<string, string> = {

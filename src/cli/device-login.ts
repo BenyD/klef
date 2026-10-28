@@ -11,7 +11,7 @@ import { CliError } from "./ui.ts";
 import { spawn } from "node:child_process";
 import { hostname, type as osType } from "node:os";
 import { DEVICE_POLL_INTERVAL_MS } from "../shared/device-code.ts";
-import { tidyMachineLabel } from "../shared/machine-label.ts";
+import { tidyMachineLabel } from "./machine-label.ts";
 import {
   generateSealKeypair,
   isSealedToken,
