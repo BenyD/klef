@@ -145,3 +145,29 @@ export function defaultEnvFileName(
     .replace(/[^a-z0-9._-]/g, "");
   return slug ? `.env.${slug}` : names.none;
 }
+
+export interface NameSuggestion {
+  /** The environment the name is conventional for; null for a plain .env. */
+  environment: PresetEnvironment | null;
+  name: string;
+}
+
+/**
+ * The new-file dialog's one-click names for a stack: plain first, then
+ * development, preview and production. Names two environments share appear
+ * once, under the first (Laravel's lone .env).
+ */
+export function suggestedEnvFileNames(
+  framework: Framework | null,
+): NameSuggestion[] {
+  const seen = new Set<string>();
+  const out: NameSuggestion[] = [];
+  const order = [null, "development", "preview", "production"] as const;
+  for (const environment of order) {
+    const name = defaultEnvFileName(framework, environment);
+    if (seen.has(name)) continue;
+    seen.add(name);
+    out.push({ environment, name });
+  }
+  return out;
+}

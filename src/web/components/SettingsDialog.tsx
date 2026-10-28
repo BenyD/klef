@@ -45,25 +45,18 @@ import {
   useAutoLockMinutes,
 } from "../lib/auto-lock.ts";
 import {
-  getEnvLabelOverrides,
   setConfirmLoadVersion,
   setConfirmSaveReview,
-  setEnvLabelOverride,
   useConfirmLoadVersion,
   useConfirmSaveReview,
 } from "../lib/preferences.ts";
-import { ENV_META } from "../lib/env-meta.ts";
 import {
   discoverIcon,
   resolveIconUrl,
   settleIcon,
 } from "../lib/project-icon.ts";
 import { passkeyLabel } from "../../shared/passkey-provider.ts";
-import {
-  ENVIRONMENTS,
-  type PresetEnvironment,
-  type WorkspaceNode,
-} from "../../shared/api-types.ts";
+import type { WorkspaceNode } from "../../shared/api-types.ts";
 import { useIsMobile } from "../hooks/use-mobile.ts";
 import { AccessTokensPanel } from "./AccessTokensPanel.tsx";
 import { RecoveryKeyPanel } from "./RecoveryKeyPanel.tsx";
@@ -1148,39 +1141,7 @@ function PreferencesSection() {
           }
         />
       </SettingsSection>
-      <SettingsSection
-        title="Environment labels"
-        description="Rename the built-in labels. Leave one empty for the default."
-      >
-        {ENVIRONMENTS.map((env) => (
-          <EnvLabelField key={env} env={env} />
-        ))}
-      </SettingsSection>
     </>
-  );
-}
-
-function EnvLabelField({ env }: { env: PresetEnvironment }) {
-  const [text, setText] = useState(() => getEnvLabelOverrides()[env] ?? "");
-  const meta = ENV_META[env];
-  return (
-    <SettingRow
-      label={meta.label}
-      htmlFor={`settings-env-label-${env}`}
-      control={
-        <Input
-          id={`settings-env-label-${env}`}
-          value={text}
-          maxLength={32}
-          placeholder={meta.label}
-          onChange={(e) => {
-            setText(e.target.value);
-            setEnvLabelOverride(env, e.target.value || null);
-          }}
-          className="h-8 sm:w-56"
-        />
-      }
-    />
   );
 }
 
