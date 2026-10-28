@@ -50,6 +50,8 @@ The trade-off: while a device is unlocked, anyone who can run commands as your u
 
 The CLI holds an **access token**, an auth credential and nothing more. It reaches ciphertext and the names Klef stores anyway, but it cannot decrypt: that needs your passphrase-derived key, which is never sent or stored.
 
-`klef login` creates one through the browser. You can also make one by hand in Settings, Security, Access tokens, with an expiry of 30 days, 90 days (the default), 1 year, or none. A token is shown once, and Klef stores only its hash. Revoke any token from the same list.
+`klef login` creates one through the browser, named after the machine that asked for it (for example "macOS on work-laptop"), and `klef logout` revokes it. You can also make one by hand in Settings, Security, Access tokens, with an expiry of 30 days, 90 days (the default), 1 year, or none. A token is shown once, and Klef stores only its hash.
 
-A token deliberately cannot mint or revoke tokens, approve a CLI sign-in, change your vault's key material, or delete workspaces, projects or files. Those stay in the browser.
+The same list shows when each token was created and last used, most recently used first. Rename one to tell machines apart, or revoke it. A token that has expired or gone 90 days without use is marked **Unused**, and **Revoke unused** clears them all at once after listing what goes.
+
+A token deliberately cannot mint, rename or revoke other tokens, approve a CLI sign-in, change your vault's key material, or delete workspaces, projects or files. Those stay in the browser. The one exception is revoking itself, which is what `klef logout` does.

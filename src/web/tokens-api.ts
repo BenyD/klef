@@ -29,3 +29,10 @@ export const createToken = (name: string, expiresInDays: number | null) =>
 
 export const revokeToken = (id: string) =>
   req(`/api/tokens/${id}`, { method: "DELETE" });
+
+export const renameToken = (id: string, name: string) =>
+  req<{ accessToken: AccessTokenSummary }>(`/api/tokens/${id}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name }),
+  }).then((r) => r.accessToken);
