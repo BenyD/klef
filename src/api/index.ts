@@ -4,7 +4,7 @@ import { requireAuth, requireSession, type AuthVariables } from "./middleware.ts
 import { vault } from "./vault.ts";
 import { structure } from "./structure.ts";
 import { icon } from "./icon.ts";
-import { tokens } from "./tokens.ts";
+import { currentToken, tokens } from "./tokens.ts";
 import { device } from "./device.ts";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -70,6 +70,9 @@ app.route("/api", structure);
 app.use("/api/tokens", requireAuth, requireSession);
 app.use("/api/tokens/*", requireAuth, requireSession);
 app.route("/api/tokens", tokens);
+// ...except revoking the token making the request, for `klef logout`.
+app.use("/api/cli/token", requireAuth);
+app.route("/api/cli/token", currentToken);
 
 // CLI browser sign-in. Starting a login and polling for its result are open
 // by necessity: the CLI has no credentials yet. Reading whose request a code

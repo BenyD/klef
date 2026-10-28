@@ -8,6 +8,11 @@ import { generateToken, hashToken, tokenDisplayPrefix } from "./access-token.ts"
 // mint or revoke tokens. See `requireSession`.
 export const tokens = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
+// The one thing a token may do to tokens: revoke itself, which is what
+// `klef logout` calls. It only ever removes the credential presenting it, so
+// it cannot extend a leaked token's reach, only end it.
+export const currentToken = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
+
 const MAX_NAME = 100;
 
 /** A guard against unbounded growth, not a meaningful product limit. */
@@ -122,6 +127,24 @@ tokens.post("/", async (c) => {
   return c.json({ ok: true, token, accessToken: toSummary(row) }, 201);
 });
 
+// Rename. Login tokens are named after the machine, which is a guess worth
+// correcting ("Work laptop"); nothing else about a token can change.
+tokens.patch("/:id", async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as { name?: unknown };
+  const name = cleanName(body.name);
+  if (!name) return c.json({ ok: false, error: "Invalid name" }, 400);
+
+  const row = await c.env.DB.prepare(
+    `UPDATE access_tokens SET name = ? WHERE id = ? AND user_id = ?
+     RETURNING id, name, prefix, last_used_at, expires_at, created_at`,
+  )
+    .bind(name, c.req.param("id"), c.get("user").id)
+    .first<TokenRow>();
+
+  if (!row) return c.json({ ok: false, error: "Not found" }, 404);
+  return c.json({ ok: true, accessToken: toSummary(row) });
+});
+
 // Revocation is immediate: the next request carrying this token fails to
 // resolve a row and 401s.
 tokens.delete("/:id", async (c) => {
@@ -134,5 +157,16 @@ tokens.delete("/:id", async (c) => {
   if (!result.meta.changes) {
     return c.json({ ok: false, error: "Not found" }, 404);
   }
+  return c.json({ ok: true });
+});
+
+currentToken.delete("/", async (c) => {
+  const tokenId = c.get("tokenId");
+  if (c.get("authKind") !== "token" || !tokenId) {
+    return c.json({ ok: false, error: "Only an access token can revoke itself" }, 400);
+  }
+  await c.env.DB.prepare("DELETE FROM access_tokens WHERE id = ? AND user_id = ?")
+    .bind(tokenId, c.get("user").id)
+    .run();
   return c.json({ ok: true });
 });

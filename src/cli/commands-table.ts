@@ -354,10 +354,10 @@ export const COMMANDS: CommandSpec[] = [
   {
     name: "logout",
     group: "Account",
-    summary: "Forget the stored token on this machine",
+    summary: "Sign out on this machine and revoke its token",
     flags: [],
-    examples: [["klef logout", "The token stays valid until you revoke it in the web app"]],
-    json: "{ signedOut, tokenStillInEnvironment }",
+    examples: [["klef logout", "Revokes the stored token and forgets this device's vault key"]],
+    json: "{ signedOut, revoked, tokenStillInEnvironment }",
   },
   {
     name: "completion",
