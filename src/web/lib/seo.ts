@@ -37,7 +37,7 @@ export const MARKETING_PAGES: Record<string, MarketingPage> = {
   "/pricing": {
     title: "Pricing - Klef",
     description:
-      "Klef is free for one developer. Pro is $4 a month and Team is $12 a month for up to 5 people; both can be reserved now at a founding price, and self-hosting is free forever.",
+      "Klef is free for one developer. Pro is $4 a month and Team is $12 a month for up to 5 people; both can be reserved now at an early price, and self-hosting is free forever.",
     name: "Pricing",
     type: "WebPage",
   },
