@@ -32,7 +32,7 @@ export function Brand({ onClick }: { onClick?: () => void }) {
 // The pages, in the header. The landing page's sections are not listed: the
 // page is short enough to scroll.
 const NAV: { label: string; to: string }[] = [
-  { label: "Docs", to: "/docs" },
+  { label: "Docs", to: "/docs/" },
   { label: "Security", to: "/security" },
   { label: "Compare", to: "/compare" },
   { label: "About", to: "/about" },
@@ -143,10 +143,10 @@ const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
     title: "Developers",
     links: [
-      { label: "Documentation", to: "/docs" },
-      { label: "Quickstart", to: "/docs/quickstart" },
-      { label: "CLI reference", to: "/docs/cli" },
-      { label: "Self-hosting", to: "/docs/guides/self-hosting" },
+      { label: "Documentation", to: "/docs/" },
+      { label: "Quickstart", to: "/docs/quickstart/" },
+      { label: "CLI reference", to: "/docs/cli/" },
+      { label: "Self-hosting", to: "/docs/guides/self-hosting/" },
       { label: "CLI on npm", href: "https://www.npmjs.com/package/@klefsh/cli", external: true },
     ],
   },
@@ -155,7 +155,7 @@ const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
     links: [
       { label: "About", to: "/about" },
       { label: "GitHub", href: GITHUB, external: true },
-      { label: "Changelog", to: "/docs/changelog" },
+      { label: "Changelog", to: "/docs/changelog/" },
       { label: "Report a vulnerability", href: `${GITHUB}/blob/main/SECURITY.md`, external: true },
     ],
   },
