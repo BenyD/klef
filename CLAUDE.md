@@ -75,7 +75,13 @@ npm publish ./dist/cli --access public
 - **The crypto contract is inviolable.** Blobs store the raw pasted env text
   byte-for-byte - never a re-serialized KV form. Parameters live in
   `src/shared/constants.ts`, format in `src/shared/BLOB_FORMAT.md`. Any edit
-  feature must mutate text surgically (see `src/web/lib/env-table.ts`).
+  feature must mutate text surgically (see `src/shared/env-table.ts`).
+- **The open core is a closed set.** `@klefsh/core` is whatever
+  `src/shared/core.ts` reaches: files directly in `src/shared`, importing no
+  package but `hash-wasm`, and the CLI takes nothing from outside `src/cli`
+  except through it. `scripts/core-boundary.test.ts` enforces this, and
+  `pnpm build:core` copies the core into `dist/core` and refuses to build if
+  the boundary breaks (private until it is published deliberately).
 - **The server never sees plaintext secrets, passphrases, or unwrapped keys.**
   Encrypt/decrypt happens only in the browser (`src/shared/crypto.ts` used
   client-side). Names (workspace/project/file) are plaintext by design.

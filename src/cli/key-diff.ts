@@ -9,7 +9,7 @@
 // would not tell anyone which side to keep in a conflict.
 
 import { isUnchanged } from "../shared/diff.ts";
-import { valuesOf } from "../web/lib/env-drift.ts";
+import { valuesOf } from "../shared/env-drift.ts";
 
 export interface KeyDiff {
   /** Keys in the local file and not in the vault's copy. */
