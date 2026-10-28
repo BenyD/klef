@@ -41,7 +41,8 @@ function Skeleton({
 /**
  * A line of text that hasn't arrived. Inline, so it sits in its parent's
  * line box: inside a `text-sm` label it is exactly one 20px line tall, the
- * same as the words that replace it. Give it a width.
+ * same as the words that replace it. Give it a width. As a direct flex item
+ * it has no line box of its own, so wrap it in a span there.
  */
 function SkeletonText({
   className,

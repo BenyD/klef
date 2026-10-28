@@ -185,6 +185,33 @@ Rules:
 - JS-driven motion (WAAPI, inline styles) imports the mirrors in
   `lib/motion.ts`; `lib/motion.test.ts` holds them to the CSS.
 
+## Loading
+
+A wait should look like the thing that is coming, not like a screen of its
+own. There is no splash: a cold load of the app draws the app.
+
+- **Skeletons for content-shaped waits** (lists, tables, the editor, the
+  shell). Draw them with the real component's container, row heights,
+  paddings and gaps, so nothing moves when content lands; check with
+  bounding boxes, not by eye. Shared pieces live in
+  `components/skeletons.tsx`; the primitives are `Skeleton` (a block) and
+  `SkeletonText` (one line of text, inline so it takes its parent's line
+  height). Static chrome (labels, icons, the search field) is drawn for real.
+- **Counts come from what this device last saw** (`lib/layout-hint.ts`:
+  project and file counts, expanded projects, an open file), never from a
+  guess that changes every load.
+- **Spinners for actions and short indeterminate waits**: a button that is
+  submitting (`<Button loading>`), a decrypt with no shape to draw. They
+  appear only past 200ms and then stay at least 500ms
+  (`useDelayedLoading`), so a fast request shows nothing and a slow one
+  never ends in a blink. A button disables the moment it is pressed,
+  whatever the spinner is doing.
+- **A region that waits says so**: `aria-busy` on it and a `LoadingStatus`
+  (a polite live region with visually hidden text). Skeletons and spinners
+  are decorative.
+- **Reduced motion**: skeletons stop pulsing, spinners slow down rather than
+  stop, so the wait still reads as work.
+
 ## Elevation
 
 Borders separate; shadows only float. Three layers, and in dark mode each

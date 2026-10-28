@@ -202,7 +202,7 @@ export function OverviewSkeleton({ hint }: { hint: Pick<LayoutHint, "files"> }) 
           </div>
         </div>
         {/* Button size="sm" "New project" */}
-        <Skeleton className="h-7 w-[6.5rem] shrink-0 rounded-[min(var(--radius-md),12px)]" />
+        <Skeleton className="h-7 w-[7.1875rem] shrink-0 rounded-[min(var(--radius-md),12px)]" />
       </div>
 
       <div className="flex flex-col gap-4">
@@ -215,7 +215,9 @@ export function OverviewSkeleton({ hint }: { hint: Pick<LayoutHint, "files"> }) 
             <ul className="divide-y">
               {/* An empty project still has its "Add the first file" row. */}
               {Array.from({ length: Math.max(1, files) }, (_, j) => (
-                <li key={j} className="flex h-9 items-center gap-2.5 px-3 text-xs">
+                // box-content: the row is 36px plus its divider, like the
+                // real <li> around an h-9 button.
+                <li key={j} className="box-content flex h-9 items-center gap-2.5 px-3 text-xs">
                   <Skeleton className="size-3.5 shrink-0 rounded-sm" />
                   <SkeletonText className={pick(FILE_WIDTHS, i + j)} />
                 </li>
@@ -273,11 +275,11 @@ function FilePaneSkeleton() {
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-11 shrink-0 items-center gap-2 border-b px-3 py-1.5">
         {/* TabsList: Code / Table */}
-        <Skeleton className="h-8 w-[4.25rem] rounded-lg" />
+        <Skeleton className="h-8 w-[4.125rem] rounded-lg" />
         <div className="ml-auto flex items-center gap-1">
           {/* ButtonGroup of four icon-sm buttons, then "Save version" */}
           <Skeleton className="h-7 w-28 rounded-[min(var(--radius-md),12px)]" />
-          <Skeleton className="h-7 w-[7.25rem] rounded-[min(var(--radius-md),12px)]" />
+          <Skeleton className="h-7 w-30 rounded-[min(var(--radius-md),12px)]" />
         </div>
       </div>
       <EditorSkeleton className="min-h-80 flex-1" />
