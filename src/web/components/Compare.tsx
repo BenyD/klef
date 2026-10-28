@@ -62,7 +62,7 @@ const ROWS: { label: string; cells: Cells }[] = [
   },
   {
     label: "Teams, CI injection, rotation",
-    cells: ["No, by design", "Yes", "Yes, on paid plans", "CI, through the key", "No"],
+    cells: ["Sharing for up to 5 people is coming; no CI injection", "Yes", "Yes, on paid plans", "CI, through the key", "No"],
   },
   {
     label: "If the service shuts down",
@@ -76,7 +76,7 @@ const ROWS: { label: string; cells: Cells }[] = [
   },
   {
     label: "Cost",
-    cells: ["Free, or self-host", "Free tiers, then per seat", "Paid subscription", "Free and open source", "Free"],
+    cells: ["Free for one developer; Pro and Team reservable; self-host free", "Free tiers, then per seat", "Paid subscription", "Free and open source", "Free"],
   },
 ];
 
@@ -159,8 +159,10 @@ const FAQ: { q: string; a: ReactNode }[] = [
     q: "Is it for teams?",
     a: (
       <>
-        No. A vault belongs to one person. Workspaces are for keeping projects
-        apart, not for sharing them.
+        Not yet. Today a vault belongs to one person, and workspaces keep
+        projects apart rather than share them. A Team plan for up to five
+        people, with shared projects that stay end-to-end encrypted, is
+        coming. <Link to="/pricing">Reserve a spot</Link>.
       </>
     ),
   },
@@ -168,8 +170,10 @@ const FAQ: { q: string; a: ReactNode }[] = [
     q: "Is it really free?",
     a: (
       <>
-        Yes. There is no paid plan, no tracking and no ads. If you would rather
-        not depend on klef.sh, self-host it.
+        For one developer, yes, and it stays that way. Paid plans are not open
+        yet; Pro and Team can be reserved on the{" "}
+        <Link to="/pricing">pricing page</Link> without paying anything. There
+        is no tracking and no ads, and self-hosting is free forever.
       </>
     ),
   },

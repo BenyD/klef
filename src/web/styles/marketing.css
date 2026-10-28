@@ -2405,6 +2405,202 @@
   text-decoration-color: var(--m-line-strong);
 }
 
+/* --- pricing page ------------------------------------------------------------------ */
+
+/* Three bordered cards, no shadows (borders separate, per DESIGN.md). The
+   founding plan is told apart by an accent border and a tinted price note,
+   never by lifting it off the page. */
+.m-plans {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.m-plan {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-r-lg);
+  background: var(--m-bg);
+}
+.m-plan-featured {
+  border-color: color-mix(in oklab, var(--m-accent) 55%, var(--m-line));
+}
+.m-plan-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.marketing .m-plan h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.m-plan-status {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--m-fill);
+  color: var(--m-muted);
+  font-family: var(--m-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.m-plan-featured .m-plan-status {
+  background: var(--m-tint);
+  color: var(--m-accent-text);
+}
+.marketing .m-plan-audience {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--m-muted);
+}
+.marketing .m-price {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 24px 0 0;
+}
+.m-price b {
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-weight: 500;
+}
+.m-price span {
+  font-size: 14px;
+  color: var(--m-muted);
+}
+.marketing .m-price-yearly {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--m-muted);
+}
+.marketing .m-founding {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--m-r);
+  background: color-mix(in oklab, var(--m-accent) 12%, var(--m-bg));
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--m-muted);
+}
+.m-founding b {
+  font-weight: 500;
+  color: var(--m-fg);
+}
+.marketing .m-checks {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.m-checks li {
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.m-checks svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--m-ok);
+}
+.m-plan-action {
+  margin-top: auto;
+  padding-top: 24px;
+}
+.m-plan-action .m-btn {
+  width: 100%;
+}
+.marketing .m-plan-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.m-plan-msg svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--m-ok);
+}
+.m-reserved {
+  display: grid;
+  gap: 8px;
+}
+.marketing .m-link-btn {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--m-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--m-line-strong);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-quick);
+}
+.marketing .m-link-btn:hover {
+  color: var(--m-fg);
+}
+.marketing .m-btn:disabled,
+.marketing .m-link-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.marketing .m-plans-note {
+  max-width: 760px;
+  margin: 20px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--m-muted);
+}
+
+.m-promise {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 48px;
+  padding: clamp(24px, 4vw, 40px);
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-r-lg);
+  background: var(--m-soft);
+}
+.marketing .m-promise .m-h2 {
+  margin: 12px 0 12px;
+}
+.marketing .m-promise p:not(.m-label) {
+  max-width: 520px;
+  margin: 0 0 20px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--m-muted);
+}
+.m-promise .m-checks {
+  margin-top: 16px;
+}
+
+@media (max-width: 960px) {
+  .m-plans,
+  .m-promise {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .m-promise {
+    gap: 28px;
+  }
+}
+
 /* --- content pages (security, terms, privacy, about) ------------------------------ */
 
 .marketing-doc,

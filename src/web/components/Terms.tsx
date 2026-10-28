@@ -7,7 +7,9 @@ const sections: DocSection[] = [
     heading: "The service",
     body: (
       <p>
-        Klef at klef.sh is provided free of charge. Features may change, and availability is not guaranteed; there is
+        The Free plan at klef.sh is provided free of charge. Paid plans are not open yet: reserving one on the{" "}
+        <Link to="/pricing">pricing page</Link> is not a purchase and creates no obligation for you, and paid plans
+        will come with their own terms, shown before you pay. Features may change, and availability is not guaranteed; there is
         no SLA. If you need hard guarantees, you can{" "}
         <a
           href="https://github.com/BenyD/klef"
@@ -97,10 +99,10 @@ export function Terms() {
     <MarketingDoc
       kicker="Terms"
       title="Terms of service"
-      updated="October 27, 2026"
+      updated="October 28, 2026"
       lead={
         <>
-          Klef is a free, open-source, personal tool for syncing encrypted
+          Klef is an open-source, personal tool for syncing encrypted
           .env files. These terms are short because the deal is simple.
         </>
       }
