@@ -19,6 +19,9 @@
     "scripts/icons.ts",
     "src/web/lib/strand.ts",
     "scripts/build-cli.ts",
+    "scripts/build-core.ts",
+    "scripts/core-graph.ts",
+    "scripts/core-boundary.test.ts",
     "scripts/og-cipher.ts",
     "scripts/og-cipher.test.ts",
     "src/cli"

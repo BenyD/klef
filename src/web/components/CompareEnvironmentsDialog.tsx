@@ -14,7 +14,7 @@ import {
   compareEnvs,
   type DriftColumn,
   type DriftFile,
-} from "../lib/env-drift.ts";
+} from "../../shared/env-drift.ts";
 import { detectFormat } from "../lib/config-format.ts";
 import { envLabel } from "../lib/env-meta.ts";
 import { effectiveEnvironment } from "../../shared/env-from-name.ts";
