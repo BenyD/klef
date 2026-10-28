@@ -7,7 +7,7 @@ const sections: DocSection[] = [
     heading: "The service",
     body: (
       <p>
-        The Free plan at klef.sh is provided free of charge. Paid plans are not open yet: reserving one on the{" "}
+        Klef at klef.sh is free to use until paid plans open. Reserving one on the{" "}
         <Link to="/pricing">pricing page</Link> is not a purchase and creates no obligation for you, and paid plans
         will come with their own terms, shown before you pay. Features may change, and availability is not guaranteed; there is
         no SLA. If you need hard guarantees, you can{" "}

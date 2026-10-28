@@ -1,16 +1,16 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { Check } from "lucide-react";
-import { MarketingLayout } from "./MarketingLayout.tsx";
+import { MarketingLayout, GitHubIcon } from "./MarketingLayout.tsx";
 import {
-  FOUNDING,
-  FREE_HISTORY_DAYS,
-  FREE_PROJECTS,
+  EARLY,
+  KIT_UPDATE_MONTHS,
   PLANS,
+  TRIAL_DAYS,
   formatUsd,
-  monthsFreeYearly,
-  type PaidPlanId,
+  planById,
   type Plan,
+  type ReservablePlanId,
 } from "../../shared/plans.ts";
 import {
   cancelReservation,
@@ -19,15 +19,25 @@ import {
   type ReservationState,
 } from "../reservation-api.ts";
 
-// /pricing: the plans, shown before any paid plan exists. Pro is a pre-sale
-// and Team is coming; both can be reserved by a signed-in person, and neither
-// charges anything. Prerendered, so nothing here touches the browser at render
-// time: the reservation state loads in an effect.
+// /pricing: two one-time plans and Team announced with no price. Hosted runs
+// on klef.sh; the self-host kit runs the closed server on the buyer's own
+// Cloudflare account. The CLI and the encryption are open source (MIT).
+// Neither paid plan is open yet: a signed-in person can reserve one, and
+// nothing is charged. Prerendered, so nothing here touches the browser at
+// render time; the reservation state loads in an effect.
 
-const STATUS_LABEL: Record<Plan["status"], string | null> = {
-  available: null,
-  presale: "Early access",
+const GITHUB = "https://github.com/BenyD/klef";
+const HOSTED_PRICE = planById("hosted").price ?? 0;
+
+const STATUS_LABEL: Record<Plan["status"], string> = {
+  early: "Early access",
+  soon: "Opening soon",
   coming: "Coming soon",
+};
+
+const PLAN_NAME: Record<ReservablePlanId, string> = {
+  hosted: "Hosted",
+  kit: "the self-host kit",
 };
 
 export function Pricing() {
@@ -38,11 +48,11 @@ export function Pricing() {
       <main className="m-main">
         <header className="m-wrap m-page-head">
           <p className="m-label">Pricing</p>
-          <h1>Free for one developer. Pay when you want more.</h1>
+          <h1>Pay once. Use it for good.</h1>
           <p className="m-lede" style={{ fontSize: 18 }}>
-            Paid plans are not open yet. Reserve one now to lock in the early
-            price. Nothing is charged until they open, and you can cancel before
-            then.
+            No subscriptions. Let us host Klef for you, or run it on your own
+            Cloudflare account with the self-host kit. Every new account gets{" "}
+            {TRIAL_DAYS} days free first.
           </p>
         </header>
 
@@ -53,33 +63,34 @@ export function Pricing() {
             ))}
           </div>
           <p className="m-plans-note">
-            Today every account has everything in Pro. The Free limits of{" "}
-            {FREE_PROJECTS} projects and {FREE_HISTORY_DAYS} days of history start
-            when paid plans open, with at least 30 days of notice, and nothing you
-            have stored is deleted. Prices in US dollars.
+            Paid plans are not open yet, and until they are every account is free
+            with everything. Reserve one now: nothing is charged until it opens,
+            and you can cancel or switch before then. Prices in US dollars.
           </p>
         </section>
 
-        <section className="m-wrap m-section" aria-labelledby="self-host-title">
+        <section className="m-wrap m-section" aria-labelledby="open-title">
           <div className="m-promise">
             <div>
-              <p className="m-label">A promise</p>
-              <h2 id="self-host-title" className="m-h2">
-                Self-hosting is free forever.
+              <p className="m-label">Open where it counts</p>
+              <h2 id="open-title" className="m-h2">
+                The code that touches your secrets is open source.
               </h2>
               <p>
-                Every feature, no licence key, no limits. Klef is AGPL-3.0 and
-                deploys to your own Cloudflare account. The plans above pay for
-                running klef.sh, not for unlocking the code.
+                The CLI and the encryption are MIT licensed. Read them and check
+                that your files are encrypted on your device and that the server
+                only ever stores ciphertext. The server itself is closed, and the
+                self-host kit is how you run your own.
               </p>
-              <Link to="/docs/guides/self-hosting" className="m-btn m-btn-line">
-                Self-host Klef
-              </Link>
+              <a href={GITHUB} target="_blank" rel="noreferrer" className="m-btn m-btn-line">
+                <GitHubIcon />
+                Read the code
+              </a>
             </div>
             <div>
-              <p className="m-label">Never behind a paywall</p>
+              <p className="m-label">On every plan, and during the trial</p>
               <ul className="m-checks">
-                {NEVER_PAID.map((item) => (
+                {ALWAYS.map((item) => (
                   <li key={item}>
                     <Check aria-hidden="true" />
                     {item}
@@ -111,22 +122,38 @@ export function Pricing() {
   );
 }
 
-const NEVER_PAID = [
+const ALWAYS = [
   "End-to-end encryption",
-  "The CLI, klef run and klef audit",
-  "Agent setup for Claude Code and Cursor",
-  "Exporting your files",
+  "Exporting your files, at any time",
+  "The open-source CLI",
   "Everything you have already stored",
 ];
 
 const FAQ: { q: string; a: ReactNode }[] = [
   {
+    q: "Is it really one payment?",
+    a: (
+      <>
+        Yes. Hosted and the self-host kit are each paid once, with no
+        subscription and no renewal.
+      </>
+    ),
+  },
+  {
+    q: "What happens when the trial ends?",
+    a: (
+      <>
+        {`After ${TRIAL_DAYS} days you can still sign in, read, pull and export everything you stored. Saving new versions needs Hosted or the kit. Nothing is ever deleted for not paying.`}
+      </>
+    ),
+  },
+  {
     q: "When will I be charged?",
     a: (
       <>
-        Not until paid plans open, and not without you choosing to pay then.
-        A reservation is a promise of a price, not a payment. You will get an
-        email before anything changes.
+        Not until paid plans open, and not without you choosing to pay then. A
+        reservation holds a price; it is not a payment. You will get an email
+        before anything changes.
       </>
     ),
   },
@@ -134,35 +161,43 @@ const FAQ: { q: string; a: ReactNode }[] = [
     q: "What is the early price?",
     a: (
       <>
-        Pro for {formatUsd(FOUNDING.yearly)} a year instead of{" "}
-        {formatUsd(PLANS.find((p) => p.id === "pro")?.yearly ?? 0)}, for as long
-        as you keep it, for the first {FOUNDING.spots} people who reserve. It goes
-        by when you first reserved, so switching to Team and back keeps your
-        place.
+        {`Hosted for ${formatUsd(EARLY.price)} instead of ${formatUsd(HOSTED_PRICE)}, for the first ${EARLY.spots} people who reserve it. It goes by when you first reserved, so switching to the kit and back keeps your place.`}
       </>
     ),
   },
   {
-    q: "Can I cancel a reservation?",
-    a: <>Yes, on this page, at any time. Nothing is owed.</>,
-  },
-  {
-    q: "What happens to my data on Free?",
+    q: "What is in the self-host kit?",
     a: (
       <>
-        Nothing is deleted. If you have more than {FREE_PROJECTS} projects when
-        the limits start, you keep them and can read, pull and export them; you
-        just cannot add another until you are under the limit or on Pro.
+        {`The Klef server, built for Cloudflare Workers and D1, with one command that creates the database, sets the secrets and deploys, and one that applies updates. ${KIT_UPDATE_MONTHS} months of updates are included, and the kit keeps working after that.`}
       </>
     ),
   },
   {
-    q: "Why charge at all?",
+    q: "Why is the server not open source?",
     a: (
       <>
-        klef.sh is run by one person. Paid plans pay for the hosting and the
-        time to keep it maintained and reviewed. If you would rather not pay,
-        self-host it; that will always be free.
+        It only ever sees ciphertext, so its code is not what you have to
+        trust. The parts that are, the CLI and the encryption, stay open. Keeping
+        the server closed is how klef.sh pays for itself.
+      </>
+    ),
+  },
+  {
+    q: "What if klef.sh shuts down?",
+    a: (
+      <>
+        You get notice and time to export, and everyone with Hosted gets the
+        self-host kit free, so you can keep running Klef yourself.
+      </>
+    ),
+  },
+  {
+    q: "What about teams?",
+    a: (
+      <>
+        Shared projects for small teams are planned, still end-to-end
+        encrypted. There is no price or date yet, and nothing to reserve.
       </>
     ),
   },
@@ -184,7 +219,7 @@ type Loaded = { kind: "loading" } | ReservationState | { kind: "error"; message:
 interface ReservationControls {
   state: Loaded;
   busy: boolean;
-  reserve: (plan: PaidPlanId) => void;
+  reserve: (plan: ReservablePlanId) => void;
   cancel: () => void;
 }
 
@@ -221,31 +256,34 @@ function useReservation(): ReservationControls {
 }
 
 function PlanCard({ plan, reservation }: { plan: Plan; reservation: ReservationControls }) {
-  const label = STATUS_LABEL[plan.status];
-  const featured = plan.id === FOUNDING.plan;
+  const featured = plan.id === EARLY.plan;
 
   return (
     <article className={featured ? "m-plan m-plan-featured" : "m-plan"} aria-labelledby={`plan-${plan.id}`}>
       <div className="m-plan-head">
         <h2 id={`plan-${plan.id}`}>{plan.name}</h2>
-        {label && <span className="m-plan-status">{label}</span>}
+        <span className="m-plan-status">{STATUS_LABEL[plan.status]}</span>
       </div>
       <p className="m-plan-audience">{plan.audience}</p>
 
-      <p className="m-price">
-        <b>{formatUsd(plan.monthly)}</b>
-        <span>{plan.monthly === 0 ? "forever" : plan.id === "team" ? "a month, flat" : "a month"}</span>
-      </p>
-      <p className="m-price-yearly">
-        {plan.yearly === null
-          ? "No card, no trial clock."
-          : `or ${formatUsd(plan.yearly)} a year, ${monthsFreeYearly(plan)} months free`}
-      </p>
+      {plan.price === null ? (
+        <p className="m-price m-price-none">
+          <span>No price yet</span>
+        </p>
+      ) : (
+        <>
+          <p className="m-price">
+            <b>{formatUsd(plan.price)}</b>
+            <span>once</span>
+          </p>
+          <p className="m-price-sub">No subscription. No renewals.</p>
+        </>
+      )}
 
       {featured && (
-        <p className="m-founding">
-          <b>{`Early price: ${formatUsd(FOUNDING.yearly)} a year, for life.`}</b>{" "}
-          {`For the first ${FOUNDING.spots} people who reserve.`}
+        <p className="m-early">
+          <b>{`Early price: ${formatUsd(EARLY.price)}.`}</b>{" "}
+          {`For the first ${EARLY.spots} people who reserve.`}
         </p>
       )}
 
@@ -259,10 +297,8 @@ function PlanCard({ plan, reservation }: { plan: Plan; reservation: ReservationC
       </ul>
 
       <div className="m-plan-action">
-        {plan.id === "free" ? (
-          <Link to="/auth" className="m-btn m-btn-line">
-            Get started free
-          </Link>
+        {plan.id === "team" ? (
+          <p className="m-plan-msg m-plan-later">Planned. Nothing to reserve yet.</p>
         ) : (
           <ReserveAction plan={plan.id} controls={reservation} />
         )}
@@ -271,17 +307,15 @@ function PlanCard({ plan, reservation }: { plan: Plan; reservation: ReservationC
   );
 }
 
-function ReserveAction({ plan, controls }: { plan: PaidPlanId; controls: ReservationControls }) {
+function ReserveAction({ plan, controls }: { plan: ReservablePlanId; controls: ReservationControls }) {
   const { state, busy, reserve, cancel } = controls;
-  const cta = plan === "pro" ? `Reserve at ${formatUsd(FOUNDING.yearly)} a year` : "Reserve a Team spot";
+  const ink = plan === EARLY.plan;
+  const cta = plan === "hosted" ? `Reserve at ${formatUsd(EARLY.price)}` : "Reserve the kit";
+  const className = ink ? "m-btn m-btn-ink" : "m-btn m-btn-line";
 
   if (state.kind === "loading" || state.kind === "signedOut") {
     return (
-      <Link
-        to="/auth"
-        state={{ from: "/pricing" }}
-        className={plan === "pro" ? "m-btn m-btn-ink" : "m-btn m-btn-line"}
-      >
+      <Link to="/auth" state={{ from: "/pricing" }} className={className}>
         {cta}
       </Link>
     );
@@ -302,7 +336,7 @@ function ReserveAction({ plan, controls }: { plan: PaidPlanId; controls: Reserva
       <div className="m-reserved" aria-live="polite">
         <p className="m-plan-msg">
           <Check aria-hidden="true" />
-          Reserved. Nothing is charged until paid plans open.
+          Reserved. Nothing is charged until it opens.
         </p>
         <button type="button" className="m-link-btn" onClick={cancel} disabled={busy}>
           Cancel reservation
@@ -312,13 +346,8 @@ function ReserveAction({ plan, controls }: { plan: PaidPlanId; controls: Reserva
   }
 
   return (
-    <button
-      type="button"
-      className={plan === "pro" ? "m-btn m-btn-ink" : "m-btn m-btn-line"}
-      onClick={() => reserve(plan)}
-      disabled={busy}
-    >
-      {current ? `Switch reservation to ${plan === "pro" ? "Pro" : "Team"}` : cta}
+    <button type="button" className={className} onClick={() => reserve(plan)} disabled={busy}>
+      {current ? `Switch to ${PLAN_NAME[plan]}` : cta}
     </button>
   );
 }

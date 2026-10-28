@@ -37,7 +37,7 @@ export const MARKETING_PAGES: Record<string, MarketingPage> = {
   "/pricing": {
     title: "Pricing - Klef",
     description:
-      "Klef is free for one developer. Pro is $4 a month and Team is $12 a month for up to 5 people; both can be reserved now at an early price, and self-hosting is free forever.",
+      "Pay once, no subscription: $49 for Klef hosted on klef.sh, or $29 for the self-host kit on your own Cloudflare account. 30 days free first.",
     name: "Pricing",
     type: "WebPage",
   },
@@ -123,8 +123,13 @@ export function structuredData(path: string, faq: FaqItem[] = []): object {
         "CLI that never prints a secret value, safe for Claude Code and Cursor",
         "Free, open source (AGPL-3.0) and self-hostable on Cloudflare",
       ],
-      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-      isAccessibleForFree: true,
+      // One-time prices from src/shared/plans.ts; kept literal here because
+      // this module is plain string work with no app imports.
+      offers: [
+        { "@type": "Offer", name: "Hosted", price: "49", priceCurrency: "USD" },
+        { "@type": "Offer", name: "Self-host kit", price: "29", priceCurrency: "USD" },
+      ],
+      isAccessibleForFree: false,
       license: `${GITHUB}/blob/main/LICENSE`,
       author: { "@type": "Person", ...AUTHOR },
       publisher: { "@id": org },

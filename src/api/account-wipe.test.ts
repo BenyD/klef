@@ -42,7 +42,7 @@ describe("account deletion cascades", () => {
         "INSERT INTO access_tokens (id, user_id, name, token_hash, prefix, created_at) VALUES ('wipe-t', ?, 'cli', 'wipe-hash', 'wipeabcd', ?)",
       ).bind(uid, now),
       env.DB.prepare(
-        "INSERT INTO plan_reservations (user_id, plan, created_at, updated_at) VALUES (?, 'pro', ?, ?)",
+        "INSERT INTO plan_reservations (user_id, plan, created_at, updated_at) VALUES (?, 'hosted', ?, ?)",
       ).bind(uid, now, now),
     ];
     for (const stmt of batch) await stmt.run();

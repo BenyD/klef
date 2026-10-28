@@ -1,5 +1,5 @@
 import type { PlanReservation } from "../shared/api-types.ts";
-import type { PaidPlanId } from "../shared/plans.ts";
+import type { ReservablePlanId } from "../shared/plans.ts";
 
 // The /pricing page's reservation calls. Plain fetch, not apiFetch: the page
 // is public, so a 401 means "signed out" here, not an expired session to
@@ -22,7 +22,7 @@ async function call(init?: RequestInit): Promise<ReservationState> {
 
 export const fetchReservation = () => call();
 
-export const reservePlan = (plan: PaidPlanId) =>
+export const reservePlan = (plan: ReservablePlanId) =>
   call({
     method: "PUT",
     headers: { "content-type": "application/json" },

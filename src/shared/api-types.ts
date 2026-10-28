@@ -134,11 +134,11 @@ export interface AccessTokenSummary {
 }
 
 /**
- * A paid-plan reservation from /pricing. Intent only: nothing is charged.
- * createdAt survives a switch between plans; the founding price goes by it.
+ * A plan reservation from /pricing. Intent only: nothing is charged.
+ * createdAt survives a switch between plans; the early price goes by it.
  */
 export interface PlanReservation {
-  plan: import("./plans.ts").PaidPlanId;
+  plan: import("./plans.ts").ReservablePlanId;
   createdAt: string;
   updatedAt: string;
 }

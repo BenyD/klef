@@ -2408,7 +2408,7 @@
 /* --- pricing page ------------------------------------------------------------------ */
 
 /* Three bordered cards, no shadows (borders separate, per DESIGN.md). The
-   founding plan is told apart by an accent border and a tinted price note,
+   early-price plan is told apart by an accent border and a tinted price note,
    never by lifting it off the page. */
 .m-plans {
   display: grid;
@@ -2475,12 +2475,12 @@
   font-size: 14px;
   color: var(--m-muted);
 }
-.marketing .m-price-yearly {
+.marketing .m-price-sub {
   margin: 8px 0 0;
   font-size: 13px;
   color: var(--m-muted);
 }
-.marketing .m-founding {
+.marketing .m-early {
   margin: 16px 0 0;
   padding: 12px 14px;
   border-radius: var(--m-r);
@@ -2489,7 +2489,7 @@
   line-height: 1.55;
   color: var(--m-muted);
 }
-.m-founding b {
+.m-early b {
   font-weight: 500;
   color: var(--m-fg);
 }
@@ -2559,6 +2559,16 @@
 .marketing .m-link-btn:disabled {
   opacity: 0.6;
   cursor: progress;
+}
+.m-price-none span {
+  font-size: 15px;
+}
+.marketing .m-price-none {
+  min-height: 40px;
+  align-items: flex-end;
+}
+.marketing .m-plan-later {
+  color: var(--m-muted);
 }
 .marketing .m-plans-note {
   max-width: 760px;

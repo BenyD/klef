@@ -48,10 +48,10 @@ describe("reservation routes", () => {
   it("reserves a plan and reads it back", async () => {
     await seedUser("r2");
     const app = appForUser("r2");
-    const res = await app.request("/", put({ plan: "pro" }), env);
+    const res = await app.request("/", put({ plan: "hosted" }), env);
     expect(res.status).toBe(200);
     const made = ((await res.json()) as Body).reservation;
-    expect(made?.plan).toBe("pro");
+    expect(made?.plan).toBe("hosted");
     expect(made?.createdAt).toBe(made?.updatedAt);
 
     const read = ((await (await app.request("/", {}, env)).json()) as Body).reservation;
@@ -61,20 +61,20 @@ describe("reservation routes", () => {
   it("switching plans keeps the original reservation time", async () => {
     await seedUser("r3");
     const app = appForUser("r3");
-    const first = ((await (await app.request("/", put({ plan: "pro" }), env)).json()) as Body)
+    const first = ((await (await app.request("/", put({ plan: "hosted" }), env)).json()) as Body)
       .reservation!;
     await new Promise((r) => setTimeout(r, 5));
-    const second = ((await (await app.request("/", put({ plan: "team" }), env)).json()) as Body)
+    const second = ((await (await app.request("/", put({ plan: "kit" }), env)).json()) as Body)
       .reservation!;
-    expect(second.plan).toBe("team");
+    expect(second.plan).toBe("kit");
     expect(second.createdAt).toBe(first.createdAt);
     expect(second.updatedAt > first.updatedAt).toBe(true);
   });
 
-  it("rejects anything but a paid plan id", async () => {
+  it("rejects anything but a reservable plan", async () => {
     await seedUser("r4");
     const app = appForUser("r4");
-    for (const body of [{ plan: "free" }, { plan: "enterprise" }, {}, "pro"]) {
+    for (const body of [{ plan: "free" }, { plan: "team" }, { plan: "lifetime" }, {}, "hosted"]) {
       const res = await app.request("/", put(body), env);
       expect(res.status).toBe(400);
     }
@@ -90,7 +90,7 @@ describe("reservation routes", () => {
   it("cancels a reservation", async () => {
     await seedUser("r5");
     const app = appForUser("r5");
-    await app.request("/", put({ plan: "team" }), env);
+    await app.request("/", put({ plan: "hosted" }), env);
     const res = await app.request("/", { method: "DELETE" }, env);
     expect(res.status).toBe(200);
     expect(((await (await app.request("/", {}, env)).json()) as Body).reservation).toBeNull();
@@ -99,7 +99,7 @@ describe("reservation routes", () => {
   it("keeps each person's reservation to themselves", async () => {
     await seedUser("r6");
     await seedUser("r7");
-    await appForUser("r6").request("/", put({ plan: "pro" }), env);
+    await appForUser("r6").request("/", put({ plan: "hosted" }), env);
     const other = await appForUser("r7").request("/", {}, env);
     expect(((await other.json()) as Body).reservation).toBeNull();
   });
@@ -109,7 +109,7 @@ describe("reservation gates on the real app", () => {
   it("requires a session", async () => {
     const res = await SELF.fetch("https://klef.test/api/reservation");
     expect(res.status).toBe(401);
-    const write = await SELF.fetch("https://klef.test/api/reservation", put({ plan: "pro" }));
+    const write = await SELF.fetch("https://klef.test/api/reservation", put({ plan: "hosted" }));
     expect(write.status).toBe(401);
   });
 });

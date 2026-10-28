@@ -76,7 +76,7 @@ const ROWS: { label: string; cells: Cells }[] = [
   },
   {
     label: "Cost",
-    cells: ["Free for one developer; Pro and Team reservable; self-host free", "Free tiers, then per seat", "Paid subscription", "Free and open source", "Free"],
+    cells: ["30 days free, then $49 once hosted or a $29 self-host kit", "Free tiers, then per seat", "Paid subscription", "Free and open source", "Free"],
   },
 ];
 
@@ -160,20 +160,21 @@ export const FAQ: { q: string; a: ReactNode }[] = [
     a: (
       <>
         Not yet. Today a vault belongs to one person, and workspaces keep
-        projects apart rather than share them. A Team plan for up to five
-        people, with shared projects that stay end-to-end encrypted, is
-        coming. <Link to="/pricing">Reserve a spot</Link>.
+        projects apart rather than share them. Shared projects for small
+        teams, still end-to-end encrypted, are planned, with no price or date
+        yet.
       </>
     ),
   },
   {
-    q: "Is it really free?",
+    q: "What does it cost?",
     a: (
       <>
-        For one developer, yes, and it stays that way. Paid plans are not open
-        yet; Pro and Team can be reserved on the{" "}
-        <Link to="/pricing">pricing page</Link> without paying anything. There
-        is no tracking and no ads, and self-hosting is free forever.
+        Nothing yet: paid plans are not open. When they open, new accounts get
+        30 days free, then pay once, with no subscription: $49 for Hosted on
+        klef.sh, or $29 for the self-host kit. Both can be reserved now on the{" "}
+        <Link to="/pricing">pricing page</Link>. There is no tracking and no
+        ads.
       </>
     ),
   },

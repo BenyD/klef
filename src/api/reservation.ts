@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import type { AuthVariables } from "./middleware.ts";
 import type { PlanReservation } from "../shared/api-types.ts";
-import { isPaidPlanId } from "../shared/plans.ts";
+import { isReservablePlanId } from "../shared/plans.ts";
 
-// Paid-plan reservations from /pricing. A reservation records intent and
+// Plan reservations from /pricing: Hosted or the self-host kit. A reservation records intent and
 // charges nothing; there is no payment provider behind it yet. Mounted behind
 // requireAuth + requireSession in index.ts: reserving is a browser action, and
 // an access token has no business changing it.
@@ -32,12 +32,12 @@ reservation.get("/", async (c) => {
 });
 
 // Create or switch. Switching plans keeps created_at, which is what the
-// founding price goes by.
+// early price goes by.
 reservation.put("/", async (c) => {
   const body = (await c.req.json().catch(() => null)) as { plan?: unknown } | null;
   const plan = body?.plan;
-  if (!isPaidPlanId(plan)) {
-    return c.json({ error: "plan must be \"pro\" or \"team\"" }, 400);
+  if (!isReservablePlanId(plan)) {
+    return c.json({ error: "plan must be \"hosted\" or \"kit\"" }, 400);
   }
   const userId = c.get("user").id;
   const now = new Date().toISOString();

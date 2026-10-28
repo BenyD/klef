@@ -1,81 +1,78 @@
 // The plans on /pricing, in one place so the page and the reservation API
-// agree. Prices are whole US dollars. Paid plans are not open yet: a "presale"
-// or "coming" plan can be reserved, never bought.
+// agree. Prices are whole US dollars, paid once; there are no subscriptions.
+// Neither paid plan is open yet, so both can be reserved, never bought. Team
+// is announced with no price and cannot be reserved.
 
-export type PlanId = "free" | "pro" | "team";
-export type PaidPlanId = Exclude<PlanId, "free">;
+export type PlanId = "hosted" | "kit" | "team";
+/** The plans a person can reserve. */
+export type ReservablePlanId = "hosted" | "kit";
 
-export type PlanStatus = "available" | "presale" | "coming";
+export type PlanStatus = "early" | "soon" | "coming";
 
 export interface Plan {
   id: PlanId;
   name: string;
   /** One line under the name: who the plan is for. */
   audience: string;
-  /** Per month, billed monthly. */
-  monthly: number;
-  /** Per year, billed yearly; null for the free plan. */
-  yearly: number | null;
+  /** Paid once, in dollars; null when there is no price yet. */
+  price: number | null;
   status: PlanStatus;
   features: readonly string[];
 }
 
-/** People in a Team plan, for one flat price. */
-export const TEAM_SEATS = 5;
+/** Days a new klef.sh account can use everything before paying. */
+export const TRIAL_DAYS = 30;
 
-/** Free-plan limits that start when paid plans open. */
-export const FREE_PROJECTS = 3;
-export const FREE_HISTORY_DAYS = 30;
+/** Months of kit updates one payment includes; the kit keeps working after. */
+export const KIT_UPDATE_MONTHS = 12;
 
-/** The pre-sale: Pro at this yearly price, for life, for the first reservations. */
-export const FOUNDING = { plan: "pro", yearly: 24, spots: 100 } as const satisfies {
-  plan: PaidPlanId;
-  yearly: number;
+/** The early price: Hosted for less, for the first people who reserve it. */
+export const EARLY = { plan: "hosted", price: 29, spots: 100 } as const satisfies {
+  plan: ReservablePlanId;
+  price: number;
   spots: number;
 };
 
 export const PLANS: readonly Plan[] = [
   {
-    id: "free",
-    name: "Free",
-    audience: "One developer getting started",
-    monthly: 0,
-    yearly: null,
-    status: "available",
+    id: "hosted",
+    name: "Hosted",
+    audience: "Klef on klef.sh, for one person, for life",
+    price: 49,
+    status: "early",
     features: [
-      "End-to-end encryption, in your browser and CLI",
-      "Every machine you own",
+      "Nothing to run: we host, back up and update it",
+      "Unlimited projects and machines",
+      "Full version history",
       "The CLI, klef run and klef audit",
       "Setup for Claude Code and Cursor",
-      `Up to ${FREE_PROJECTS} projects`,
-      `${FREE_HISTORY_DAYS} days of version history`,
+      "Every future feature for one person",
+      "Email support from the person who builds Klef",
     ],
   },
   {
-    id: "pro",
-    name: "Pro",
-    audience: "One developer with many projects",
-    monthly: 4,
-    yearly: 36,
-    status: "presale",
+    id: "kit",
+    name: "Self-host kit",
+    audience: "The Klef server, on your own Cloudflare account",
+    price: 29,
+    status: "soon",
     features: [
-      "Everything in Free",
-      "Unlimited projects",
-      "Full version history",
-      "Email support from the person who builds Klef",
+      "One command sets up the database, secrets and deploy",
+      "One command applies each update",
+      `${KIT_UPDATE_MONTHS} months of updates, and it keeps working after`,
+      "Your data never touches klef.sh",
+      "Email help with setup",
     ],
   },
   {
     id: "team",
     name: "Team",
-    audience: `Small teams and freelancers, up to ${TEAM_SEATS} people`,
-    monthly: 12,
-    yearly: 108,
+    audience: "Small teams sharing projects",
+    price: null,
     status: "coming",
     features: [
-      "Everything in Pro, for each person",
       "Shared projects, still end-to-end encrypted",
-      `One flat price for up to ${TEAM_SEATS} people`,
+      "Everything in Hosted, for each person",
     ],
   },
 ];
@@ -87,17 +84,11 @@ export function planById(id: PlanId): Plan {
 }
 
 /** True for a plan that can be reserved; the API's only input check. */
-export function isPaidPlanId(value: unknown): value is PaidPlanId {
-  return value === "pro" || value === "team";
+export function isReservablePlanId(value: unknown): value is ReservablePlanId {
+  return value === "hosted" || value === "kit";
 }
 
-/** Months a yearly bill saves against twelve monthly ones, rounded down. */
-export function monthsFreeYearly(plan: Pick<Plan, "monthly" | "yearly">): number {
-  if (plan.yearly === null || plan.monthly === 0) return 0;
-  return Math.floor((plan.monthly * 12 - plan.yearly) / plan.monthly);
-}
-
-/** "$4", "$0". Whole dollars only, by design. */
+/** "$49". Whole dollars only, by design. */
 export function formatUsd(amount: number): string {
   return `$${amount}`;
 }
