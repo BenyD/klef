@@ -25,7 +25,7 @@ Anything else, such as `.env` or `secrets.env`, implies no environment.
 
 ## Setting one explicitly
 
-You can still set an environment on a file. That matters in two cases:
+You can still set an environment on a file, from its menu in the sidebar (right-click it). That matters in two cases:
 
 - **The name implies nothing.** A plain `.env` that holds production values should be marked production.
 - **The name says one thing and the file is another.** A `.env.local` that you really use for production.
@@ -35,8 +35,6 @@ The environment set on a file always wins over its name.
 ## When the app shows a label
 
 The app shows an environment label next to a file only when it adds something: when one is set on a name that implies none, or when it contradicts the name. A `.env.production` marked production shows nothing, because the name already says it. Environments are text, never colour.
-
-You can rename the built-in labels for your own display in Settings, Preferences, Environment labels. That changes how they read on this device only.
 
 ## Where environments are used
 
