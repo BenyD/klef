@@ -80,7 +80,7 @@ npm publish ./dist/cli --access public
   `src/shared/core.ts` reaches: files directly in `src/shared`, importing no
   package but `hash-wasm`, and the CLI takes nothing from outside `src/cli`
   except through it. `scripts/core-boundary.test.ts` enforces this, and
-  `pnpm build:core` copies the core into `dist/core` and refuses to build if
+  `pnpm build:core` compiles the core into `dist/core` and refuses to build if
   the boundary breaks (private until it is published deliberately).
 - **The server never sees plaintext secrets, passphrases, or unwrapped keys.**
   Encrypt/decrypt happens only in the browser (`src/shared/crypto.ts` used
