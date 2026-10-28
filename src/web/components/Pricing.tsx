@@ -26,7 +26,7 @@ import {
 
 const STATUS_LABEL: Record<Plan["status"], string | null> = {
   available: null,
-  presale: "Founding pre-sale",
+  presale: "Early access",
   coming: "Coming soon",
 };
 
@@ -40,7 +40,7 @@ export function Pricing() {
           <p className="m-label">Pricing</p>
           <h1>Free for one developer. Pay when you want more.</h1>
           <p className="m-lede" style={{ fontSize: 18 }}>
-            Paid plans are not open yet. Reserve one now to lock in the founding
+            Paid plans are not open yet. Reserve one now to lock in the early
             price. Nothing is charged until they open, and you can cancel before
             then.
           </p>
@@ -131,7 +131,7 @@ const FAQ: { q: string; a: ReactNode }[] = [
     ),
   },
   {
-    q: "What is the founding price?",
+    q: "What is the early price?",
     a: (
       <>
         Pro for {formatUsd(FOUNDING.yearly)} a year instead of{" "}
@@ -244,8 +244,8 @@ function PlanCard({ plan, reservation }: { plan: Plan; reservation: ReservationC
 
       {featured && (
         <p className="m-founding">
-          <b>{`Founding price: ${formatUsd(FOUNDING.yearly)} a year, for life.`}</b>{" "}
-          {`For the first ${FOUNDING.spots} reservations.`}
+          <b>{`Early price: ${formatUsd(FOUNDING.yearly)} a year, for life.`}</b>{" "}
+          {`For the first ${FOUNDING.spots} people who reserve.`}
         </p>
       )}
 
@@ -273,7 +273,7 @@ function PlanCard({ plan, reservation }: { plan: Plan; reservation: ReservationC
 
 function ReserveAction({ plan, controls }: { plan: PaidPlanId; controls: ReservationControls }) {
   const { state, busy, reserve, cancel } = controls;
-  const cta = plan === "pro" ? "Reserve the founding price" : "Reserve a Team spot";
+  const cta = plan === "pro" ? `Reserve at ${formatUsd(FOUNDING.yearly)} a year` : "Reserve a Team spot";
 
   if (state.kind === "loading" || state.kind === "signedOut") {
     return (

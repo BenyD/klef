@@ -48,8 +48,8 @@ describe("Pricing", () => {
       </MemoryRouter>,
     );
     expect(html).toContain("Self-hosting is free forever.");
-    expect(html).toContain("Reserve the founding price");
-    expect(html).toContain("$24 a year, for life");
+    expect(html).toContain("Reserve at $24 a year");
+    expect(html).toContain("Early price: $24 a year, for life.");
     expect(html).not.toMatch(/[–—]/);
   });
 
@@ -67,7 +67,7 @@ describe("Pricing", () => {
   it("sends a signed-out visitor to sign in instead of reserving", async () => {
     stubApi([{ status: 401 }]);
     renderPage();
-    const link = await screen.findByRole("link", { name: "Reserve the founding price" });
+    const link = await screen.findByRole("link", { name: "Reserve at $24 a year" });
     expect(link.getAttribute("href")).toBe("/auth");
     expect(screen.queryByRole("button", { name: /reserve/i })).toBeNull();
   });
@@ -80,12 +80,12 @@ describe("Pricing", () => {
     ]);
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Reserve the founding price" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Reserve at $24 a year" }));
     await screen.findByText("Reserved. Nothing is charged until paid plans open.");
     expect(calls[1]).toEqual({ method: "PUT", body: { plan: "pro" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel reservation" }));
-    await screen.findByRole("button", { name: "Reserve the founding price" });
+    await screen.findByRole("button", { name: "Reserve at $24 a year" });
     expect(calls[2]?.method).toBe("DELETE");
   });
 
