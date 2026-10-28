@@ -55,6 +55,16 @@ async function rendered() {
   await screen.findByText("macOS on mbp");
 }
 
+/**
+ * Open a row's menu and pick an item. The first menu of a run mounts Base
+ * UI's popup machinery, which under a loaded full-suite run outlasted the
+ * default 1s wait.
+ */
+async function choose(tokenName: string, item: string) {
+  fireEvent.click(screen.getByRole("button", { name: `Actions for ${tokenName}` }));
+  fireEvent.click(await screen.findByRole("menuitem", { name: item }, { timeout: 5000 }));
+}
+
 const rowNames = () =>
   screen
     .getAllByRole("button", { name: /^Actions for / })
@@ -74,8 +84,7 @@ describe("AccessTokensPanel", () => {
   it("renames a token in place", async () => {
     api.renameToken.mockImplementation(async (id: string, name: string) => ({ ...LAPTOP, id, name }));
     await rendered();
-    fireEvent.click(screen.getByRole("button", { name: "Actions for macOS on mbp" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Rename" }));
+    await choose("macOS on mbp", "Rename");
 
     const field = screen.getByLabelText<HTMLInputElement>("Token name");
     expect(field.value).toBe("macOS on mbp");
@@ -88,8 +97,7 @@ describe("AccessTokensPanel", () => {
 
   it("asks before revoking one token", async () => {
     await rendered();
-    fireEvent.click(screen.getByRole("button", { name: "Actions for CI deploy" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Revoke" }));
+    await choose("CI deploy", "Revoke");
     expect(api.revokeToken).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Revoke" }));
