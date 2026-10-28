@@ -12,7 +12,7 @@ import {
 import type { EnvFileNode, ProjectNode } from "../../shared/api-types.ts";
 import { FRAMEWORK_LABELS } from "../lib/env-file-names.ts";
 import { getRecentFileIds, sortByRecency } from "../lib/recent-files.ts";
-import { useEnvTag } from "../lib/env-meta.ts";
+import { envTag } from "../lib/env-meta.ts";
 import { ProjectIcon } from "./ProjectIcon.tsx";
 import { Button } from "./ui/button.tsx";
 import {
@@ -108,7 +108,6 @@ function ProjectGroup({
   onCompareEnvironments: (project: ProjectNode) => void;
   onDeleteProject: (project: ProjectNode) => void;
 }) {
-  const envTag = useEnvTag();
   return (
     // The id is the scroll target for "go to project" (palette, breadcrumb).
     <section

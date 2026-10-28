@@ -16,7 +16,7 @@ import {
   type DriftFile,
 } from "../lib/env-drift.ts";
 import { detectFormat } from "../lib/config-format.ts";
-import { useEnvMeta } from "../lib/env-meta.ts";
+import { envLabel } from "../lib/env-meta.ts";
 import { effectiveEnvironment } from "../../shared/env-from-name.ts";
 import { useVault } from "../vault-context.ts";
 import type { ProjectNode } from "../../shared/api-types.ts";
@@ -47,7 +47,6 @@ export function CompareEnvironmentsDialog({
   onClose: () => void;
 }) {
   const { dek } = useVault();
-  const envMeta = useEnvMeta();
   const fileNames = new Map(project?.files.map((f) => [f.id, f.name]) ?? []);
   const [files, setFiles] = useState<DriftFile[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -160,7 +159,6 @@ export function CompareEnvironmentsDialog({
                 <table className="w-full border-separate border-spacing-0 text-sm">
                   <DriftHead
                     columns={report.columns}
-                    envMeta={envMeta}
                     fileNames={fileNames}
                   />
                   <tbody className="[&>tr:last-child>td]:border-b-0">
@@ -217,7 +215,6 @@ export function CompareEnvironmentsDialog({
                     <table className="w-full border-separate border-spacing-0 text-sm">
                       <DriftHead
                     columns={report.columns}
-                    envMeta={envMeta}
                     fileNames={fileNames}
                   />
                       <tbody className="[&>tr:last-child>td]:border-b-0">
@@ -270,11 +267,9 @@ export function CompareEnvironmentsDialog({
 
 function DriftHead({
   columns,
-  envMeta,
   fileNames,
 }: {
   columns: DriftColumn[];
-  envMeta: (environment: string) => { label: string };
   /** File id to name: the second line, since two files can share an environment. */
   fileNames: ReadonlyMap<string, string>;
 }) {
@@ -292,7 +287,7 @@ function DriftHead({
               className="bg-background sticky top-0 z-10 border-b px-3 py-2 text-center font-medium whitespace-nowrap"
             >
               <span className="flex flex-col items-center">
-                {envMeta(col.label).label}
+                {envLabel(col.label)}
                 {name && name !== col.label && (
                   <span className="text-muted-foreground font-mono text-xs font-normal">
                     {name}

@@ -10,7 +10,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "../lib/utils.ts";
 import { isMacPlatform } from "../lib/auto-lock.ts";
-import { useEnvMeta, useEnvTag } from "../lib/env-meta.ts";
+import { envLabel, envTag } from "../lib/env-meta.ts";
 import { effectiveEnvironment } from "../../shared/env-from-name.ts";
 import {
   filterKeyGroups,
@@ -64,7 +64,6 @@ export function KeySearchDialog({
   workspaces: WorkspaceNode[];
   onSelectFile: (project: ProjectNode, file: EnvFileNode) => void;
 }) {
-  const envMeta = useEnvMeta();
   const { names, loading } = useKeyNames(workspaces, open);
   const [query, setQuery] = useState("");
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
@@ -234,7 +233,7 @@ export function KeySearchDialog({
                     onClick={() => setEnvironment(environment === env ? null : env)}
                     className={chip}
                   >
-                    {envMeta(env).label}
+                    {envLabel(env)}
                   </button>
                 ))}
               </div>
@@ -404,7 +403,7 @@ function FileChip({
 }) {
   // file.environment is already the effective one; a tag only shows when
   // that isn't what the name says (a plain .env marked production).
-  const tag = useEnvTag()(file.fileName, file.environment);
+  const tag = envTag(file.fileName, file.environment);
   return (
     <span
       role="button"

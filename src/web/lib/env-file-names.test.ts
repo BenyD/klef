@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { ENVIRONMENTS, FRAMEWORKS } from "../../shared/api-types.ts";
-import { defaultEnvFileName } from "./env-file-names.ts";
+import {
+  defaultEnvFileName,
+  suggestedEnvFileNames,
+} from "./env-file-names.ts";
 
 describe("defaultEnvFileName", () => {
   it("covers every framework x environment combination", () => {
@@ -38,5 +41,35 @@ describe("defaultEnvFileName", () => {
     expect(defaultEnvFileName(null, "staging")).toBe(".env.staging");
     expect(defaultEnvFileName("nextjs", "QA 2")).toBe(".env.qa-2");
     expect(defaultEnvFileName("laravel", "staging")).toBe(".env.staging");
+  });
+});
+
+describe("suggestedEnvFileNames", () => {
+  const names = (fw: Parameters<typeof suggestedEnvFileNames>[0]) =>
+    suggestedEnvFileNames(fw).map((s) => s.name);
+
+  it("lists plain, development, preview and production in that order", () => {
+    expect(names(null)).toEqual([
+      ".env",
+      ".env.local",
+      ".env.preview",
+      ".env.production",
+    ]);
+    expect(names("vite")).toEqual([
+      ".env",
+      ".env.local",
+      ".env.staging",
+      ".env.production",
+    ]);
+  });
+
+  it("shows a shared name once, under the first environment", () => {
+    // Server stacks develop against the plain .env.
+    expect(suggestedEnvFileNames("node")).toEqual([
+      { environment: null, name: ".env" },
+      { environment: "preview", name: ".env.preview" },
+      { environment: "production", name: ".env.production" },
+    ]);
+    expect(names("laravel")).toEqual([".env"]);
   });
 });
