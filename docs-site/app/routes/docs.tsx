@@ -41,6 +41,20 @@ function Content({ path, url, markdownUrl }: { path: string; url: string; markdo
       <meta name="description" content={page.description} />
       <link rel="canonical" href={`${SITE}${url}`} />
       <link rel="alternate" type="text/markdown" href={markdownUrl} />
+      <meta property="og:type" content="article" />
+      <meta property="og:site_name" content="Klef" />
+      <meta property="og:url" content={`${SITE}${url}`} />
+      <meta property="og:title" content={title} />
+      <meta property="og:description" content={page.description} />
+      <meta property="og:image" content={`${SITE}/og.png`} />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={title} />
+      <meta name="twitter:description" content={page.description} />
+      <meta name="twitter:image" content={`${SITE}/og.png`} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: structuredData(page.title, page.description, url) }}
+      />
       <DocsTitle>{page.title}</DocsTitle>
       <DocsDescription>{page.description}</DocsDescription>
       <div className="flex flex-row flex-wrap items-center gap-2 border-b pb-6 -mt-4">
@@ -55,6 +69,36 @@ function Content({ path, url, markdownUrl }: { path: string; url: string; markdo
       </DocsBody>
     </DocsPage>
   );
+}
+
+/** schema.org TechArticle plus its breadcrumb trail, so search and answer engines can cite the page. */
+function structuredData(title: string, description: string | undefined, url: string): string {
+  const crumbs = [
+    { name: "Klef", item: `${SITE}/` },
+    { name: "Docs", item: `${SITE}/docs` },
+    ...(url === "/docs" ? [] : [{ name: title, item: `${SITE}${url}` }]),
+  ];
+  const data = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "TechArticle",
+        "@id": `${SITE}${url}#article`,
+        headline: title,
+        description,
+        url: `${SITE}${url}`,
+        inLanguage: "en",
+        isPartOf: { "@id": `${SITE}/#website` },
+        about: { "@id": `${SITE}/#software` },
+        publisher: { "@id": `${SITE}/#organization` },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: crumbs.map((c, i) => ({ "@type": "ListItem", position: i + 1, ...c })),
+      },
+    ],
+  };
+  return JSON.stringify(data).replaceAll("<", "\\u003c");
 }
 
 /** The way into the product, in the sidebar's footer row beside GitHub and the theme switch. */
