@@ -27,6 +27,7 @@ export default defineConfig(async () => {
               "src/cli/**/*.test.ts",
               "src/web/**/*.test.{ts,tsx}",
               "scripts/**/*.test.ts",
+              "docs-site/app/lib/*.test.ts",
             ],
           },
         },

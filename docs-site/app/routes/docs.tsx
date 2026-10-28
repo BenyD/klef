@@ -14,6 +14,7 @@ import {
 import { useMDXComponents } from "@/components/mdx";
 import { baseOptions } from "@/lib/layout";
 import { docs, GITHUB, markdownUrl, SITE, source } from "@/lib/source";
+import { pageHref } from "@/lib/urls";
 
 export async function loader({ params }: Route.LoaderArgs) {
   const slugs = params["*"].split("/").filter(Boolean);
@@ -39,11 +40,11 @@ function Content({ path, url, markdownUrl }: { path: string; url: string; markdo
     <DocsPage toc={toc}>
       <title>{title}</title>
       <meta name="description" content={page.description} />
-      <link rel="canonical" href={`${SITE}${url}`} />
+      <link rel="canonical" href={pageHref(url)} />
       <link rel="alternate" type="text/markdown" href={markdownUrl} />
       <meta property="og:type" content="article" />
       <meta property="og:site_name" content="Klef" />
-      <meta property="og:url" content={`${SITE}${url}`} />
+      <meta property="og:url" content={pageHref(url)} />
       <meta property="og:title" content={title} />
       <meta property="og:description" content={page.description} />
       <meta property="og:image" content={`${SITE}/og.png`} />
@@ -75,18 +76,18 @@ function Content({ path, url, markdownUrl }: { path: string; url: string; markdo
 function structuredData(title: string, description: string | undefined, url: string): string {
   const crumbs = [
     { name: "Klef", item: `${SITE}/` },
-    { name: "Docs", item: `${SITE}/docs` },
-    ...(url === "/docs" ? [] : [{ name: title, item: `${SITE}${url}` }]),
+    { name: "Docs", item: pageHref("/docs") },
+    ...(url === "/docs" ? [] : [{ name: title, item: pageHref(url) }]),
   ];
   const data = {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "TechArticle",
-        "@id": `${SITE}${url}#article`,
+        "@id": `${pageHref(url)}#article`,
         headline: title,
         description,
-        url: `${SITE}${url}`,
+        url: pageHref(url),
         inLanguage: "en",
         isPartOf: { "@id": `${SITE}/#website` },
         about: { "@id": `${SITE}/#software` },
