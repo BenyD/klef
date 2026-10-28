@@ -10,7 +10,7 @@
 // Nothing here is ever printed. The functions take and return values, and
 // the callers hand them to a child process's environment and nowhere else.
 
-import { parseEnvText } from "../web/lib/env-table.ts";
+import { parseEnvText } from "../shared/env-table.ts";
 
 /**
  * A raw value as dotenv loaders read it: double quotes with `\n`-style

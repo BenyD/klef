@@ -1,0 +1,17 @@
+{
+  "name": "@klefsh/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Klef's client-side encryption, blob format and env-text editing: the code that decides what the server is allowed to see.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": "./core.ts"
+  },
+  "files": ["*.ts", "BLOB_FORMAT.md", "README.md", "LICENSE"],
+  "dependencies": {
+    "hash-wasm": "^4.12.0"
+  },
+  "repository": { "type": "git", "url": "git+https://github.com/BenyD/klef.git", "directory": "src/shared" },
+  "homepage": "https://klef.sh"
+}
