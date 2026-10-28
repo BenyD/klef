@@ -2,11 +2,48 @@
 // renders the result. Pure functions over an ordered list of tabs plus the
 // active id, so every rule (where focus goes on close, what Alt+9 means,
 // when a tab needs its project shown) is tested without a DOM.
+//
+// Tabs stay grouped by project: a project's tabs sit side by side, groups in
+// the order their project was first opened, so the strip can label and
+// collapse each project's run.
 
 export interface Tab {
   id: string;
   name: string;
+  /** Groups tabs; names can repeat across projects, ids can't. */
+  projectId: string;
   project: string;
+}
+
+export interface TabGroup<T extends Tab> {
+  projectId: string;
+  project: string;
+  tabs: T[];
+}
+
+/**
+ * Reorders so each project's tabs are contiguous, groups in order of their
+ * first tab, tabs within a group in their existing order.
+ */
+export function groupByProject<T extends Tab>(tabs: readonly T[]): T[] {
+  return tabGroups(tabs).flatMap((g) => g.tabs);
+}
+
+/** The strip's project runs, in order. */
+export function tabGroups<T extends Tab>(tabs: readonly T[]): TabGroup<T>[] {
+  const groups = new Map<string, TabGroup<T>>();
+  for (const t of tabs) {
+    const group = groups.get(t.projectId);
+    if (group) group.tabs.push(t);
+    else {
+      groups.set(t.projectId, {
+        projectId: t.projectId,
+        project: t.project,
+        tabs: [t],
+      });
+    }
+  }
+  return [...groups.values()];
 }
 
 export interface TabState<T extends Tab> {
@@ -15,14 +52,20 @@ export interface TabState<T extends Tab> {
   activeId: string | null;
 }
 
-/** Open a tab (appended, or focused if already open) and make it active. */
+/**
+ * Open a tab and make it active: focused if already open, else placed after
+ * its project's last tab (a new project's tab goes at the end).
+ */
 export function openTab<T extends Tab>(
   state: TabState<T>,
   tab: T,
 ): TabState<T> {
-  const tabs = state.tabs.some((t) => t.id === tab.id)
-    ? state.tabs
-    : [...state.tabs, tab];
+  if (state.tabs.some((t) => t.id === tab.id)) {
+    return { tabs: state.tabs, activeId: tab.id };
+  }
+  const last = state.tabs.findLastIndex((t) => t.projectId === tab.projectId);
+  const at = last === -1 ? state.tabs.length : last + 1;
+  const tabs = [...state.tabs.slice(0, at), tab, ...state.tabs.slice(at)];
   return { tabs, activeId: tab.id };
 }
 
@@ -61,13 +104,17 @@ export function rightOf<T extends Tab>(tabs: readonly T[], id: string): string[]
   return i === -1 ? [] : tabs.slice(i + 1).map((t) => t.id);
 }
 
-/** Move the tab at `from` to index `to` (drag to reorder). */
+/**
+ * Move the tab at `from` to index `to` (drag to reorder). Groups hold: a tab
+ * dropped among another project's tabs lands back in its own group, and
+ * dragging a project's tab ahead of every other group moves the group.
+ */
 export function moveTab<T extends Tab>(tabs: readonly T[], from: number, to: number): T[] {
   if (from === to || from < 0 || from >= tabs.length) return [...tabs];
   const next = [...tabs];
   const [tab] = next.splice(from, 1);
   next.splice(Math.max(0, Math.min(to, next.length)), 0, tab as T);
-  return next;
+  return groupByProject(next);
 }
 
 /**
@@ -93,18 +140,6 @@ export function tabForDigit<T extends Tab>(
   if (digit < 1 || digit > 9 || tabs.length === 0) return null;
   if (digit === 9) return tabs[tabs.length - 1]!.id;
   return tabs[digit - 1]?.id ?? null;
-}
-
-/**
- * Tab ids whose name is shared with another open tab, so the strip shows
- * their project too (Lensdrop's `.env.production` next to web's).
- */
-export function ambiguousTabs<T extends Tab>(tabs: readonly T[]): Set<string> {
-  const counts = new Map<string, number>();
-  for (const t of tabs) counts.set(t.name, (counts.get(t.name) ?? 0) + 1);
-  return new Set(
-    tabs.filter((t) => (counts.get(t.name) ?? 0) > 1).map((t) => t.id),
-  );
 }
 
 /** What survives a reload: ids only, per workspace. Names come from the tree. */
@@ -153,5 +188,5 @@ export function restoreTabs<T extends Tab>(
     typeof activeId === "string" && tabs.some((t) => t.id === activeId)
       ? activeId
       : null;
-  return { tabs, activeId: active };
+  return { tabs: groupByProject(tabs), activeId: active };
 }
