@@ -24,7 +24,7 @@ Workspace, project and file names are stored in plaintext, so the server can lis
 | Delete a workspace | Settings, Workspace, Danger zone. You type its name to confirm. Your only workspace cannot be deleted. |
 | New project | Sidebar. Name, optional tech stack, optional icon. |
 | Edit or move a project | The project's menu in the sidebar. Moving needs a second workspace. |
-| New file | The project's menu. Pick a name and an environment. |
+| New file | The project's menu. Type a name or pick a suggested one; the environment comes from the name. |
 | Rename or delete a file | The file's menu in the sidebar. Deleting a file removes all of its versions. |
 
 New workspaces, projects and files can also be made from the command palette (<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd>).
@@ -43,7 +43,7 @@ A project's tech stack decides the names Klef suggests for new files. Frontend s
 
 ## Editing a file
 
-Open a file to edit it as text (the code view) or, for dotenv files, as a table of keys. Paste a whole updated file into either one.
+Open a file to edit it as text (the code view) or, for dotenv files, as a table of keys. Paste a whole updated file into either one. Open files get tabs, kept together by project. With files from more than one project open, each project's tabs sit behind a chip with its icon and name; click the chip to collapse or expand them, or right-click it to close them all.
 
 - **Save** with the button or <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>S</kbd>. With "Review changes before saving" on (Settings, Preferences, Editor), you see a line-level diff first. The diff is computed in your browser from decrypted text.
 - **Trailing whitespace** on a value line gets a warning and a "Clean up" button.

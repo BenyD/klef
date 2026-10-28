@@ -91,6 +91,11 @@ export class KlefApi {
     return this.request("/api/me");
   }
 
+  /** Revoke the token this client signs in with. The only token write a token may make. */
+  revokeSelf(): Promise<{ ok: true }> {
+    return this.request("/api/cli/token", { method: "DELETE" });
+  }
+
   /** Wrapped DEK + KDF params. Opaque — unwrapping happens locally. */
   vault(): Promise<VaultStatus> {
     return this.request("/api/vault");

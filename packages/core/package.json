@@ -6,12 +6,25 @@
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "exports": {
-    ".": "./core.ts"
+    ".": {
+      "types": "./core.d.ts",
+      "default": "./core.js"
+    }
   },
-  "files": ["*.ts", "BLOB_FORMAT.md", "README.md", "LICENSE"],
+  "files": [
+    "*.js",
+    "*.d.ts",
+    "BLOB_FORMAT.md",
+    "README.md",
+    "LICENSE"
+  ],
   "dependencies": {
     "hash-wasm": "^4.12.0"
   },
-  "repository": { "type": "git", "url": "git+https://github.com/BenyD/klef.git", "directory": "src/shared" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BenyD/klef.git",
+    "directory": "src/shared"
+  },
   "homepage": "https://klef.sh"
 }

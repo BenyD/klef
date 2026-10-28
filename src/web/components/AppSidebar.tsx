@@ -21,7 +21,7 @@ import {
   type Environment,
   type ProjectNode,
 } from "../../shared/api-types.ts";
-import { useEnvMeta, useEnvTag } from "../lib/env-meta.ts";
+import { envLabel, envTag } from "../lib/env-meta.ts";
 import { environmentFromName } from "../../shared/env-from-name.ts";
 import { isMacPlatform } from "../lib/auto-lock.ts";
 import { ProjectIcon } from "./ProjectIcon.tsx";
@@ -142,7 +142,6 @@ export function AppSidebar({
   onCompareEnvironments,
   onDeleteProject,
 }: AppSidebarProps) {
-  const envTag = useEnvTag();
   const { setOpenMobile } = useSidebar();
   const [expanded, setExpanded] = useState<Set<string>>(readExpanded);
 
@@ -379,7 +378,6 @@ function EnvironmentItems({
   onSet: (env: Environment | null) => void;
   onCustom: () => void;
 }) {
-  const envMeta = useEnvMeta();
   const inferred = environmentFromName(file.name);
   const custom =
     file.environment && !isPresetEnvironment(file.environment)
@@ -391,14 +389,14 @@ function EnvironmentItems({
       <ContextMenuItem onClick={() => onSet(null)}>
         Auto
         <span className="text-muted-foreground text-xs">
-          {inferred ? `from name: ${envMeta(inferred).label}` : "none"}
+          {inferred ? `from name: ${envLabel(inferred)}` : "none"}
         </span>
         {!file.environment && <Check className="ml-auto size-4" />}
       </ContextMenuItem>
       <ContextMenuSeparator />
       {ENVIRONMENTS.map((env) => (
         <ContextMenuItem key={env} onClick={() => onSet(env)}>
-          {envMeta(env).label}
+          {envLabel(env)}
           {file.environment === env && <Check className="ml-auto size-4" />}
         </ContextMenuItem>
       ))}

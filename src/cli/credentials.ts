@@ -135,7 +135,7 @@ export function validateToken(token: string): string {
   const trimmed = token.trim();
   if (!isTokenShape(trimmed)) {
     throw new CliError("usage", "That doesn't look like a Klef access token (they start with klef_pat_).", {
-      hint: "Create one in the web app: Settings, Security, Developer.",
+      hint: "Create one in the web app: Settings, Security, Access tokens.",
     });
   }
   return trimmed;
