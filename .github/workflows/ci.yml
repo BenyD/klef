@@ -42,3 +42,7 @@ jobs:
       # Production build including the prerendered marketing pages.
       - name: Build
         run: pnpm build
+
+      # The open core (@klefsh/core): fails if it reaches outside src/shared.
+      - name: Build @klefsh/core
+        run: pnpm build:core
