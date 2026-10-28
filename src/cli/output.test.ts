@@ -5,7 +5,7 @@ import {
   describeWrite,
   redactAssignments,
 } from "./output.ts";
-import { keysOf } from "../web/lib/env-drift.ts";
+import { keysOf } from "../shared/env-drift.ts";
 
 describe("countVariables", () => {
   it("counts assignments, ignoring comments and blank lines", () => {
