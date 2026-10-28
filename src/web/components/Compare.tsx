@@ -80,7 +80,7 @@ const ROWS: { label: string; cells: Cells }[] = [
   },
 ];
 
-const FAQ: { q: string; a: ReactNode }[] = [
+export const FAQ: { q: string; a: ReactNode }[] = [
   {
     q: "Why not Doppler or Infisical?",
     a: (

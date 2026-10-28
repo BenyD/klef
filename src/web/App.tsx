@@ -5,6 +5,7 @@ import { useSession } from "./auth.ts";
 import { useReturnPath } from "./lib/return-path.ts";
 import { shouldLoadDocs } from "./lib/docs-route.ts";
 import { lazyPage } from "./lib/lazy-page.tsx";
+import { MARKETING_PAGES } from "./lib/seo.ts";
 import { prefetchAppData } from "./app-prefetch.ts";
 import { Splash } from "./components/Splash.tsx";
 import { AppShellSkeleton } from "./components/AppShellSkeleton.tsx";
@@ -61,13 +62,7 @@ export function preloadRoute(pathname: string): Promise<void> {
 }
 
 const TITLES: Record<string, string> = {
-  "/": "Klef - End-to-end encrypted .env sync",
-  "/compare": "Compare - Klef",
-  "/pricing": "Pricing - Klef",
-  "/security": "Security - Klef",
-  "/terms": "Terms - Klef",
-  "/privacy": "Privacy - Klef",
-  "/about": "Why Klef",
+  ...Object.fromEntries(Object.entries(MARKETING_PAGES).map(([path, page]) => [path, page.title])),
   "/cli": "Connect the CLI - Klef",
   "/auth": "Sign in - Klef",
   "/app": "Vault - Klef",
