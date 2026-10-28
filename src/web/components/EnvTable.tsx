@@ -21,7 +21,7 @@ import {
   splitEntryLine,
   type EntryChange,
   type EnvEntry,
-} from "../lib/env-table.ts";
+} from "../../shared/env-table.ts";
 import { Button } from "./ui/button.tsx";
 import { Checkbox } from "./ui/checkbox.tsx";
 import { Input } from "./ui/input.tsx";

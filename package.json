@@ -15,6 +15,7 @@
     "dev": "vite",
     "cli": "node src/cli/index.ts",
     "build:cli": "vite build --config vite.cli.config.ts --logLevel warn && node scripts/build-cli.ts",
+    "build:core": "node scripts/build-core.ts",
     "build": "tsc --noEmit && vite build && pnpm run prerender && pnpm run build:docs",
     "build:docs": "cd docs-site && react-router build && node scripts/publish.ts",
     "docs:dev": "cd docs-site && react-router dev",

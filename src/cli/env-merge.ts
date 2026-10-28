@@ -4,7 +4,7 @@
 // Pure: three texts in, one text and a report of key names out.
 //
 // The merged text is the local file edited in place, the way the web app's
-// table editor edits (src/web/lib/env-table.ts): a changed value rewrites
+// table editor edits (src/shared/env-table.ts): a changed value rewrites
 // that one line, a key the vault has is appended as the vault's own line, and
 // a key deleted on the other side loses its lines. Comments, order, spacing
 // and quoting in the local file are left exactly as they were, so the blob
@@ -18,7 +18,7 @@
 // differs on both sides is a conflict, and a merge with conflicts writes
 // nothing.
 
-import { appendEntry, parseEnvText, removeLines, setEntry } from "../web/lib/env-table.ts";
+import { appendEntry, parseEnvText, removeLines, setEntry } from "../shared/env-table.ts";
 
 export interface MergeReport {
   /** The merged text, or null when there are conflicts. */

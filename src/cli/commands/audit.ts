@@ -28,7 +28,7 @@ import { redactAssignments } from "../output.ts";
 import { ToolError } from "../run-tool.ts";
 import { readWorkflows } from "../workflow-secrets.ts";
 import { resolveWritePath } from "../write-path.ts";
-import { keysOf } from "../../web/lib/env-drift.ts";
+import { keysOf } from "../../shared/env-drift.ts";
 
 export interface AuditEntry extends Partial<NameGroups> {
   platform: Platform;

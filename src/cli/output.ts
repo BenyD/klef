@@ -12,7 +12,7 @@
 // Shared with the web app deliberately. These are pure string functions with
 // no DOM dependency; they belong in src/shared once the CLI needs more of
 // them, but a cli -> web import beats a divergent second parser today.
-import { keysOf } from "../web/lib/env-drift.ts";
+import { keysOf } from "../shared/env-drift.ts";
 
 /** Result of writing an env file, with nothing from inside it. */
 export interface WriteSummary {

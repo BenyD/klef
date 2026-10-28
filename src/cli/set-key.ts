@@ -2,10 +2,10 @@
 //
 // Setting one key in a local env file, as `klef set` and `klef recover` do.
 // Pure: text in, text out, editing only that key's line the way the web
-// app's table editor does (src/web/lib/env-table.ts), so comments, order and
+// app's table editor does (src/shared/env-table.ts), so comments, order and
 // every other line stay exactly as they were.
 
-import { appendEntry, ENV_KEY_RE, parseEnvText, setEntry } from "../web/lib/env-table.ts";
+import { appendEntry, ENV_KEY_RE, parseEnvText, setEntry } from "../shared/env-table.ts";
 
 export function isKeyName(name: string): boolean {
   return ENV_KEY_RE.test(name);

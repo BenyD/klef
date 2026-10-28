@@ -4,7 +4,7 @@ import type { WorkspaceNode } from "../../shared/api-types.ts";
 import { getCurrentVersion } from "../structure-api.ts";
 import { useVault } from "../vault-context.ts";
 import { detectFormat } from "./config-format.ts";
-import { keysOf } from "./env-drift.ts";
+import { keysOf } from "../../shared/env-drift.ts";
 
 /** Key names per file id, for the files whose keys are known so far. */
 export type KeyNames = ReadonlyMap<string, readonly string[]>;
