@@ -13,7 +13,6 @@ import {
   Boxes,
   Bug,
   Check,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsUpDown,
@@ -30,7 +29,6 @@ import {
   Timer,
   Trash2,
   Upload,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils.ts";
@@ -54,14 +52,11 @@ import {
 import { usePaletteShortcut } from "../lib/command-palette.ts";
 import { recordRecentFile } from "../lib/recent-files.ts";
 import {
-  ambiguousTabs,
   closeTabs,
   cycleTab,
   moveTab,
   openTab,
-  othersOf,
   restoreTabs,
-  rightOf,
   serializeTabs,
   tabForDigit,
 } from "../lib/file-tabs.ts";
@@ -90,6 +85,7 @@ import { AppSidebar } from "./AppSidebar.tsx";
 import { Banner } from "./Banner.tsx";
 import { CommandPalette } from "./CommandPalette.tsx";
 import { FrameworkIcon } from "./FrameworkIcon.tsx";
+import { FileTabs } from "./FileTabs.tsx";
 import { ProjectIcon } from "./ProjectIcon.tsx";
 import { WorkspaceIcon } from "./WorkspaceIcon.tsx";
 import { ProjectsOverview } from "./ProjectsOverview.tsx";
@@ -143,13 +139,6 @@ import {
 } from "./ui/empty.tsx";
 import { Input } from "./ui/input.tsx";
 import { Kbd, KbdGroup } from "./ui/kbd.tsx";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "./ui/context-menu.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip.tsx";
 import { Label } from "./ui/label.tsx";
 import { Skeleton } from "./ui/skeleton.tsx";
@@ -383,6 +372,7 @@ export function VaultHome({
             return {
               id: f.id,
               name: f.name,
+              projectId: p.id,
               project: p.name,
               workspace: ws.name,
               environment: f.environment,
@@ -520,6 +510,7 @@ export function VaultHome({
     openFileTab({
       id: file.id,
       name: file.name,
+      projectId: project.id,
       project: project.name,
       workspace: workspace.name,
       environment: file.environment,
@@ -635,6 +626,7 @@ export function VaultHome({
         openFileTab({
           id,
           name,
+          projectId: project.id,
           project: project.name,
           workspace: ws.name,
           environment: null,
@@ -1483,254 +1475,6 @@ function writeStored(key: string, value: string) {
   } catch {
     // Private mode or blocked storage: tabs just won't survive a reload.
   }
-}
-
-function TabShortcut({ keys }: { keys: string[] }) {
-  return (
-    <KbdGroup className="ml-auto pl-4 max-sm:hidden">
-      {keys.map((k) => (
-        <Kbd key={k}>{k}</Kbd>
-      ))}
-    </KbdGroup>
-  );
-}
-
-// The open-file strip. Tabs are quiet pills on the canvas tint; the active one
-// is raised onto the panel surface. Every tab leads with its project's icon,
-// so files from different projects tell apart at a glance (the name joins it
-// when two open files share a file name), and reserves the same trailing
-// slot (unsaved dot that becomes a close button on hover). Middle-click
-// closes, drag reorders, right-click offers bulk closes, and the overflow
-// menu lists everything when the strip scrolls.
-function FileTabs({
-  files,
-  projectOf,
-  activeId,
-  dirtyIds,
-  onSelect,
-  onClose,
-  onReorder,
-}: {
-  files: SelectedFile[];
-  projectOf: (fileId: string) => ProjectNode | undefined;
-  activeId: string | null;
-  dirtyIds: ReadonlySet<string>;
-  onSelect: (file: SelectedFile) => void;
-  onClose: (ids: readonly string[]) => void;
-  onReorder: (from: number, to: number) => void;
-}) {
-  const ambiguous = ambiguousTabs(files);
-  const refs = useRef(new Map<string, HTMLDivElement>());
-  const [dragFrom, setDragFrom] = useState<number | null>(null);
-  const [dropAt, setDropAt] = useState<number | null>(null);
-  const opt = isMacPlatform() ? "⌥" : "Alt";
-
-  // Keep the active tab in view when it changes (keyboard, palette, sidebar).
-  useEffect(() => {
-    if (!activeId) return;
-    refs.current
-      .get(activeId)
-      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [activeId]);
-
-  return (
-    <div className="bg-sidebar/50 flex h-10 shrink-0 items-center border-b">
-      <div
-        role="tablist"
-        aria-label="Open files"
-        className="no-scrollbar flex h-full min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-1.5"
-      >
-        {files.map((f, i) => {
-          const active = f.id === activeId;
-          const dirty = dirtyIds.has(f.id);
-          const project = projectOf(f.id);
-          return (
-            <ContextMenu key={f.id}>
-              <ContextMenuTrigger
-                render={
-                  <div
-                    ref={(el) => {
-                      if (el) refs.current.set(f.id, el);
-                      else refs.current.delete(f.id);
-                    }}
-                    draggable
-                    onDragStart={(e) => {
-                      setDragFrom(i);
-                      e.dataTransfer.effectAllowed = "move";
-                    }}
-                    onDragOver={(e) => {
-                      if (dragFrom === null) return;
-                      e.preventDefault();
-                      setDropAt(i);
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (dragFrom !== null) onReorder(dragFrom, i);
-                      setDragFrom(null);
-                      setDropAt(null);
-                    }}
-                    onDragEnd={() => {
-                      setDragFrom(null);
-                      setDropAt(null);
-                    }}
-                    // Middle-click closes, as in every tabbed app.
-                    onAuxClick={(e) => {
-                      if (e.button === 1) {
-                        e.preventDefault();
-                        onClose([f.id]);
-                      }
-                    }}
-                    className={cn(
-                      "group/tab relative flex h-7 max-w-56 shrink-0 items-center rounded-md transition-interactive",
-                      active
-                        ? "bg-background text-foreground shadow-raised ring-1 ring-border"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                      dragFrom === i && "opacity-50",
-                      dropAt === i &&
-                        dragFrom !== null &&
-                        dragFrom !== i &&
-                        "ring-ring/60 ring-1",
-                    )}
-                  />
-                }
-              >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  title={`${f.project} / ${f.name}`}
-                  onClick={() => onSelect(f)}
-                  className="focus-visible:ring-ring/50 flex h-full min-w-0 items-center gap-1.5 rounded-md pr-1 pl-2 font-mono text-xs outline-none focus-visible:ring-2"
-                >
-                  {project && (
-                    <span
-                      className={cn(
-                        "flex shrink-0 transition-interactive",
-                        !active && "opacity-70 group-hover/tab:opacity-100",
-                      )}
-                    >
-                      <ProjectIcon project={project} size="sm" />
-                    </span>
-                  )}
-                  <span className="truncate">{f.name}</span>
-                  {ambiguous.has(f.id) && (
-                    <span className="text-muted-foreground truncate font-sans">
-                      {f.project}
-                    </span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  aria-label={dirty ? `Close ${f.name} (unsaved)` : `Close ${f.name}`}
-                  onClick={() => onClose([f.id])}
-                  className={cn(
-                    "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring/50 mr-1 flex size-5 shrink-0 items-center justify-center rounded outline-none transition-interactive focus-visible:ring-2",
-                    // Revealed on hover, focus and for the active tab; always
-                    // there on touch, where nothing hovers.
-                    !active &&
-                      !dirty &&
-                      "opacity-0 group-hover/tab:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100",
-                  )}
-                >
-                  {dirty ? (
-                    <>
-                      <span
-                        className="bg-foreground/70 size-2 rounded-full group-hover/tab:hidden"
-                        aria-hidden="true"
-                      />
-                      <X className="hidden size-3.5 group-hover/tab:block" />
-                    </>
-                  ) : (
-                    <X className="size-3.5" />
-                  )}
-                </button>
-              </ContextMenuTrigger>
-              <ContextMenuContent className="min-w-56">
-                <ContextMenuItem onClick={() => onClose([f.id])}>
-                  Close
-                  <TabShortcut keys={[opt, "W"]} />
-                </ContextMenuItem>
-                <ContextMenuItem
-                  disabled={files.length < 2}
-                  onClick={() => onClose(othersOf(files, f.id))}
-                >
-                  Close others
-                </ContextMenuItem>
-                <ContextMenuItem
-                  disabled={i === files.length - 1}
-                  onClick={() => onClose(rightOf(files, f.id))}
-                >
-                  Close to the right
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem onClick={() => onClose(files.map((t) => t.id))}>
-                  Close all
-                </ContextMenuItem>
-              </ContextMenuContent>
-            </ContextMenu>
-          );
-        })}
-      </div>
-
-      {/* Every open tab in one list, for when the strip scrolls. */}
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="All open files"
-              className="text-muted-foreground mx-1.5"
-            >
-              <ChevronDown />
-            </Button>
-          }
-        />
-        <DropdownMenuContent align="end" className="min-w-64">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel className="flex items-center">
-              Open files
-              <span className="ml-auto font-normal">
-                {opt} 1-9 to jump, {opt} [ ] to cycle
-              </span>
-            </DropdownMenuLabel>
-            {files.map((f, i) => (
-              <DropdownMenuItem
-                key={f.id}
-                className="font-mono text-xs"
-                onClick={() => onSelect(f)}
-              >
-                <span className="truncate">{f.name}</span>
-                <span className="text-muted-foreground truncate font-sans">
-                  {f.project}
-                </span>
-                {dirtyIds.has(f.id) && (
-                  <span
-                    className="bg-foreground/70 size-1.5 shrink-0 rounded-full"
-                    aria-label="Unsaved"
-                  />
-                )}
-                <span className="ml-auto flex items-center gap-2">
-                  {f.id === activeId && <Check className="size-4" />}
-                  {/* Mirrors tabForDigit: 1-8 by position, 9 is the last tab. */}
-                  {(i < 8 || i === files.length - 1) && (
-                    <TabShortcut
-                      keys={[opt, i === files.length - 1 && i >= 8 ? "9" : String(i + 1)]}
-                    />
-                  )}
-                </span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onClose(files.map((t) => t.id))}>
-            <X />
-            Close all
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
 }
 
 // The grouped stack picker, shared by the project dialogs and the new-file
