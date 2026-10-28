@@ -1,19 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // Builds the @klefsh/core package into dist/core: exactly the files
-// src/shared/core.ts reaches, copied as readable TypeScript, plus the blob
-// format spec, the README and the licence from packages/core. The copy is flat
-// because every core file lives directly in src/shared, so their relative
-// imports keep working as they are.
+// src/shared/core.ts reaches, compiled by tsc to readable JavaScript with
+// .d.ts declarations next to each, plus the blob format spec, the README and
+// the licence from packages/core. JavaScript rather than the .ts sources
+// because Node refuses to strip types from files under node_modules. The
+// output is flat because every core file lives directly in src/shared.
+//
+// Before it finishes, it imports the built package with plain Node and checks
+// that a blob round-trips byte for byte, so a broken emit cannot ship.
 //
 // Refuses to build if the core reaches outside src/shared or imports a
 // package other than hash-wasm, and if packages/core/package.json disagrees
 // with the repo on hash-wasm's version. The package stays private until it is
 // published deliberately (repo split, step 4).
 
-import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
-import { REPO, SHARED, walkCore } from "./core-graph.ts";
+import { pathToFileURL } from "node:url";
+import { CORE_ENTRY, REPO, SHARED, walkCore } from "./core-graph.ts";
 
 const OUT = path.join(REPO, "dist/core");
 
@@ -39,8 +46,33 @@ if (!want || want !== have) {
 await rm(OUT, { recursive: true, force: true });
 await mkdir(OUT, { recursive: true });
 
-for (const file of graph.files) {
-  await copyFile(file, path.join(OUT, path.basename(file)));
+// tsc follows core.ts's imports itself; the graph check above is what proves
+// those imports stay inside src/shared.
+const work = await mkdtemp(path.join(tmpdir(), "klef-core-"));
+try {
+  const tsconfig = path.join(work, "tsconfig.json");
+  await writeFile(
+    tsconfig,
+    JSON.stringify({
+      compilerOptions: {
+        target: "ES2022",
+        module: "ESNext",
+        moduleResolution: "bundler",
+        // Web Crypto and TextEncoder: globals in browsers, Workers and Node.
+        lib: ["ESNext", "DOM"],
+        strict: true,
+        skipLibCheck: true,
+        declaration: true,
+        rewriteRelativeImportExtensions: true,
+        rootDir: SHARED,
+        outDir: OUT,
+      },
+      files: [CORE_ENTRY],
+    }),
+  );
+  execFileSync(path.join(REPO, "node_modules/.bin/tsc"), ["-p", tsconfig], { stdio: "inherit" });
+} finally {
+  await rm(work, { recursive: true, force: true });
 }
 await copyFile(path.join(SHARED, "BLOB_FORMAT.md"), path.join(OUT, "BLOB_FORMAT.md"));
 await copyFile(path.join(REPO, "packages/core/README.md"), path.join(OUT, "README.md"));
@@ -49,6 +81,14 @@ await writeFile(
   path.join(OUT, "package.json"),
   await readFile(path.join(REPO, "packages/core/package.json"), "utf8"),
 );
+
+// Smoke test the build as a consumer would load it.
+const core = (await import(pathToFileURL(path.join(OUT, "core.js")).href)) as typeof import("../src/shared/core.ts");
+const dek = await core.importAesKey(core.randomBytes(32));
+const text = "# Heading\nA=1\nB='two words'\n";
+if ((await core.decryptBlob(dek, await core.encryptBlob(dek, text))) !== text) {
+  throw new Error("dist/core does not round-trip a blob");
+}
 
 console.log(
   `built @klefsh/core ${corePkg.version} -> dist/core (${graph.files.length} files, depends on ${[...graph.packages].join(", ")})`,
