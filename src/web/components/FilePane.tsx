@@ -15,7 +15,6 @@ import {
   GitCompare,
   History,
   Import,
-  Loader2,
   PanelRight,
   RotateCcw,
   Bot,
@@ -100,7 +99,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select.tsx";
-import { Skeleton } from "./ui/skeleton.tsx";
+import { Skeleton, SkeletonText } from "./ui/skeleton.tsx";
+import { LoadingStatus } from "./ui/loading-status.tsx";
+import { EditorSkeleton } from "./skeletons.tsx";
+import { useDelayedLoading } from "../lib/use-delayed-loading.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip.tsx";
 
@@ -127,6 +129,9 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // The pane's own chrome stays up while the version decrypts; only the
+  // editor's lines are placeholders, and only if the wait is noticeable.
+  const showEditorSkeleton = useDelayedLoading(loading, { minMs: 0 });
   const [view, setView] = useState("editor");
   const [panel, setPanel] = useState<SidePanel>(null);
   const [history, setHistory] = useState<VersionSummary[] | null>(null);
@@ -396,15 +401,6 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-80 w-full" />
-      </div>
-    );
-  }
-
   const diffStatsLine = (
     <span className="font-mono text-xs">
       <span className="text-diff-add">
@@ -427,8 +423,8 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
         <RotateCcw />
         Discard
       </Button>
-      <Button size="sm" onClick={() => void onSave()} disabled={saving}>
-        {saving ? <Loader2 className="animate-spin" /> : <Save />}
+      <Button size="sm" onClick={() => void onSave()} loading={saving}>
+        <Save />
         Save version
       </Button>
     </>
@@ -437,11 +433,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
   // A timeline, newest on top: filled dot = current, connecting rail matches
   // the onboarding stepper language.
   const historyList = !history ? (
-    <div className="flex flex-col gap-2">
-      <Skeleton className="h-9 w-full" />
-      <Skeleton className="h-9 w-full" />
-      <Skeleton className="h-9 w-full" />
-    </div>
+    <HistorySkeleton />
   ) : history.length === 0 ? (
     <Empty>
       <EmptyHeader>
@@ -605,7 +597,9 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
       /* min-h-0 keeps the pane viewport-bound so the side panel and table
          scroll internally instead of growing the page. */
       className="flex min-h-0 flex-1 flex-col gap-0"
+      aria-busy={loading || undefined}
     >
+      {loading && <LoadingStatus>Decrypting {file.name}</LoadingStatus>}
       {/* One toolbar row over a full-bleed editor: the file reads as a
           document, not as a form field inside a page. */}
       <div className="flex min-h-11 shrink-0 flex-wrap items-center gap-2 border-b px-3 py-1.5">
@@ -618,7 +612,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <TabsTrigger value="editor" aria-label="Code view">
+                  <TabsTrigger value="editor" aria-label="Code view" disabled={loading}>
                     <Code />
                   </TabsTrigger>
                 }
@@ -628,7 +622,7 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <TabsTrigger value="table" aria-label="Table view">
+                  <TabsTrigger value="table" aria-label="Table view" disabled={loading}>
                     <Table2 />
                   </TabsTrigger>
                 }
@@ -668,10 +662,10 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
           {/* Segmented so the icon actions read as one toolbar, not
               scattered buttons; each keeps its tooltip. */}
           <ButtonGroup>
-            <IconAction label="Copy" onClick={copyToClipboard}>
+            <IconAction label="Copy" onClick={copyToClipboard} disabled={loading}>
               <Copy />
             </IconAction>
-            <IconAction label="Export" onClick={exportFile}>
+            <IconAction label="Export" onClick={exportFile} disabled={loading}>
               <Download />
             </IconAction>
             {changed && (
@@ -682,10 +676,10 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
                 <RotateCcw />
               </IconAction>
             )}
-            <IconAction label="Copy agent prompt" onClick={copyAgentPrompt}>
+            <IconAction label="Copy agent prompt" onClick={copyAgentPrompt} disabled={loading}>
               <Bot />
             </IconAction>
-            <IconAction label="Version history" onClick={openHistory}>
+            <IconAction label="Version history" onClick={openHistory} disabled={loading}>
               <History />
             </IconAction>
           </ButtonGroup>
@@ -695,9 +689,10 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
                 <Button
                   size="sm"
                   onClick={requestSave}
-                  disabled={!changed || saving}
+                  disabled={!changed}
+                  loading={saving}
                 >
-                  {saving ? <Loader2 className="animate-spin" /> : <Save />}
+                  <Save />
                   Save version
                 </Button>
               }
@@ -717,7 +712,13 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
       >
         <ResizablePanel defaultSize={60} minSize={30} className="min-w-0">
           <TabsContent value="editor" keepMounted className="h-full">
-            {lint.hasIssues ? (
+            {loading ? (
+              showEditorSkeleton ? (
+                <EditorSkeleton className="h-full min-h-80" />
+              ) : (
+                <div className="h-full min-h-80" />
+              )
+            ) : lint.hasIssues ? (
               // Banner and editor read as one framed unit: the wrapper owns
               // the border, rounding, and focus ring; the banner fills the
               // rounded top and the editor drops its own frame.
@@ -972,8 +973,8 @@ export function FilePane({ file, onSaved, onDirtyChange }: Props) {
               <Button variant="ghost" onClick={() => setConfirmOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => void confirmSave()} disabled={saving}>
-                {saving ? <Loader2 className="animate-spin" /> : <Save />}
+              <Button onClick={() => void confirmSave()} loading={saving}>
+                <Save />
                 Save version
               </Button>
             </div>
@@ -1157,10 +1158,12 @@ function SaveShortcutKeys() {
 function IconAction({
   label,
   onClick,
+  disabled,
   children,
 }: {
   label: string;
   onClick: () => void;
+  disabled?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -1171,6 +1174,7 @@ function IconAction({
             variant="outline"
             size="icon-sm"
             onClick={onClick}
+            disabled={disabled}
             aria-label={label}
             className="text-muted-foreground hover:text-foreground"
           >
@@ -1180,5 +1184,30 @@ function IconAction({
       />
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
+  );
+}
+
+/** The history timeline's rows: rail dot, a 20px and a 16px line, pb-4 apart. */
+function HistorySkeleton() {
+  return (
+    <ol className="flex flex-col" aria-busy="true">
+      <LoadingStatus>Loading versions</LoadingStatus>
+      {[0, 1, 2].map((i) => (
+        <li key={i} className="flex gap-3">
+          <div className="flex flex-col items-center">
+            <Skeleton className="mt-1.5 size-2.5 shrink-0 rounded-full" />
+            {i < 2 && <span className="bg-border my-1 w-px flex-1" />}
+          </div>
+          <div className={cn("flex min-w-0 flex-1 flex-col", i < 2 && "pb-4")}>
+            <span className="text-sm">
+              <SkeletonText className="w-24" />
+            </span>
+            <span className="text-xs">
+              <SkeletonText className="w-36" />
+            </span>
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }

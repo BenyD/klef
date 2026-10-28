@@ -25,6 +25,8 @@ import {
   type SearchResult,
 } from "../lib/palette-search.ts";
 import { useKeyNames } from "../lib/use-key-names.ts";
+import { useDelayedLoading } from "../lib/use-delayed-loading.ts";
+import { Spinner } from "./ui/spinner.tsx";
 import { SETUP_COMMAND } from "../lib/agent-prompts.ts";
 import type {
   EnvFileNode,
@@ -159,6 +161,7 @@ export function CommandPalette({
   const { toggleSidebar } = useSidebar();
   const scope = useMemo(() => (workspace ? [workspace] : []), [workspace]);
   const { names: keyNames, loading: keysLoading } = useKeyNames(scope, open);
+  const showKeysLoading = useDelayedLoading(keysLoading);
 
   const projects = useMemo(() => workspace?.projects ?? [], [workspace]);
   // "New file" lands next to what's being worked on: the selected file's
@@ -518,8 +521,13 @@ export function CommandPalette({
             <Kbd>↵</Kbd>
             Open
           </span>
-          <span className="ml-auto">
-            {searching && keysLoading ? "Searching key names..." : null}
+          <span className="ml-auto flex items-center gap-1.5">
+            {searching && showKeysLoading && (
+              <>
+                <Spinner className="size-3" />
+                Searching key names...
+              </>
+            )}
           </span>
           <span className="flex items-center gap-1.5">
             <Kbd>esc</Kbd>

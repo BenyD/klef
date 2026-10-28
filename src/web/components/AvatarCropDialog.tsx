@@ -71,7 +71,7 @@ export function AvatarCropDialog({
           <Button type="button" variant="ghost" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="button" onClick={apply} disabled={busy || !area}>
+          <Button type="button" onClick={apply} loading={busy} disabled={!area}>
             {busy ? "Saving..." : "Use picture"}
           </Button>
         </DialogFooter>

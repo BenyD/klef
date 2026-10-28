@@ -25,30 +25,34 @@ export function AuthPage() {
   const navigate = useNavigate();
   // Where to land after auth: the workspace URL that bounced here, or /app.
   const returnPath = useReturnPath() ?? "/app";
-  const [busy, setBusy] = useState(false);
+  // The sign-in in flight; every option waits, only that one spins.
+  const [busy, setBusy] = useState<"google" | "github" | "passkey" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // OAuth: the provider redirects away on success, so only failures return.
-  async function onOAuth(start: (callbackURL: string) => Promise<unknown>) {
-    setBusy(true);
+  async function onOAuth(
+    provider: "google" | "github",
+    start: (callbackURL: string) => Promise<unknown>,
+  ) {
+    setBusy(provider);
     setError(null);
     try {
       await start(returnPath);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   async function onPasskeySignIn() {
-    setBusy(true);
+    setBusy("passkey");
     setError(null);
     const res = await signInWithPasskey();
     if (res?.error) {
       if (!isPasskeyCancel(res.error)) {
         setError(res.error.message ?? "Couldn't sign in with a passkey");
       }
-      setBusy(false);
+      setBusy(null);
       return;
     }
     navigate(returnPath);
@@ -92,8 +96,9 @@ export function AuthPage() {
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => void onOAuth(signInWithGoogle)}
-              disabled={busy}
+              onClick={() => void onOAuth("google", signInWithGoogle)}
+              loading={busy === "google"}
+              disabled={busy !== null}
             >
               <GoogleMark />
               Continue with Google
@@ -101,8 +106,9 @@ export function AuthPage() {
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => void onOAuth(signInWithGitHub)}
-              disabled={busy}
+              onClick={() => void onOAuth("github", signInWithGitHub)}
+              loading={busy === "github"}
+              disabled={busy !== null}
             >
               <GitHubMark />
               Continue with GitHub
@@ -119,7 +125,8 @@ export function AuthPage() {
             variant="outline"
             className="w-full"
             onClick={() => void onPasskeySignIn()}
-            disabled={busy}
+            loading={busy === "passkey"}
+            disabled={busy !== null}
           >
             <Fingerprint />
             Sign in with a passkey

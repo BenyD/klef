@@ -234,7 +234,7 @@ export function Onboarding({ email }: { email: string }) {
                   >
                     Back
                   </Button>
-                  <Button type="submit" className="flex-1" disabled={busy}>
+                  <Button type="submit" className="flex-1" loading={busy}>
                     {busy ? "Creating your vault..." : "Continue"}
                   </Button>
                 </div>

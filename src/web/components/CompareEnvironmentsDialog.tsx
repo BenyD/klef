@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Columns3, Loader2, Minus, TriangleAlert } from "lucide-react";
+import { Check, Columns3, Minus, TriangleAlert } from "lucide-react";
 import { cn } from "../lib/utils.ts";
 import {
   Empty,
@@ -28,6 +28,8 @@ import {
   DialogTitle,
 } from "./ui/dialog.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs.tsx";
+import { Skeleton, SkeletonText } from "./ui/skeleton.tsx";
+import { LoadingStatus } from "./ui/loading-status.tsx";
 
 // Compares the dotenv files in a project, all decrypted in the browser. The
 // Keys tab shows which keys each environment has; the Values tab shows only
@@ -110,14 +112,12 @@ export function CompareEnvironmentsDialog({
             <span className="text-pretty">{error}</span>
           </div>
         ) : !report ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="text-muted-foreground flex items-center gap-2 py-8 text-sm"
-          >
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            Decrypting environments…
-          </div>
+          <CompareSkeleton
+            columns={
+              project?.files.filter((f) => detectFormat(f.name) === "dotenv")
+                .length ?? 0
+            }
+          />
         ) : report.columns.length < 2 ? (
           <Empty className="py-8">
             <EmptyHeader>
@@ -299,5 +299,59 @@ function DriftHead({
         })}
       </tr>
     </thead>
+  );
+}
+
+/**
+ * The Keys tab while the files decrypt: tab switch, summary line, and the
+ * table with a column per dotenv file (known before decrypting) and rows of
+ * the same 28px height as the real ones.
+ */
+function CompareSkeleton({ columns }: { columns: number }) {
+  // Fewer than two files ends in the empty state, not a table.
+  if (columns < 2) {
+    return (
+      <div aria-busy="true" className="py-8">
+        <LoadingStatus>Decrypting environments</LoadingStatus>
+      </div>
+    );
+  }
+  return (
+    <div aria-busy="true" className="flex flex-col gap-3">
+      <LoadingStatus>Decrypting environments</LoadingStatus>
+      {/* TabsList: Keys / Values */}
+      <Skeleton className="h-8 w-[8.25rem] rounded-lg" />
+      <p className="text-sm">
+        <SkeletonText className="w-64" />
+      </p>
+      <div className="overflow-hidden rounded-lg border">
+        <table className="w-full border-separate border-spacing-0 text-sm">
+          <thead>
+            <tr>
+              <th className="border-b px-3 py-2 text-left font-medium">Key</th>
+              {Array.from({ length: columns }, (_, i) => (
+                <th key={i} className="border-b px-3 py-2 text-center">
+                  <SkeletonText className="w-20" />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="[&>tr:last-child>td]:border-b-0">
+            {Array.from({ length: 6 }, (_, r) => (
+              <tr key={r}>
+                <td className="border-b px-3 py-1.5 font-mono text-xs">
+                  <SkeletonText className={r % 3 ? "w-28" : "w-36"} />
+                </td>
+                {Array.from({ length: columns }, (_, i) => (
+                  <td key={i} className="border-b px-3 py-1.5">
+                    <Skeleton className="mx-auto size-3.5 rounded-sm" />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

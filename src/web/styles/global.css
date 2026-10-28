@@ -276,79 +276,10 @@
   }
 }
 
-/* The splash (see components/Splash.tsx): the mark weaves itself, one strand
-   after another, then a hairline keeps moving so a slow network still reads
-   as loading rather than stuck. The strands are the mark's <g> children, in
-   drawing order; transform-box lets them turn about the viewBox centre. */
-@keyframes klef-splash-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes klef-loop-in {
-  from {
-    opacity: 0;
-    transform: rotate(-24deg) scale(0.86);
-  }
-  to {
-    opacity: 1;
-    transform: rotate(0) scale(1);
-  }
-}
-@keyframes klef-splash-line {
-  from {
-    translate: -100% 0;
-  }
-  to {
-    translate: 300% 0;
-  }
-}
-.klef-splash {
-  animation: klef-splash-in var(--duration-slow) var(--ease-out) both;
-}
-.klef-splash-mark svg > g {
-  transform-box: view-box;
-  transform-origin: 50% 50%;
-  animation: klef-loop-in 0.5s var(--ease-out) both;
-}
-.klef-splash-mark svg > g:nth-of-type(2) {
-  animation-delay: 0.1s;
-}
-.klef-splash-mark svg > g:nth-of-type(3) {
-  animation-delay: 0.2s;
-}
-.klef-splash-line {
-  position: relative;
-  width: 96px;
-  height: 1px;
-  overflow: hidden;
-  background: var(--border);
-}
-.klef-splash-line::after {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 33%;
-  background: var(--primary);
-  animation: klef-splash-line 1.4s var(--ease-in-out) 0.6s infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .klef-splash,
-  .klef-splash-mark svg > g {
-    animation: none;
-  }
-  .klef-splash-line {
-    display: none;
-  }
-}
-
 /* The pixel field (components/PixelField.tsx, lib/pixel-field.ts): cells on
    a --cell grid. Each appears in a staggered burst, then breathes between
    --floor and --peak; movers also step around a loop and blinkers switch
-   instead of breathing. Behind the landing hero and the splash. */
+   instead of breathing. Behind the landing hero and the canvas screens. */
 @keyframes klef-px-enter {
   from {
     opacity: 0;
@@ -508,7 +439,7 @@
   }
 }
 
-/* A canvas screen (splash, sign-in, unlock, CLI connect): the field sits
+/* A canvas screen (sign-in, unlock, CLI connect): the field sits
    behind everything, centred, with the middle masked clear so the card or
    the mark sits on quiet canvas. */
 .klef-canvas {

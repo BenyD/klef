@@ -62,6 +62,7 @@ import { AccessTokensPanel } from "./AccessTokensPanel.tsx";
 import { RecoveryKeyPanel } from "./RecoveryKeyPanel.tsx";
 import {
   SettingNote,
+  SettingRowsSkeleton,
   SettingRow,
   SettingsPage,
   SettingsSection,
@@ -475,8 +476,9 @@ function DeleteAccountSection({ email }: { email: string }) {
             <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive-solid"
+              loading={busy}
               disabled={
-                busy || confirmText.trim().toLowerCase() !== email.toLowerCase()
+                confirmText.trim().toLowerCase() !== email.toLowerCase()
               }
               onClick={() => void deleteAccount()}
             >
@@ -758,7 +760,8 @@ function WorkspaceIconDialog({
           </Button>
           <Button
             type="button"
-            disabled={!pendingIcon || busy}
+            loading={busy}
+            disabled={!pendingIcon}
             onClick={() => void save()}
           >
             {busy ? "Saving..." : "Save icon"}
@@ -815,14 +818,14 @@ function PasskeysSection() {
       title="Passkeys"
       description="Sign in with Face ID, Touch ID or a security key."
       action={
-        <Button variant="outline" size="sm" onClick={add} disabled={adding}>
+        <Button variant="outline" size="sm" onClick={add} loading={adding}>
           <Plus />
           {adding ? "Waiting for your device..." : "Add passkey"}
         </Button>
       }
     >
       {isPending ? (
-        <SettingNote>Loading passkeys...</SettingNote>
+        <SettingRowsSkeleton label="Loading passkeys" rows={1} />
       ) : passkeys?.length ? (
         passkeys.map((pk) => <PasskeyRow key={pk.id} passkey={pk} />)
       ) : (
@@ -977,7 +980,7 @@ function PasskeyRow({
             )}
           </div>
           <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={busy || !passphrase}>
+            <Button type="submit" size="sm" loading={busy} disabled={!passphrase}>
               {busy ? "Waiting for your passkey..." : "Confirm and turn on"}
             </Button>
             <Button
@@ -1006,7 +1009,7 @@ function PasskeyRow({
             aria-label="Passkey name"
             className="h-8"
           />
-          <Button type="submit" size="sm" disabled={busy || !name.trim()}>
+          <Button type="submit" size="sm" loading={busy} disabled={!name.trim()}>
             Save
           </Button>
           <Button
@@ -1037,7 +1040,7 @@ function PasskeyRow({
               size="sm"
               variant="destructive"
               onClick={remove}
-              disabled={busy}
+              loading={busy}
             >
               Remove
             </Button>
@@ -1289,7 +1292,8 @@ function PassphraseRow() {
           <div className="flex gap-2">
             <Button
               type="submit"
-              disabled={busy || !current || !next || !confirm}
+              loading={busy}
+              disabled={!current || !next || !confirm}
             >
               {busy ? "Changing..." : "Change passphrase"}
             </Button>
@@ -1386,7 +1390,7 @@ function RecoverySection({ email }: { email: string }) {
             />
           </div>
           <div className="flex gap-2">
-            <Button type="submit" disabled={busy || !passphrase}>
+            <Button type="submit" loading={busy} disabled={!passphrase}>
               {busy ? "Generating..." : "Generate new recovery key"}
             </Button>
             <Button

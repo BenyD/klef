@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "../lib/utils.ts";
+import { Skeleton, SkeletonText } from "./ui/skeleton.tsx";
+import { LoadingStatus } from "./ui/loading-status.tsx";
 
 // The settings dialog's layout, Linear-style: each page has one sticky
 // heading, then sections; a section is a title over a bordered card, and
@@ -123,6 +125,35 @@ export function SettingRow({
         )}
       </div>
       {children}
+    </div>
+  );
+}
+
+/**
+ * A list of `rows` SettingRows still loading, for a card whose rows carry a
+ * leading tile and a 28px control (passkeys, access tokens). The same row,
+ * so the card keeps its height when the list lands.
+ */
+export function SettingRowsSkeleton({
+  rows = 2,
+  label,
+}: {
+  rows?: number;
+  /** Announced to screen readers, e.g. "Loading passkeys". */
+  label: string;
+}) {
+  return (
+    <div aria-busy="true" className="divide-y">
+      <LoadingStatus>{label}</LoadingStatus>
+      {Array.from({ length: rows }, (_, i) => (
+        <SettingRow
+          key={i}
+          leading={<Skeleton className="size-8 shrink-0" />}
+          label={<SkeletonText className={i % 2 ? "w-24" : "w-32"} />}
+          hint={<SkeletonText className={i % 2 ? "w-56" : "w-44"} />}
+          control={<Skeleton className="size-7" />}
+        />
+      ))}
     </div>
   );
 }

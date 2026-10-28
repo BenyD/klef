@@ -25,6 +25,8 @@ import { envLabel, envTag } from "../lib/env-meta.ts";
 import { environmentFromName } from "../../shared/env-from-name.ts";
 import { isMacPlatform } from "../lib/auto-lock.ts";
 import { ProjectIcon } from "./ProjectIcon.tsx";
+import { ProjectTreeSkeleton } from "./skeletons.tsx";
+import { readLayoutHint, rememberLayout, treeHint } from "../lib/layout-hint.ts";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -54,7 +56,6 @@ import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSkeleton,
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
@@ -62,7 +63,7 @@ import {
 } from "./ui/sidebar.tsx";
 
 interface AppSidebarProps {
-  /** Tree still loading; skeleton rows. */
+  /** Tree still loading; skeleton rows in the shape last seen here. */
   loading?: boolean;
   /** Workspace switcher, rendered at the top. */
   header: ReactNode;
@@ -144,6 +145,12 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const { setOpenMobile } = useSidebar();
   const [expanded, setExpanded] = useState<Set<string>>(readExpanded);
+  const [hint] = useState(readLayoutHint);
+
+  // Remember the tree's shape for the next load's skeleton.
+  useEffect(() => {
+    if (!loading) rememberLayout(treeHint(projects, expanded));
+  }, [loading, projects, expanded]);
 
   // Opening a file from anywhere (palette, tabs, overview) reveals it here.
   const selectedProjectId = selectedFileId
@@ -226,13 +233,9 @@ export function AppSidebar({
             <Plus />
           </SidebarGroupAction>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu aria-busy={loading || undefined}>
               {loading
-                ? Array.from({ length: 3 }, (_, i) => (
-                    <SidebarMenuItem key={`skeleton-${i}`}>
-                      <SidebarMenuSkeleton showIcon />
-                    </SidebarMenuItem>
-                  ))
+                ? <ProjectTreeSkeleton hint={hint} />
                 : projects.map((project) => {
                     const open = expanded.has(project.id);
                     return (

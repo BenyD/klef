@@ -4,7 +4,7 @@ import { buttonVariants } from "./ui/button.tsx";
 
 /**
  * Catch-all route: anything that isn't a page or a workspace URL. The same
- * canvas and mark as the splash, with the one line that matters.
+ * canvas and mark as sign-in, with the one line that matters.
  */
 export function NotFound() {
   return (
