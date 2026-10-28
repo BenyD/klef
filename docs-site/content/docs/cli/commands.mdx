@@ -404,13 +404,13 @@ JSON `data`: `{ root, projects: [ { dir, workspace, project, files: [ { path, ac
 
 ### klef logout
 
-Forgets the stored token, and the vault key kept on this device. The token stays valid until you revoke it in the web app (Settings, Security). If `KLEF_TOKEN` is set, klef still signs in with it, and says so.
+Revokes the stored token, so it leaves the web app's token list, then forgets it and the vault key kept on this device. If Klef can't be reached, it still signs out locally and says the token is still valid; revoke it in Settings, Security, Access tokens. A token in `KLEF_TOKEN` is never revoked, since it belongs to whatever set it: klef still signs in with it, and says so.
 
 ```bash
 klef logout
 ```
 
-JSON `data`: `{ signedOut, tokenStillInEnvironment }`
+JSON `data`: `{ signedOut, revoked, tokenStillInEnvironment }`
 
 ## More
 

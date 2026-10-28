@@ -12,7 +12,7 @@ Commands:
   setup <targets>    Only write the agent instructions: claude (skill), cursor
                      (rule), claude-md, agents (AGENTS.md), or all
   login              Sign in through the browser (--paste for a token instead)
-  logout             Forget the stored token on this machine
+  logout             Sign out on this machine and revoke its token
   status             Show sign-in state and what this directory is linked to
   list               Show the env files in your vault (read-only)
   audit [platform]   Key names on Vercel, GitHub or Cloudflare that your local

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  describeCreated,
+  isUnused,
+  sortTokens,
+  UNUSED_AFTER_MS,
   expiryLabel,
   describeExpiry,
   describeLastUsed,
@@ -97,5 +101,48 @@ describe("EXPIRY_OPTIONS", () => {
     expect(new Set(EXPIRY_OPTIONS.map((o) => o.value)).size).toBe(
       EXPIRY_OPTIONS.length,
     );
+  });
+});
+
+describe("isUnused", () => {
+  const token = (lastUsedAt: string | null, createdAt: string, expiresAt: string | null = null) => ({
+    lastUsedAt,
+    createdAt,
+    expiresAt,
+  });
+
+  it("goes by last use, or creation for a token never used", () => {
+    expect(isUnused(token(inDays(-1), inDays(-400)), NOW)).toBe(false);
+    expect(isUnused(token(inDays(-91), inDays(-400)), NOW)).toBe(true);
+    expect(isUnused(token(null, inDays(-10)), NOW)).toBe(false);
+    expect(isUnused(token(null, inDays(-91)), NOW)).toBe(true);
+  });
+
+  it("puts the boundary exactly at the window", () => {
+    const edge = new Date(NOW.getTime() - UNUSED_AFTER_MS).toISOString();
+    expect(isUnused(token(edge, edge), NOW)).toBe(true);
+  });
+
+  it("always counts an expired token, however recently used", () => {
+    expect(isUnused(token(inDays(-2), inDays(-30), inDays(-1)), NOW)).toBe(true);
+  });
+});
+
+describe("sortTokens", () => {
+  it("puts the most recently active first, and never-used ones by creation", () => {
+    const sorted = sortTokens([
+      { id: "old", lastUsedAt: inDays(-100), createdAt: inDays(-200) },
+      { id: "fresh-unused", lastUsedAt: null, createdAt: inDays(-1) },
+      { id: "busy", lastUsedAt: inDays(0), createdAt: inDays(-300) },
+    ]);
+    expect(sorted.map((t) => t.id)).toEqual(["busy", "fresh-unused", "old"]);
+  });
+});
+
+describe("describeCreated", () => {
+  it("is relative for the recent past, a date after that", () => {
+    expect(describeCreated({ createdAt: inDays(-2) }, NOW)).toBe("Created 2 days ago");
+    expect(describeCreated({ createdAt: inDays(-30) }, NOW)).toMatch(/^Created [A-Z][a-z]{2} \d+$/);
+    expect(describeLastUsed({ lastUsedAt: inDays(-30) }, NOW)).toMatch(/^Last used [A-Z][a-z]{2} \d+$/);
   });
 });

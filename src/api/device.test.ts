@@ -176,6 +176,25 @@ describe("approving", () => {
     expect(row?.user_id).toBe("a1");
   });
 
+  it("names the token after the machine, not the one-time code", async () => {
+    await seedUser("a6");
+    const app = appForUser("a6");
+    const named = await start(app, "Darwin on Benys-MacBook-Pro.local");
+    await app.request("/approve", json({ userCode: named.userCode }), env);
+    const unnamed = await start(app, "");
+    await app.request("/approve", json({ userCode: unnamed.userCode }), env);
+
+    const rows = await env.DB.prepare(
+      "SELECT name FROM access_tokens WHERE user_id = ? ORDER BY name",
+    )
+      .bind("a6")
+      .all<{ name: string }>();
+    expect(rows.results.map((r) => r.name)).toEqual([
+      "CLI login",
+      "macOS on Benys-MacBook-Pro",
+    ]);
+  });
+
   it("hands the token over exactly once", async () => {
     await seedUser("a2");
     const app = appForUser("a2");

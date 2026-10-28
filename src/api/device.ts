@@ -12,6 +12,7 @@ import {
 import { isPublicJwk, sealToken } from "../shared/device-seal.ts";
 import { isSealedVaultKey } from "../shared/device-unlock.ts";
 import { bytesToBase64, utf8ToBytes } from "../shared/encoding.ts";
+import { tidyMachineLabel } from "../cli/machine-label.ts";
 
 // Browser sign-in for the CLI.
 //
@@ -26,13 +27,24 @@ export const device = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 /** Client-supplied and rendered on the approval page, so cap and strip it. */
 const MAX_LABEL = 60;
 
+/** What a login that named no machine is called on the approval page. */
+const UNNAMED = "a terminal";
+
 function cleanLabel(input: unknown): string {
-  if (typeof input !== "string") return "a terminal";
-  const label = input
-    .replace(/[^\w .\-()]/g, "")
-    .trim()
-    .slice(0, MAX_LABEL);
-  return label === "" ? "a terminal" : label;
+  if (typeof input !== "string") return UNNAMED;
+  const label = tidyMachineLabel(input.replace(/[^\w .\-()]/g, ""))
+    .slice(0, MAX_LABEL)
+    .trim();
+  return label === "" ? UNNAMED : label;
+}
+
+/**
+ * The token a login mints is named after the machine that asked for it, so
+ * the token list reads "macOS on Benys-MacBook-Pro" rather than the one-time
+ * code, which means nothing once the login is done.
+ */
+export function tokenNameForLogin(label: string): string {
+  return label === UNNAMED ? "CLI login" : label;
 }
 
 /** Only the hash is stored, the same rule access tokens follow. */
@@ -216,11 +228,15 @@ device.post("/approve", async (c) => {
   if (!userCode) return c.json({ ok: false, error: "That code isn't valid." }, 400);
 
   const row = await c.env.DB.prepare(
-    `SELECT id, public_jwk, expires_at, approved_at, denied_at
+    `SELECT id, label, public_jwk, expires_at, approved_at, denied_at
      FROM device_authorizations WHERE user_code = ?`,
   )
     .bind(userCode)
-    .first<Pick<DeviceRow, "id" | "public_jwk" | "expires_at" | "approved_at" | "denied_at">>();
+    .first<
+      Pick<DeviceRow, "id" | "public_jwk" | "expires_at" | "approved_at" | "denied_at"> & {
+        label: string;
+      }
+    >();
 
   if (!row || expired(row.expires_at)) {
     return c.json(
@@ -264,7 +280,7 @@ device.post("/approve", async (c) => {
     ).bind(
       crypto.randomUUID(),
       c.get("user").id,
-      `CLI (${userCode})`,
+      tokenNameForLogin(row.label),
       await hashToken(token),
       tokenDisplayPrefix(token),
       now,
