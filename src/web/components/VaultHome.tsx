@@ -13,7 +13,6 @@ import {
   Boxes,
   Bug,
   Check,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsUpDown,
@@ -30,7 +29,6 @@ import {
   Timer,
   Trash2,
   Upload,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils.ts";
@@ -54,14 +52,11 @@ import {
 import { usePaletteShortcut } from "../lib/command-palette.ts";
 import { recordRecentFile } from "../lib/recent-files.ts";
 import {
-  ambiguousTabs,
   closeTabs,
   cycleTab,
   moveTab,
   openTab,
-  othersOf,
   restoreTabs,
-  rightOf,
   serializeTabs,
   tabForDigit,
 } from "../lib/file-tabs.ts";
@@ -70,32 +65,34 @@ import { useVault } from "../vault-context.ts";
 import * as api from "../structure-api.ts";
 import type { SelectedFile } from "../vault-types.ts";
 import {
-  ENVIRONMENTS,
   isPresetEnvironment,
   normalizeEnvironment,
   type Environment,
   type EnvFileNode,
   type Framework,
+  type PresetEnvironment,
   type ProjectNode,
   type WorkspaceNode,
 } from "../../shared/api-types.ts";
 import { workspaceSlug } from "../../shared/slug.ts";
 import {
-  defaultEnvFileName,
   FRAMEWORK_LABELS,
   STACK_GROUPS,
+  suggestedEnvFileNames,
+  type NameSuggestion,
 } from "../lib/env-file-names.ts";
 import { AppSidebar } from "./AppSidebar.tsx";
 import { Banner } from "./Banner.tsx";
 import { CommandPalette } from "./CommandPalette.tsx";
 import { FrameworkIcon } from "./FrameworkIcon.tsx";
+import { FileTabs } from "./FileTabs.tsx";
 import { ProjectIcon } from "./ProjectIcon.tsx";
 import { WorkspaceIcon } from "./WorkspaceIcon.tsx";
 import { ProjectsOverview } from "./ProjectsOverview.tsx";
 import { CompareEnvironmentsDialog } from "./CompareEnvironmentsDialog.tsx";
 import { KeySearchDialog } from "./KeySearchDialog.tsx";
 import { LockShortcutKeys } from "./LockShortcutKeys.tsx";
-import { useEnvMeta, useEnvTag } from "../lib/env-meta.ts";
+import { envTag } from "../lib/env-meta.ts";
 import { FilePane } from "./FilePane.tsx";
 import { SettingsDialog, type SettingsTab } from "./SettingsDialog.tsx";
 import {
@@ -142,13 +139,6 @@ import {
 } from "./ui/empty.tsx";
 import { Input } from "./ui/input.tsx";
 import { Kbd, KbdGroup } from "./ui/kbd.tsx";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "./ui/context-menu.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip.tsx";
 import { Label } from "./ui/label.tsx";
 import { Skeleton } from "./ui/skeleton.tsx";
@@ -197,7 +187,6 @@ const STACK_GROUP_ITEMS: StackGroup[] = STACK_GROUPS.map((g) => ({
 const ALL_STACK_ITEMS = STACK_GROUP_ITEMS.flatMap((g) => g.items);
 type DialogFields = {
   name: string;
-  environment: Environment | null;
   framework: Framework | null;
   icon: string | null;
 };
@@ -205,17 +194,15 @@ type NameDialog = {
   title: string;
   label: string;
   initial: string;
-  /** When set, the dialog also shows an environment picker (files only). */
-  withEnvironment?: { initial: Environment | null };
   /** When set, the dialog also shows a framework picker (projects only). */
   withFramework?: { initial: Framework | null };
   /** When set, the dialog also shows the icon field (projects, workspaces). */
   withIcon?: { initial: string | null };
-  /** Suggested name per environment; applied until the user edits the name. */
-  defaultNameFor?: (
-    environment: Environment | null,
-    framework: Framework | null,
-  ) => string;
+  /**
+   * One-click names for the stack (files only). The first fills the field;
+   * picks follow stack changes until the user types a name of their own.
+   */
+  suggestNames?: (framework: Framework | null) => NameSuggestion[];
   /**
    * Where name suggestions come from, with an inline way to change the
    * project's stack without leaving the dialog. Saves immediately.
@@ -238,7 +225,6 @@ export function VaultHome({
 }) {
   const { tree, loading, error, reload } = useTree();
   const { lock, recoveryConfirmed } = useVault();
-  const envTag = useEnvTag();
   useAutoLock(lock);
   // The shortcut is a deliberate action, so it gets the dirty-draft guard
   // (requestLock below); only idle auto-lock skips it.
@@ -386,6 +372,7 @@ export function VaultHome({
             return {
               id: f.id,
               name: f.name,
+              projectId: p.id,
               project: p.name,
               workspace: ws.name,
               environment: f.environment,
@@ -523,6 +510,7 @@ export function VaultHome({
     openFileTab({
       id: file.id,
       name: file.name,
+      projectId: project.id,
       project: project.name,
       workspace: workspace.name,
       environment: file.environment,
@@ -626,22 +614,22 @@ export function VaultHome({
       title: "New file",
       label: "File name",
       initial: "",
-      withEnvironment: { initial: null },
-      defaultNameFor: (environment, framework) =>
-        defaultEnvFileName(framework, environment),
+      suggestNames: suggestedEnvFileNames,
       stackHint: {
         initial: project.framework,
         save: (framework) => run(api.updateProject(project.id, { framework })),
       },
-      submit: async ({ name, environment }) => {
-        const { id } = await api.createFile(project.id, name, environment);
+      // No environment: the name implies it, and the file's menu overrides.
+      submit: async ({ name }) => {
+        const { id } = await api.createFile(project.id, name, null);
         await reload();
         openFileTab({
           id,
           name,
+          projectId: project.id,
           project: project.name,
           workspace: ws.name,
-          environment,
+          environment: null,
         });
       },
     });
@@ -925,6 +913,9 @@ export function VaultHome({
         {openFiles.length > 0 && selected && (
           <FileTabs
             files={openFiles}
+            projectOf={(id) =>
+              projects.find((p) => p.files.some((f) => f.id === id))
+            }
             activeId={selected.id}
             dirtyIds={dirtyIds}
             onSelect={setSelected}
@@ -1486,240 +1477,6 @@ function writeStored(key: string, value: string) {
   }
 }
 
-function TabShortcut({ keys }: { keys: string[] }) {
-  return (
-    <KbdGroup className="ml-auto pl-4 max-sm:hidden">
-      {keys.map((k) => (
-        <Kbd key={k}>{k}</Kbd>
-      ))}
-    </KbdGroup>
-  );
-}
-
-// The open-file strip. Tabs are quiet pills on the canvas tint; the active one
-// is raised onto the panel surface. Every tab reserves the same leading slot
-// (environment dot) and trailing slot (unsaved dot that becomes a close
-// button on hover), so names line up whatever the tab carries. Middle-click
-// closes, drag reorders, right-click offers bulk closes, and the overflow
-// menu lists everything when the strip scrolls.
-function FileTabs({
-  files,
-  activeId,
-  dirtyIds,
-  onSelect,
-  onClose,
-  onReorder,
-}: {
-  files: SelectedFile[];
-  activeId: string | null;
-  dirtyIds: ReadonlySet<string>;
-  onSelect: (file: SelectedFile) => void;
-  onClose: (ids: readonly string[]) => void;
-  onReorder: (from: number, to: number) => void;
-}) {
-  const ambiguous = ambiguousTabs(files);
-  const refs = useRef(new Map<string, HTMLDivElement>());
-  const [dragFrom, setDragFrom] = useState<number | null>(null);
-  const [dropAt, setDropAt] = useState<number | null>(null);
-  const opt = isMacPlatform() ? "⌥" : "Alt";
-
-  // Keep the active tab in view when it changes (keyboard, palette, sidebar).
-  useEffect(() => {
-    if (!activeId) return;
-    refs.current
-      .get(activeId)
-      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [activeId]);
-
-  return (
-    <div className="bg-sidebar/50 flex h-10 shrink-0 items-center border-b">
-      <div
-        role="tablist"
-        aria-label="Open files"
-        className="no-scrollbar flex h-full min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-1.5"
-      >
-        {files.map((f, i) => {
-          const active = f.id === activeId;
-          const dirty = dirtyIds.has(f.id);
-          return (
-            <ContextMenu key={f.id}>
-              <ContextMenuTrigger
-                render={
-                  <div
-                    ref={(el) => {
-                      if (el) refs.current.set(f.id, el);
-                      else refs.current.delete(f.id);
-                    }}
-                    draggable
-                    onDragStart={(e) => {
-                      setDragFrom(i);
-                      e.dataTransfer.effectAllowed = "move";
-                    }}
-                    onDragOver={(e) => {
-                      if (dragFrom === null) return;
-                      e.preventDefault();
-                      setDropAt(i);
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (dragFrom !== null) onReorder(dragFrom, i);
-                      setDragFrom(null);
-                      setDropAt(null);
-                    }}
-                    onDragEnd={() => {
-                      setDragFrom(null);
-                      setDropAt(null);
-                    }}
-                    // Middle-click closes, as in every tabbed app.
-                    onAuxClick={(e) => {
-                      if (e.button === 1) {
-                        e.preventDefault();
-                        onClose([f.id]);
-                      }
-                    }}
-                    className={cn(
-                      "group/tab relative flex h-7 max-w-56 shrink-0 items-center rounded-md transition-interactive",
-                      active
-                        ? "bg-background text-foreground shadow-raised ring-1 ring-border"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                      dragFrom === i && "opacity-50",
-                      dropAt === i &&
-                        dragFrom !== null &&
-                        dragFrom !== i &&
-                        "ring-ring/60 ring-1",
-                    )}
-                  />
-                }
-              >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  title={`${f.project} / ${f.name}`}
-                  onClick={() => onSelect(f)}
-                  className="focus-visible:ring-ring/50 flex h-full min-w-0 items-center gap-1.5 rounded-md pr-1 pl-2.5 font-mono text-xs outline-none focus-visible:ring-2"
-                >
-                  <span className="truncate">{f.name}</span>
-                  {ambiguous.has(f.id) && (
-                    <span className="text-muted-foreground truncate font-sans">
-                      {f.project}
-                    </span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  aria-label={dirty ? `Close ${f.name} (unsaved)` : `Close ${f.name}`}
-                  onClick={() => onClose([f.id])}
-                  className={cn(
-                    "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring/50 mr-1 flex size-5 shrink-0 items-center justify-center rounded outline-none transition-interactive focus-visible:ring-2",
-                    // Revealed on hover, focus and for the active tab; always
-                    // there on touch, where nothing hovers.
-                    !active &&
-                      !dirty &&
-                      "opacity-0 group-hover/tab:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100",
-                  )}
-                >
-                  {dirty ? (
-                    <>
-                      <span
-                        className="bg-foreground/70 size-2 rounded-full group-hover/tab:hidden"
-                        aria-hidden="true"
-                      />
-                      <X className="hidden size-3.5 group-hover/tab:block" />
-                    </>
-                  ) : (
-                    <X className="size-3.5" />
-                  )}
-                </button>
-              </ContextMenuTrigger>
-              <ContextMenuContent className="min-w-56">
-                <ContextMenuItem onClick={() => onClose([f.id])}>
-                  Close
-                  <TabShortcut keys={[opt, "W"]} />
-                </ContextMenuItem>
-                <ContextMenuItem
-                  disabled={files.length < 2}
-                  onClick={() => onClose(othersOf(files, f.id))}
-                >
-                  Close others
-                </ContextMenuItem>
-                <ContextMenuItem
-                  disabled={i === files.length - 1}
-                  onClick={() => onClose(rightOf(files, f.id))}
-                >
-                  Close to the right
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem onClick={() => onClose(files.map((t) => t.id))}>
-                  Close all
-                </ContextMenuItem>
-              </ContextMenuContent>
-            </ContextMenu>
-          );
-        })}
-      </div>
-
-      {/* Every open tab in one list, for when the strip scrolls. */}
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="All open files"
-              className="text-muted-foreground mx-1.5"
-            >
-              <ChevronDown />
-            </Button>
-          }
-        />
-        <DropdownMenuContent align="end" className="min-w-64">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel className="flex items-center">
-              Open files
-              <span className="ml-auto font-normal">
-                {opt} 1-9 to jump, {opt} [ ] to cycle
-              </span>
-            </DropdownMenuLabel>
-            {files.map((f, i) => (
-              <DropdownMenuItem
-                key={f.id}
-                className="font-mono text-xs"
-                onClick={() => onSelect(f)}
-              >
-                <span className="truncate">{f.name}</span>
-                <span className="text-muted-foreground truncate font-sans">
-                  {f.project}
-                </span>
-                {dirtyIds.has(f.id) && (
-                  <span
-                    className="bg-foreground/70 size-1.5 shrink-0 rounded-full"
-                    aria-label="Unsaved"
-                  />
-                )}
-                <span className="ml-auto flex items-center gap-2">
-                  {f.id === activeId && <Check className="size-4" />}
-                  {/* Mirrors tabForDigit: 1-8 by position, 9 is the last tab. */}
-                  {(i < 8 || i === files.length - 1) && (
-                    <TabShortcut
-                      keys={[opt, i === files.length - 1 && i >= 8 ? "9" : String(i + 1)]}
-                    />
-                  )}
-                </span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onClose(files.map((t) => t.id))}>
-            <X />
-            Close all
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
-}
-
 // The grouped stack picker, shared by the project dialogs and the new-file
 // dialog's inline stack hint.
 function StackCombobox({
@@ -1805,15 +1562,11 @@ function NameDialogView({
   dialog: NameDialog | null;
   onClose: () => void;
 }): ReactNode {
-  const envMetaOf = useEnvMeta();
   const [value, setValue] = useState("");
-  // Auto-fill the name from the environment pick until the user edits it.
+  // Suggested names track the stack until the user types one of their own;
+  // `picked` remembers which suggestion so a stack change can remap it.
   const [nameDirty, setNameDirty] = useState(false);
-  const [environment, setEnvironment] = useState<Environment | null>(null);
-  // The "Custom" chip reveals a free-text label field; the raw text lives
-  // apart from `environment` so typing isn't fought by normalization.
-  const [customOpen, setCustomOpen] = useState(false);
-  const [customText, setCustomText] = useState("");
+  const [picked, setPicked] = useState<PresetEnvironment | null>(null);
   const [framework, setFramework] = useState<Framework | null>(null);
   // The stack hint's picker stays collapsed until asked for.
   const [stackOpen, setStackOpen] = useState(false);
@@ -1849,18 +1602,14 @@ function NameDialogView({
   }, [iconGuess]);
 
   useEffect(() => {
-    const initialEnv = dialog?.withEnvironment?.initial ?? null;
     const initialFramework =
       dialog?.withFramework?.initial ?? dialog?.stackHint?.initial ?? null;
-    setEnvironment(initialEnv);
-    const initialCustom = initialEnv !== null && !isPresetEnvironment(initialEnv);
-    setCustomOpen(initialCustom);
-    setCustomText(initialCustom ? initialEnv : "");
+    setPicked(null);
     setFramework(initialFramework);
     setStackOpen(false);
     setValue(
       dialog?.initial ||
-        (dialog?.defaultNameFor?.(initialEnv, initialFramework) ?? ""),
+        (dialog?.suggestNames?.(initialFramework)[0]?.name ?? ""),
     );
     setNameDirty(Boolean(dialog?.initial));
     const initialIcon = dialog?.withIcon?.initial ?? null;
@@ -1874,34 +1623,14 @@ function NameDialogView({
     setCropSrc(null);
   }, [dialog]);
 
-  function applyEnvironment(env: Environment | null) {
-    setEnvironment(env);
-    if (!nameDirty && dialog?.defaultNameFor) {
-      setValue(dialog.defaultNameFor(env, framework));
-    }
-  }
-
-  function pickEnvironment(env: Environment | null) {
-    setCustomOpen(false);
-    applyEnvironment(env);
-  }
-
-  function pickCustom() {
-    setCustomOpen(true);
-    applyEnvironment(normalizeEnvironment(customText));
-  }
-
-  function typeCustom(text: string) {
-    setCustomText(text);
-    applyEnvironment(normalizeEnvironment(text));
-  }
-
   // Stack picks from the hint persist to the project right away; the dialog's
   // own submit only creates the file.
   function pickStack(fw: Framework | null) {
     setFramework(fw);
-    if (!nameDirty && dialog?.defaultNameFor) {
-      setValue(dialog.defaultNameFor(environment, fw));
+    const names = dialog?.suggestNames?.(fw);
+    if (!nameDirty && names?.[0]) {
+      // A stack can fold a pick into another name (Node develops in .env).
+      setValue((names.find((n) => n.environment === picked) ?? names[0]).name);
     }
     dialog?.stackHint?.save(fw).catch((e: unknown) => {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -1936,7 +1665,6 @@ function NameDialogView({
       // so the committed icon matches what the preview would have shown.
       await dialog.submit({
         name,
-        environment,
         framework,
         icon: await settleIcon(iconGuess, iconDiscovered),
       });
@@ -1953,58 +1681,37 @@ function NameDialogView({
           <DialogTitle>{dialog?.title}</DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="flex flex-col gap-4">
-          {dialog?.withEnvironment && (
-            <div className="grid gap-2">
-              <Label>Environment</Label>
-              <div className="flex flex-wrap gap-1.5" role="group">
-                <EnvChip
-                  label="Auto"
-                  active={!customOpen && environment === null}
-                  onClick={() => pickEnvironment(null)}
-                />
-                {ENVIRONMENTS.map((env) => (
-                  <EnvChip
-                    key={env}
-                    label={envMetaOf(env).label}
-                    active={!customOpen && environment === env}
-                    onClick={() => pickEnvironment(env)}
-                  />
-                ))}
-                <EnvChip
-                  label="Custom"
-                  active={customOpen}
-                  onClick={pickCustom}
-                />
-              </div>
-              {!customOpen && environment === null && (
-                <p className="text-muted-foreground text-xs">
-                  Read from the file name: .env.local is development,
-                  .env.production is production.
-                </p>
-              )}
-              {customOpen && (
-                <Input
-                  autoFocus
-                  value={customText}
-                  maxLength={32}
-                  placeholder="e.g. staging"
-                  aria-label="Custom environment label"
-                  onChange={(e) => typeCustom(e.target.value)}
-                />
-              )}
-            </div>
-          )}
           <div className="grid gap-2">
             <Label htmlFor="name-dialog">{dialog?.label}</Label>
             <Input
               id="name-dialog"
-              autoFocus={!dialog?.withEnvironment}
+              autoFocus
               value={value}
               onChange={(e) => {
                 setValue(e.target.value);
                 setNameDirty(true);
               }}
             />
+            {dialog?.suggestNames && (
+              <div
+                className="flex flex-wrap gap-1.5"
+                role="group"
+                aria-label="Suggested names"
+              >
+                {dialog.suggestNames(framework).map((s) => (
+                  <SuggestionChip
+                    key={s.name}
+                    label={s.name}
+                    active={value.trim() === s.name}
+                    onClick={() => {
+                      setValue(s.name);
+                      setPicked(s.environment);
+                      setNameDirty(false);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
             {dialog?.stackHint && (
               <>
                 <p className="text-muted-foreground text-xs">
@@ -2167,7 +1874,7 @@ function DialogIconPreview({ icon }: { icon: string | null }) {
   );
 }
 
-function EnvChip({
+function SuggestionChip({
   label,
   active,
   onClick,
@@ -2182,7 +1889,7 @@ function EnvChip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "border-border text-muted-foreground inline-flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
+        "border-border text-muted-foreground inline-flex h-7 items-center rounded-md border px-2.5 font-mono text-xs transition-colors",
         "hover:bg-muted hover:text-foreground",
         active && "border-primary bg-primary/5 text-foreground",
       )}

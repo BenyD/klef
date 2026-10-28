@@ -44,7 +44,7 @@ afterEach(cleanup);
 
 describe("FilePane (the save loop)", () => {
   it("encrypts the pasted text and persists a blob that decrypts back", async () => {
-    render(<FilePane file={{ id: "f1", name: ".env", project: "p", workspace: "w", environment: null }} onSaved={() => {}} />);
+    render(<FilePane file={{ id: "f1", name: ".env", projectId: "p1", project: "p", workspace: "w", environment: null }} onSaved={() => {}} />);
 
     const textarea = await screen.findByPlaceholderText(/Paste your config/i);
     const content = "API_KEY=abc123\n# comment\nDB_URL=postgres://x\n";
@@ -82,7 +82,7 @@ describe("FilePane (the save loop)", () => {
     };
 
     render(
-      <FilePane file={{ id: "f2", name: ".env", project: "p", workspace: "w", environment: null }} onSaved={() => {}} />,
+      <FilePane file={{ id: "f2", name: ".env", projectId: "p1", project: "p", workspace: "w", environment: null }} onSaved={() => {}} />,
     );
 
     const textarea = await screen.findByDisplayValue("A=1");
@@ -122,7 +122,7 @@ describe("FilePane review folding", () => {
 
     render(
       <FilePane
-        file={{ id: "f3", name: ".env", project: "p", workspace: "w", environment: null }}
+        file={{ id: "f3", name: ".env", projectId: "p1", project: "p", workspace: "w", environment: null }}
         onSaved={() => {}}
       />,
     );
@@ -173,7 +173,7 @@ describe("FilePane format gating", () => {
   it("offers the table view for a dotenv file", async () => {
     render(
       <FilePane
-        file={{ id: "fd", name: ".env", project: "p", workspace: "w", environment: null }}
+        file={{ id: "fd", name: ".env", projectId: "p1", project: "p", workspace: "w", environment: null }}
         onSaved={() => {}}
       />,
     );
@@ -184,7 +184,7 @@ describe("FilePane format gating", () => {
   it("hides the table and shows the format for a non-dotenv file", async () => {
     render(
       <FilePane
-        file={{ id: "fj", name: "config.json", project: "p", workspace: "w", environment: null }}
+        file={{ id: "fj", name: "config.json", projectId: "p1", project: "p", workspace: "w", environment: null }}
         onSaved={() => {}}
       />,
     );
