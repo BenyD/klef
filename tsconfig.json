@@ -1,13 +1,13 @@
+// @klefsh/core: runs in browsers, Workers and Node, so its sources get no Node
+// types. Its tests run on Node and are checked under tsconfig.node.json.
 {
   "compilerOptions": {
     "target": "ESNext",
-    "useDefineForClassFields": true,
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "moduleDetection": "force",
-    "jsx": "react-jsx",
-    "types": ["vite/client"],
+    "types": [],
 
     "strict": true,
     "noUnusedLocals": true,
@@ -17,13 +17,9 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
-    "noEmit": true,
-
-    "paths": { "@/*": ["./src/web/*"] }
+    "noEmit": true
   },
-  "include": ["src", "test", "worker-configuration.d.ts"],
-  "exclude": ["node_modules", "dist", "src/cli"]
+  "include": ["src/shared"],
+  "exclude": ["src/shared/**/*.test.ts"]
 }

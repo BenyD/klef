@@ -14,7 +14,7 @@ jobs:
     # Dependabot's generated commits carry no Signed-off-by; the DCO exists to
     # cover human contributions, so exempt the bot.
     if: github.event.pull_request.user.login != 'dependabot[bot]'
-    runs-on: namespace-profile-beny
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:

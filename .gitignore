@@ -1,40 +1,8 @@
-# Dependencies
 node_modules/
-
-# Build output
 dist/
-.wrangler/
-
-# Cloudflare / local D1
-.dev.vars
-.dev.vars.*
-!.dev.vars.example
-.prod.vars
-.prod.vars.*
-!.prod.vars.example
-
-# Env / secrets
+coverage/
+*.tsbuildinfo
+*.log
+.DS_Store
 .env
 .env.*
-!.env.example
-
-# Editor / OS
-.DS_Store
-.vscode/
-.idea/
-*.log
-
-# Test / coverage
-coverage/
-
-# TS build info
-*.tsbuildinfo
-
-# Personal (kept local, not part of the public repo)
-PRD.md
-
-# Local agent tooling (machine-local settings and vendored skills)
-.claude/settings.local.json
-.claude/skills/
-.agents/
-skills-lock.json

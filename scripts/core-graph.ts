@@ -43,11 +43,16 @@ export interface CoreGraph {
   violations: string[];
 }
 
-function rel(file: string): string {
-  return path.relative(REPO, file);
-}
-
+/**
+ * Walks the core from `entry`. The default is this checkout; the export
+ * (scripts/oss) passes the core.ts of another tree, such as a past commit
+ * extracted to a temporary directory, so the boundary is judged against the
+ * entry's own src/shared.
+ */
 export function walkCore(entry: string = CORE_ENTRY): CoreGraph {
+  const shared = path.dirname(entry);
+  const root = path.resolve(shared, "../..");
+  const rel = (file: string) => path.relative(root, file);
   const files: string[] = [];
   const packages = new Set<string>();
   const violations: string[] = [];
@@ -63,7 +68,7 @@ export function walkCore(entry: string = CORE_ENTRY): CoreGraph {
     for (const spec of importSpecifiers(readFileSync(file, "utf8"))) {
       if (spec.startsWith(".")) {
         const target = path.resolve(path.dirname(file), spec);
-        if (path.dirname(target) !== SHARED) {
+        if (path.dirname(target) !== shared) {
           violations.push(`${rel(file)} imports ${spec}, which is outside src/shared`);
         } else if (!existsSync(target)) {
           violations.push(`${rel(file)} imports ${spec}, which does not exist`);

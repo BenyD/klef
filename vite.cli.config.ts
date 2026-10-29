@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { defineConfig } from "vite";
 
 // Bundles the CLI into one dependency-free file for publishing.

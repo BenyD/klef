@@ -1,35 +1,46 @@
 # Contributing to Klef
 
 Thanks for your interest in Klef. It's a small, deliberately-scoped project, so
-contributions are welcome but please read this first — especially the
+contributions are welcome but please read this first, especially the
 [Licensing](#licensing-of-contributions) and [Sign-off](#sign-off-developer-certificate-of-origin)
 sections, which apply to every contribution.
 
 ## Before you start
 
 - For anything non-trivial, **open an issue first** to discuss the change. Klef
-  is intentionally minimal and tightly scoped — a quick conversation avoids
+  is intentionally minimal and tightly scoped, and a quick conversation avoids
   wasted work on something that doesn't fit.
 - Small fixes (typos, docs, obvious bugs) can go straight to a PR.
 
 ## Development
 
-Setup, scripts, and the self-hosting walkthrough live in the
-[README](./README.md#develop). In short:
+This repo holds the Klef CLI and `@klefsh/core`, the encryption and env-text
+editing the CLI and the klef.sh web app share. You need Node 22.18 or later
+and pnpm.
 
 ```bash
 pnpm install
-pnpm db:migrate:local
-pnpm dev
+pnpm cli help     # run the CLI from source, no build step
 ```
 
 Before opening a PR, please make sure these pass:
 
 ```bash
-pnpm test         # Vitest: crypto units + Worker/D1 integration
-pnpm typecheck    # tsc --noEmit (app + node configs)
-pnpm build        # typecheck + production build
+pnpm typecheck
+pnpm test
+pnpm build:cli    # bundles the CLI into dist/cli
+pnpm build:core   # builds @klefsh/core into dist/core
 ```
+
+## How a pull request lands
+
+Open issues and pull requests here as usual; CI runs on them here. This repo
+is exported from the maintainer's main repository, which also holds the
+klef.sh server, so `main` here is written only by that export. When a pull
+request is accepted, its commits are applied there with you as the author,
+and the export brings them back here, usually within minutes. The pull
+request is then closed with a link to the commit. Your authorship and
+sign-off carry through unchanged.
 
 ## The crypto contract is load-bearing
 
@@ -41,7 +52,7 @@ be discussed in an issue first and must keep the contract intact. Never weaken
 the "server only ever stores ciphertext" property.
 
 If you believe you've found a security vulnerability, **do not** open a public
-issue or PR — follow the disclosure process in [`SECURITY.md`](./SECURITY.md).
+issue or PR; follow the disclosure process in [`SECURITY.md`](./SECURITY.md).
 
 ## Licensing of contributions
 
@@ -55,20 +66,20 @@ every contribution you submit:
    contribution. In addition to the AGPL license above, you grant **Beny Dishon
    K (the project maintainer, [@BenyD](https://github.com/BenyD))** a perpetual,
    worldwide, non-exclusive, royalty-free, irrevocable license to use,
-   reproduce, modify, sublicense, and distribute your contribution — including
+   reproduce, modify, sublicense, and distribute your contribution, including
    the right to relicense it under **other terms, including proprietary or
-   commercial licenses** — as part of Klef or a derivative of it.
+   commercial licenses**, as part of Klef or a derivative of it.
 
 Why this exists: it keeps the door open for a future hosted or commercial
 edition of Klef without having to track down and re-license every past
-contribution. It does not take away your rights — you keep your copyright and
+contribution. It does not take away your rights: you keep your copyright and
 can use your own contribution however you like.
 
 ## Sign-off (Developer Certificate of Origin)
 
 Klef uses the [Developer Certificate of Origin](https://developercertificate.org/)
 (DCO). It's a lightweight way for you to certify that you wrote, or otherwise
-have the right to submit, the code you're contributing — no separate paperwork or
+have the right to submit, the code you're contributing, with no separate paperwork or
 account signup.
 
 To sign off, add the `-s` flag when you commit:
@@ -84,7 +95,7 @@ Signed-off-by: Your Name <your.email@example.com>
 ```
 
 Use your real name and an email you can be reached at. **Every commit in a pull
-request must be signed off** — CI enforces this. If you forget, you can
+request must be signed off**, and CI enforces this. If you forget, you can
 retroactively sign off the commits on your branch with:
 
 ```bash
