@@ -2,7 +2,7 @@
   "name": "klef-cli",
   "private": true,
   "description": "The Klef CLI and @klefsh/core: end-to-end encrypted .env sync, built so a coding agent can run it without seeing a value.",
-  "license": "AGPL-3.0-or-later",
+  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@11.9.0",
   "engines": {

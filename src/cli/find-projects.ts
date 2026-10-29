@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Finding linked checkouts under a directory, for `restore`. A bounded walk:
 // a projects folder is wide but shallow, and the places worth skipping

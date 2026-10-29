@@ -56,14 +56,16 @@ issue or PR; follow the disclosure process in [`SECURITY.md`](./SECURITY.md).
 
 ## Licensing of contributions
 
-Klef is licensed under [**AGPL-3.0-or-later**](./LICENSE). Two things apply to
+Klef's CLI and open core are licensed under [**MIT**](./LICENSE) (versions up
+to the `monorepo-final` tag stay AGPL-3.0-or-later; see [`NOTICE`](./NOTICE)).
+Two things apply to
 every contribution you submit:
 
 1. **Inbound = outbound.** Your contributions are provided under the same
-   license as the project, AGPL-3.0-or-later.
+   license as the project, MIT.
 
 2. **Commercial-relicensing grant.** You **retain copyright** to your
-   contribution. In addition to the AGPL license above, you grant **Beny Dishon
+   contribution. In addition to the MIT license above, you grant **Beny Dishon
    K (the project maintainer, [@BenyD](https://github.com/BenyD))** a perpetual,
    worldwide, non-exclusive, royalty-free, irrevocable license to use,
    reproduce, modify, sublicense, and distribute your contribution, including

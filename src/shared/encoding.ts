@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Encoding primitives for the crypto contract. Pure, isomorphic (browser /
 // workerd / node), no dependencies. See ./BLOB_FORMAT.md.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Every command and flag klef has, in one table. Help, flag validation,
 // "did you mean" and shell completion are all generated from it, so the four

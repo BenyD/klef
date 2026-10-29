@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Each linked file's sync state as far as it can be told without the
 // passphrase, for `status` and for the end of `setup`: the local file's mtime

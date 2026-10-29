@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // One lock policy for every client. The web vault's inactivity auto-lock and
 // the CLI's unlock agent both read this, so "the key is forgotten after 15

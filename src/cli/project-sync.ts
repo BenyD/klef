@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // The I/O half of `sync`, `diff` and `restore`: read both copies of each file,
 // decide with sync-plan.ts, and carry the decision out. The commands differ

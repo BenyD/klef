@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // The device-login codes, shared by the Worker that issues them and the CLI
 // that presents them.

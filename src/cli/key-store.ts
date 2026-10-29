@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Remembering the vault key on this device, so pull, push and sync never ask
 // for the passphrase again after one unlock (or after a `klef login` the

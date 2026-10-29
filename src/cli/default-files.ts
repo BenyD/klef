@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // The env files a repo syncs when nobody has said otherwise. Pure: names in,
 // a `files` list out, so `link` and its edge cases are tested without a vault.

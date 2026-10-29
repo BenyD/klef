@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // The unlock agent: a background process that holds the DEK in memory so one
 // passphrase covers a run of pulls and pushes. docs/AGENT_ACCESS.md §6.

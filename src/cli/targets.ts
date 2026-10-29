@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Which files a pull or push covers. Pure: the flags and `.klef.json` in, a
 // list of (vault name, local path) out, so `--all` and its edge cases are

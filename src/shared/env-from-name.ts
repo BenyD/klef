@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // A file's environment, worked out from its name. `.env.local` is always
 // development and `.env.production` always production, so a label on those

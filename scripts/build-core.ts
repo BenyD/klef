@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Builds the @klefsh/core package into dist/core: exactly the files
 // src/shared/core.ts reaches, compiled by tsc to readable JavaScript with
@@ -20,7 +20,7 @@ import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { CORE_ENTRY, REPO, SHARED, walkCore } from "./core-graph.ts";
+import { CORE_ENTRY, REPO, SHARED, openLicense, walkCore } from "./core-graph.ts";
 
 const OUT = path.join(REPO, "dist/core");
 
@@ -76,7 +76,7 @@ try {
 }
 await copyFile(path.join(SHARED, "BLOB_FORMAT.md"), path.join(OUT, "BLOB_FORMAT.md"));
 await copyFile(path.join(REPO, "packages/core/README.md"), path.join(OUT, "README.md"));
-await copyFile(path.join(REPO, "LICENSE"), path.join(OUT, "LICENSE"));
+await copyFile(openLicense(), path.join(OUT, "LICENSE"));
 await writeFile(
   path.join(OUT, "package.json"),
   await readFile(path.join(REPO, "packages/core/package.json"), "utf8"),

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // The personal access token *format*, shared by the client (which renders a
 // token's identifying prefix) and the Worker (which mints and validates them).

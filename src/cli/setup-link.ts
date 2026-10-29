@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // How `klef setup` links a directory: to a whole project rather than one
 // file, so `pull --all` brings down .env.local and .env.production together.

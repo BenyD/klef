@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // The instruction files `klef setup` writes for coding agents, and how they
 // are merged into what is already on disk. Pure: the command does the

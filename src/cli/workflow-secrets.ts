@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Which secrets a repository's GitHub Actions workflows reference, for
 // `klef audit github`. Comparing GitHub's secrets with all of .env.production

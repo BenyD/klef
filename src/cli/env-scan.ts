@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Finding env files in a checkout that `.klef.json` does not list, for
 // `klef scan`: in a monorepo, apps/web/.env.local is easy to miss. Names and

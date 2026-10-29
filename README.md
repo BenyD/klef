@@ -206,4 +206,4 @@ vulnerabilities.
 
 ## License
 
-[AGPL-3.0-or-later](./LICENSE).
+[MIT](./LICENSE). Versions up to the `monorepo-final` tag, and every CLI release before the first MIT one, stay AGPL-3.0-or-later; see [`NOTICE`](./NOTICE).

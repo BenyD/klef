@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // `minVersion` in `.klef.json`: the oldest CLI a repo's link expects. A repo
 // set up with a newer CLI can depend on what it wrote (a `files` list, file

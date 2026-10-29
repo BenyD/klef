@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Line-level parsing and surgical edits for env text, backing the KV table
 // editor. The crypto contract stores the raw pasted text byte-for-byte (see

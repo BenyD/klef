@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // How a machine is named when the CLI signs in: on the approval page, and as
 // the name of the access token that login creates. The CLI owns it, since the
