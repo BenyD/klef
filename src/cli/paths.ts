@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Where the CLI keeps its state. Resolution is a pure function of the
 // environment and home directory so it can be tested without touching a real

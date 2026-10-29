@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // The checks most commands start with, failing the same way everywhere: as a
 // CliError with a code, an exit status and the command that moves things on.

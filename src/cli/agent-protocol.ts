@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // The wire format between the CLI and its unlock agent. Pure, so the parsing
 // that guards the agent's socket is tested without opening one.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // `.klef.json` — the per-repo link between a working directory and a file in
 // the vault. Committed, and deliberately free of anything secret: it holds

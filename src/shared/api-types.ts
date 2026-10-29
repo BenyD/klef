@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // App-level DTOs shared between the Worker API and the client. These describe
 // navigation structure (plaintext names) — NOT the crypto contract (see

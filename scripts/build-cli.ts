@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Turns the bundle from vite.cli.config.ts into a publishable package.
 //
@@ -10,6 +10,7 @@
 import { chmod, copyFile, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { CLI_VERSION } from "../src/cli/version.ts";
+import { openLicense } from "./core-graph.ts";
 
 const OUT = path.resolve(import.meta.dirname, "../dist/cli");
 
@@ -83,7 +84,7 @@ await writeFile(
       version: CLI_VERSION,
       description:
         "Zero-knowledge .env sync. Pull your environment files without the server ever seeing them.",
-      license: "AGPL-3.0-or-later",
+      license: "MIT",
       type: "module",
       bin: { klef: "index.js" },
       // Node's type stripping is why there is no build step in the repo; the
@@ -106,10 +107,7 @@ await writeFile(
 // install route.
 await chmod(bundle, 0o755);
 
-await copyFile(
-  path.resolve(import.meta.dirname, "../LICENSE"),
-  path.join(OUT, "LICENSE"),
-);
+await copyFile(openLicense(), path.join(OUT, "LICENSE"));
 
 await writeFile(
   path.join(OUT, "README.md"),
@@ -130,7 +128,7 @@ the server — can read your values.
 Nothing is ever printed: \`pull\` writes a file (mode 0600) and reports a count.
 That is deliberate, so the command is safe to hand to a coding agent.
 
-Source: [github.com/BenyD/klef](https://github.com/BenyD/klef) (AGPL-3.0-or-later)
+Source: [github.com/BenyD/klef](https://github.com/BenyD/klef) (MIT)
 `,
 );
 

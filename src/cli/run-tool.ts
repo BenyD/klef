@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Running the user's own `vercel`, `gh` and `wrangler`, for `audit`. Klef
 // holds no token for any of them: each tool uses its own sign-in.

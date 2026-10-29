@@ -1,0 +1,13 @@
+Klef CLI and open core
+Copyright (c) 2026 Beny Dishon K
+
+This repository is licensed under the MIT License (see LICENSE).
+
+Earlier versions were licensed under the GNU Affero General Public License,
+version 3 or later (AGPL-3.0-or-later), and remain so. That covers every
+commit up to and including the tag `monorepo-final` (421c5e4), the commits
+that followed it before the relicense, and every @klefsh/cli release
+published before the first MIT release. The licence on those versions does
+not change.
+
+The Klef server and web app (klef.sh) are not part of this repository.

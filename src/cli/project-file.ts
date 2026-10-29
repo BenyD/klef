@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Reading and writing `.klef.json` on disk. The parsing and validation is pure
 // and lives in project-config.ts; this is only the filesystem half.

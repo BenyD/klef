@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // The public surface of @klefsh/core: everything that decides what gets
 // encrypted and how. The CLI and the web app both run this code, and it is

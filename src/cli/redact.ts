@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Masking secret values in a stream of text, for `klef run`. The app gets
 // the real values; whatever reads its output (a terminal, a log, a coding

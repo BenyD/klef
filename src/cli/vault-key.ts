@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // One way for commands to encrypt and decrypt, whichever way the vault was
 // unlocked: through a running unlock agent if it holds this vault's key, or by

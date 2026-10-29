@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Talking to a running unlock agent. Every function here treats "no agent" as
 // an ordinary answer rather than an error: a missing socket, or a stale one

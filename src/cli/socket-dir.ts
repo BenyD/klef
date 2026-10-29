@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // The directory the unlock agent's socket lives in, and the one check that
 // keeps other users out of it.

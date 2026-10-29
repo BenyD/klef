@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Single source of the CLI's version: `klef --version` prints it, and
 // scripts/build-cli.ts stamps it into the published package.json. Keeping one

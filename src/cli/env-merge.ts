@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Merging a local env file and the vault's copy by key, for `sync --merge`.
 // Pure: three texts in, one text and a report of key names out.

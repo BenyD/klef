@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { homedir } from "node:os";
 import { agentSocketPath } from "../paths.ts";

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Minimal argv parsing. Pure and dependency-free so it can be tested without
 // touching a process — the command surface is small enough that a real parser

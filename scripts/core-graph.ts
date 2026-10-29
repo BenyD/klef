@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // The import graph of @klefsh/core, walked from src/shared/core.ts. Shared by
 // scripts/core-boundary.test.ts, which enforces the boundary, and
@@ -11,6 +11,16 @@ import path from "node:path";
 export const REPO = path.resolve(import.meta.dirname, "..");
 export const SHARED = path.join(REPO, "src/shared");
 export const CORE_ENTRY = path.join(SHARED, "core.ts");
+
+/**
+ * The licence the CLI and core packages ship with. In the private repo the
+ * root LICENSE is its own and the open one sits in the oss/ overlay; in the
+ * public repo the overlay is the root, so there it is plain LICENSE.
+ */
+export function openLicense(root: string = REPO): string {
+  const overlay = path.join(root, "oss/LICENSE");
+  return existsSync(overlay) ? overlay : path.join(root, "LICENSE");
+}
 
 /** The only package the core may import. It supplies Argon2id. */
 export const CORE_PACKAGES: ReadonlySet<string> = new Set(["hash-wasm"]);

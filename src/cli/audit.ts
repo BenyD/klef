@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Which key names a deploy platform holds that a local env file does not, and
 // the other way round. Read-only on every side: klef lists through the user's

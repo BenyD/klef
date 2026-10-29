@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Line-level diff for env files. Pure and dependency-free. Used in-browser to
 // show the user what changed between the stored version and their paste before

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Klef crypto contract — wire types. See ./BLOB_FORMAT.md for the prose spec.
 // All binary fields are base64 (standard, padded) unless noted.

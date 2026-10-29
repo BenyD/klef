@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Env values as a program sees them. The vault stores raw text, and the line
 // parser shared with the web app keeps a value exactly as written:

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // What differs between two copies of an env file, by key. Pure, and shaped so
 // that a value cannot get out: the result holds key names and nothing else,

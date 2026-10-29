@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Which way each file should move. Pure: both copies and the last-synced
 // record in, one decision out, so every case below is a unit test rather than

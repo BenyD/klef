@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Klef crypto core. Pure, headless, dependency-light (hash-wasm for Argon2id;
 // otherwise native WebCrypto). This is the linchpin — everything trusts it.

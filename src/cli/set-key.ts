@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Setting one key in a local env file, as `klef set` and `klef recover` do.
 // Pure: text in, text out, editing only that key's line the way the web

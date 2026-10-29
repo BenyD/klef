@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // What each local env file looked like the last time it matched the vault, so
 // `sync` can tell which side changed since. One record per local file: the

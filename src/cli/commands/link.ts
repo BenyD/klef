@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { command } from "../invocation.ts";
 import { CLI_VERSION } from "../version.ts";

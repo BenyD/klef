@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Klef's client-side encryption, blob format and env-text editing: the code that decides what the server is allowed to see.",
-  "license": "AGPL-3.0-or-later",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {
