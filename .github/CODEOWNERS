@@ -1,3 +1,0 @@
-# Every PR touching any path auto-requests a review from the maintainer.
-# Last matching pattern wins, so keep broad rules above narrow overrides.
-* @BenyD

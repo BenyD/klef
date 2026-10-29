@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
 // Line-level parsing and surgical edits for env text, backing the KV table
 // editor. The crypto contract stores the raw pasted text byte-for-byte (see
 // src/shared/BLOB_FORMAT.md), so the table editor must never re-serialize the

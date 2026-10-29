@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
 // Cross-environment drift: which keys a project's env files share, which are
 // missing from some, and where values disagree. All comparison is on decrypted
 // text in the browser — the server never sees keys or values — using the same
