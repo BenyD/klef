@@ -1,0 +1,84 @@
+name: Release
+
+# Publishes @klefsh/cli to npm whenever main carries a version
+# (src/cli/version.ts) that npm does not have yet, then tags the commit
+# cli-v<version>. Trusted publishing: npm accepts this workflow's OIDC token,
+# so no npm token exists anywhere, and the package gets a provenance
+# statement linking it to this repo and commit. Set up once on npmjs.com:
+# @klefsh/cli > Settings > Trusted publisher > GitHub Actions, repository
+# BenyD/klef, workflow release.yml.
+on:
+  push:
+    branches: [main]
+    paths: [src/cli/version.ts]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish the CLI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the cli-v<version> tag and release
+      id-token: write # npm trusted publishing and provenance
+    steps:
+      - uses: actions/checkout@v7
+
+      # Reads the pnpm version from package.json's `packageManager` field.
+      - uses: pnpm/action-setup@v6.1.0
+
+      # Node 24 for its npm 11, which trusted publishing needs (11.5.1+).
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          check-latest: true
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      # A version npm already has is not an error: the push changed
+      # version.ts some other way, or this is a rerun after a publish.
+      - name: Check the version
+        id: version
+        run: |
+          v=$(node -e 'import("./src/cli/version.ts").then((m) => console.log(m.CLI_VERSION))')
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if npm view "@klefsh/cli@$v" version > /dev/null 2>&1; then
+            echo "@klefsh/cli@$v is already on npm; nothing to publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.version.outputs.publish == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck and test
+        if: steps.version.outputs.publish == 'true'
+        run: pnpm typecheck && pnpm test
+
+      - name: Build the CLI
+        if: steps.version.outputs.publish == 'true'
+        run: pnpm build:cli
+
+      # `./` keeps npm from reading dist/cli as a GitHub shorthand, and a
+      # scoped package publishes restricted without --access public.
+      - name: Publish to npm
+        if: steps.version.outputs.publish == 'true'
+        run: npm publish ./dist/cli --access public --provenance
+
+      - name: Tag the release
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "cli-v$VERSION" --target "$GITHUB_SHA" \
+            --title "CLI $VERSION" \
+            --notes "Published to npm as [@klefsh/cli@$VERSION](https://www.npmjs.com/package/@klefsh/cli/v/$VERSION), with provenance. What changed: https://klef.sh/docs/changelog/"
