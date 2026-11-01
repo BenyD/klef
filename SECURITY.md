@@ -103,6 +103,12 @@ Agent instructions tell agents to use `klef run` rather than opening the env
 file, which would put every value in their context at once, and never to
 pass `--no-redact`.
 
+`klef ask NAME` adds no new path for a value. It opens the vault file in
+the web app with the key ready to fill in; the link carries only the file's
+id, the variable's name and the agent's reason (shown as text). The user
+saves an ordinary encrypted version, and the CLI, which needs the device
+unlocked, reads it like `pull` does and sets that one key locally.
+
 - **It never prints a secret value.** There is no `klef get`, no `--print`.
   `pull` writes a file at mode `0600` and reports a count; `push` reports how
   many lines changed. Errors are redacted on the way out as a backstop.

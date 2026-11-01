@@ -25,6 +25,7 @@ export const EXIT = {
   locked: 4,
   conflict: 5,
   notFound: 6,
+  timedOut: 7,
   differs: 10,
   interrupted: 130,
 } as const;
@@ -42,6 +43,7 @@ export type ErrorCode =
   | "not_linked"
   | "not_found"
   | "conflict"
+  | "timed_out"
   | "unsafe_path"
   | "network"
   | "server"
@@ -61,6 +63,7 @@ const EXIT_FOR: Record<ErrorCode, number> = {
   not_linked: EXIT.notFound,
   not_found: EXIT.notFound,
   conflict: EXIT.conflict,
+  timed_out: EXIT.timedOut,
   unsafe_path: EXIT.usage,
   network: EXIT.error,
   server: EXIT.error,

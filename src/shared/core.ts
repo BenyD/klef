@@ -16,6 +16,7 @@ export * from "./crypto.ts";
 export * from "./device-code.ts";
 export * from "./device-seal.ts";
 export * from "./device-unlock.ts";
+export * from "./ask-link.ts";
 export * from "./access-token-format.ts";
 export * from "./api-types.ts";
 export * from "./env-table.ts";

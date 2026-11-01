@@ -247,6 +247,29 @@ export const COMMANDS: CommandSpec[] = [
     json: "{ name, file, path, added }",
   },
   {
+    name: "ask",
+    group: "Everyday",
+    args: "<NAME>",
+    summary: "Ask the user for a secret in the browser, so it never goes through chat",
+    description:
+      "For coding agents: instead of asking the user to paste a key into chat, run this and wait. " +
+      "It opens the vault file in the web app (the link is also printed) with the key ready to fill " +
+      "in. Once the user saves a version that gives it a value, klef sets that one key in the local " +
+      "file, the same edit as set, and exits 0; 7 if it isn't saved in time. Needs this device " +
+      "unlocked, as klef run does. The value is never printed.",
+    flags: [
+      { name: "reason", value: "words", description: "Why it is needed, shown above the editor" },
+      { name: "file", value: "name", description: "Which env file (default: the linked one)" },
+      { name: "timeout", value: "time", description: "How long to wait, up to 15m (default 15m)" },
+      { name: "no-open", description: "Print the link without opening a browser" },
+    ],
+    examples: [
+      ['klef ask STRIPE_SECRET_KEY --reason "Stripe test checkout"', "Wait for the user to save it"],
+      ["klef ask DATABASE_URL --file .env.production --timeout 5m", "Into another listed file"],
+    ],
+    json: "{ name, file, path, local: written | skipped, added, version }",
+  },
+  {
     name: "recover",
     group: "Everyday",
     args: "<NAME> --from <version>",
@@ -537,6 +560,7 @@ export function topicHelp(topic: (typeof TOPICS)[number], cli: string): string {
         ["4", "Locked: this device needs unlocking (klef login in the browser, or klef unlock)"],
         ["5", "Conflict: both sides changed; nothing was written"],
         ["6", "Not found: not linked here, or no such workspace, project or file"],
+        ["7", "Timed out: the value klef ask waited for was not saved in time"],
         ["10", "Differences found, only with --exit-code (diff, audit)"],
         ["130", "Interrupted (Ctrl-C)"],
       ]),
@@ -595,6 +619,7 @@ export function topicHelp(topic: (typeof TOPICS)[number], cli: string): string {
       ["no_terminal", "A person must do this at a terminal (exit 4)"],
       ["wrong_passphrase", "The passphrase did not unlock the vault (exit 4)"],
       ["conflict", "Both sides changed; nothing was written (exit 5)"],
+      ["timed_out", "klef ask waited and the value was not saved in time; nothing was written (exit 7)"],
       ["not_linked", "No .klef.json here (exit 6)"],
       ["not_found", "No such workspace, project or file (exit 6)"],
       ["no_vault", "The account has no vault yet (exit 6)"],

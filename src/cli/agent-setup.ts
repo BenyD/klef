@@ -48,7 +48,7 @@ export function isSetupTarget(value: string): value is SetupTarget {
 /** One line for the description fields that decide when an agent loads this. */
 const SUMMARY =
   "Sync this project's .env files with the Klef vault using the klef CLI " +
-  "(status, sync, pull, push, run, login) without ever reading or printing a secret value.";
+  "(status, sync, pull, push, run, ask, login) without ever reading or printing a secret value.";
 
 /**
  * The shared body. `cli` is how the user reaches the CLI ("klef" or
@@ -79,6 +79,23 @@ value, which is what makes it safe for you to run.
   before it reaches you. With \`--from-vault\` it needs no file on disk
   at all. Pull only when a tool reads \`.env\` itself and cannot take
   the environment.
+
+### When you need a value that isn't there
+
+Never ask the user to paste a secret into the chat, and never write one into
+a file yourself. If a task needs a variable the env file lacks (or one the
+user says is wrong), ask for it through Klef:
+
+    ${cli} ask STRIPE_SECRET_KEY --reason "Stripe test checkout" --json
+
+It opens that env file in Klef in the user's browser, with the key ready to
+fill in (the link is also printed on stderr: pass it on if no browser
+opened), and waits up to 15 minutes for them to save it. It goes into the
+vault and the local env file, and you only learn that it is set. Tell the
+user to look for the browser tab, then wait for the command; don't run it
+twice. Exit 0: carry on with \`${cli} run -- <command>\`. \`timed_out\`
+(exit 7): check with the user before asking again, never ask for the value
+in chat. \`locked\` (exit 4): handle it as below, then ask again.
 
 ### Using a value without reading it
 
@@ -116,6 +133,7 @@ unlocked, each file's state (\`in-sync\`, \`edited-here\`, \`changed-in-vault\`,
 
     ${cli} status --json         # the one call to start with
     ${cli} run -- npm run dev    # run with the variables, output redacted
+    ${cli} ask NAME --json       # the user enters a missing value in the browser
     ${cli} sync --dry-run --json # what a sync would do, writing nothing
     ${cli} sync --yes            # pull or push each file, whichever side changed
     ${cli} diff --all --json     # which keys differ (names, never values)

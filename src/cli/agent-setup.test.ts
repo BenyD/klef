@@ -34,6 +34,12 @@ describe("instructionsBody", () => {
     }
   });
 
+  it("tells the agent to ask through klef, never for a pasted secret", () => {
+    expect(body).toMatch(/Never ask the user to paste a secret into the chat/);
+    expect(body).toContain(`${CLI} ask STRIPE_SECRET_KEY --reason`);
+    expect(body).toMatch(/`timed_out`\s+\(exit 7\)/);
+  });
+
   it("explains where the synced files are listed", () => {
     expect(body).toContain(".klef.json");
     expect(body).toMatch(/`files` list/);
