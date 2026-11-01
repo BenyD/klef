@@ -131,7 +131,7 @@ agent: where it would need a person, it stops with one of these codes.
 
 - **\`locked\` or \`no_terminal\` (exit 4)**: this device is not unlocked
   yet. Run \`${cli} login\` and tell the user to approve it in the browser
-  with "Also unlock the CLI on this device" ticked (one passkey touch, or
+  with "Approve and unlock" (one passkey touch, or
   their passphrase, typed in the browser and never in the chat). The CLI
   then keeps the key on this device and pull, push and sync stop asking.
   If the user prefers, they can run \`${cli} unlock\` in their own terminal
