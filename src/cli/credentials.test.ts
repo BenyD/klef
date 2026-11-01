@@ -2,7 +2,14 @@ import { mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { clearToken, loadToken, saveToken, validateToken } from "./credentials.ts";
+import {
+  clearToken,
+  loadToken,
+  saveToken,
+  storeInKeyring,
+  type KeyringEntry,
+  validateToken,
+} from "./credentials.ts";
 import { generateToken } from "../shared/access-token-format.ts";
 
 // KLEF_NO_KEYCHAIN keeps every case on the file path: a test run must never
@@ -90,6 +97,40 @@ describe("token storage", () => {
     await saveToken(token, env);
     const raw = await readFile(path.join(dir, "credentials.json"), "utf8");
     expect(Object.keys(JSON.parse(raw))).toEqual(["token"]);
+  });
+});
+
+// A keychain that accepts the write but hands back something else (or
+// nothing) must not count as a save: login would claim a token that every
+// later command then reports missing.
+describe("storeInKeyring", () => {
+  function fakeEntry(readBack: (stored: string) => string | null): KeyringEntry {
+    let stored: string | null = null;
+    return {
+      setPassword: (p) => void (stored = p),
+      getPassword: () => (stored === null ? null : readBack(stored)),
+      deletePassword: () => true,
+    };
+  }
+
+  it("counts a write only when the same token reads back", () => {
+    expect(storeInKeyring(fakeEntry((s) => s), "tok")).toBe(true);
+  });
+
+  it("rejects a write that reads back empty or different", () => {
+    expect(storeInKeyring(fakeEntry(() => null), "tok")).toBe(false);
+    expect(storeInKeyring(fakeEntry(() => "other"), "tok")).toBe(false);
+  });
+
+  it("rejects a keychain that throws", () => {
+    const refusing: KeyringEntry = {
+      setPassword: () => {
+        throw new Error("denied");
+      },
+      getPassword: () => null,
+      deletePassword: () => false,
+    };
+    expect(storeInKeyring(refusing, "tok")).toBe(false);
   });
 });
 

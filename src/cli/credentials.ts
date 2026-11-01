@@ -33,7 +33,7 @@ export interface StoredToken {
   source: TokenSource;
 }
 
-interface KeyringEntry {
+export interface KeyringEntry {
   getPassword(): string | null;
   setPassword(password: string): void;
   deletePassword(): boolean;
@@ -46,9 +46,10 @@ interface KeyringEntry {
  * rather than throwing.
  */
 async function keyringEntry(env: NodeJS.ProcessEnv): Promise<KeyringEntry | null> {
-  // Escape hatch for people who would rather not use the OS keychain, and the
-  // switch the tests use so a test run can never write to a real keychain.
-  if (env.KLEF_NO_KEYCHAIN) return null;
+  // Escape hatch for people who would rather not use the OS keychain, and
+  // VITEST so a test run can never touch a real keychain whatever env it
+  // passes (the vault key store has the same guard).
+  if (env.KLEF_NO_KEYCHAIN || process.env.VITEST) return null;
   try {
     const mod = (await import("@napi-rs/keyring")) as {
       Entry: new (service: string, account: string) => KeyringEntry;
@@ -59,21 +60,31 @@ async function keyringEntry(env: NodeJS.ProcessEnv): Promise<KeyringEntry | null
   }
 }
 
+/**
+ * Write the token to the keychain and read it back. True only if the same
+ * token comes back: a write that "succeeds" but cannot be read would leave
+ * login saying it saved a token that every later command then can't find.
+ */
+export function storeInKeyring(entry: KeyringEntry, token: string): boolean {
+  try {
+    entry.setPassword(token);
+    return entry.getPassword() === token;
+  } catch {
+    // Keychain present but refused (locked, denied).
+    return false;
+  }
+}
+
 export async function saveToken(
   token: string,
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<TokenSource> {
   const entry = await keyringEntry(env);
-  if (entry) {
-    try {
-      entry.setPassword(token);
-      // Drop any earlier file copy, so the token doesn't linger on disk after
-      // a machine gains a working keychain.
-      await rm(credentialsFile(env, homedir()), { force: true });
-      return "keychain";
-    } catch {
-      // Keychain present but refused (locked, denied). Fall through to file.
-    }
+  if (entry && storeInKeyring(entry, token)) {
+    // Drop any earlier file copy, so the token doesn't linger on disk after
+    // a machine gains a working keychain.
+    await rm(credentialsFile(env, homedir()), { force: true });
+    return "keychain";
   }
 
   const dir = configDir(env, homedir());
