@@ -135,6 +135,8 @@ export interface TeamInfo {
   trialEndsAt: string | null;
   /** Paid, in its trial, or neither (read-only until its owner picks a plan). */
   plan: TeamPlan;
+  /** People in the team, owner included. A team is deleted only once its owner is alone in it. */
+  members: number;
 }
 
 /** Whether a team can grow: "active" when paid, "trial" in its free days, else "inactive" (src/api/team-billing.ts). */

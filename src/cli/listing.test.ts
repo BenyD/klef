@@ -263,7 +263,7 @@ describe("team files in the listing", () => {
   it("marks teams, read-only files and files you cannot open", () => {
     const tree: VaultTree = {
       workspaces: [{
-        id: "w", name: "Acme", icon: null, createdAt: "", team: { keyGen: 1, role: "member", trialEndsAt: null, plan: "trial" },
+        id: "w", name: "Acme", icon: null, createdAt: "", team: { keyGen: 1, role: "member", trialEndsAt: null, plan: "trial", members: 2 },
         projects: [{ id: "p", name: "api", framework: null, icon: null, createdAt: "", files: [
           { id: "a", name: ".env.development", currentVersionId: "v", environment: "development", createdAt: "", access: "write" },
           { id: "b", name: ".env.staging", currentVersionId: "v", environment: "staging", createdAt: "", access: "read" },

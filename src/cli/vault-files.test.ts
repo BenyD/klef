@@ -27,7 +27,7 @@ const tree: VaultTree = {
       name: "Acme",
       icon: null,
       createdAt: "",
-      team: { keyGen: 1, role: "member", trialEndsAt: null, plan: "trial" },
+      team: { keyGen: 1, role: "member", trialEndsAt: null, plan: "trial", members: 2 },
       projects: [
         {
           id: PROJECT,
