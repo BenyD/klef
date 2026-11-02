@@ -35,10 +35,13 @@ function has(names: readonly string[], name: string): boolean {
  * The file `link` binds when no file was named: the first default the vault
  * project already has, else `.env`, which is what `link` defaulted to before
  * there were defaults. Only vault names count, since the linked file has to
- * exist there to resolve.
+ * exist there to resolve; in a team, only the ones this person can open.
+ * Without `.env` either, `.env.development`, then the first file there is,
+ * so a project named for its environments still links somewhere usable.
  */
 export function defaultLinkedFile(vaultNames: readonly string[]): string {
-  return DEFAULT_FILES.find((name) => has(vaultNames, name)) ?? ".env";
+  const preferred = [...DEFAULT_FILES, ".env", ".env.development"].find((name) => has(vaultNames, name));
+  return preferred ?? vaultNames[0] ?? ".env";
 }
 
 /**

@@ -41,6 +41,8 @@ export async function link(
     return listAvailable(tree, cwd);
   }
 
+  // Defaults come only from files this person can open: a team member
+  // without production access is not linked to .env.production.
   const vaultNames = projectFileNames(tree, workspace, project);
   const localNames = DEFAULT_FILES.filter((name) => existsSync(path.join(cwd, name)));
   const file =
@@ -86,7 +88,9 @@ export async function link(
   );
   say(`  Files   ${files.map((entry) => entry.file).join(", ")}`);
   say(`  Config  ${path.relative(cwd, written) || CONFIG_FILENAME} ${style.dim("(names only, safe to commit)")}`);
-  if (!resolved.currentVersionId) {
+  if (resolved.access === "none") {
+    note(`You do not have access to ${resolved.fileName} in ${resolved.workspaceName}. A team admin can give it to you in the web app.`);
+  } else if (!resolved.currentVersionId) {
     note(`${resolved.fileName} has no saved version yet, so there is nothing to pull.`);
   }
   note(`Next: ${cmd(command("sync"), true)} to bring the files here.`);
@@ -108,7 +112,8 @@ function projectFileNames(tree: VaultTree, workspace: string, project: string): 
     tree.workspaces
       .find((w) => same(w.name, workspace))
       ?.projects.find((p) => same(p.name, project))
-      ?.files.map((f) => f.name) ?? []
+      ?.files.filter((f) => f.access !== "none")
+      .map((f) => f.name) ?? []
   );
 }
 

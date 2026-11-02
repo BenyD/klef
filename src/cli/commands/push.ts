@@ -6,7 +6,7 @@ import { diffLines, diffStats, finalNewlineNote, isUnchanged } from "../../share
 import { requireApi } from "../session.ts";
 import { requireAccess, resolveTarget, type ResolvedTarget } from "../resolve.ts";
 import { confirmOrFail, requireConfig, requireVault, unlockedVault } from "../common.ts";
-import { CliError, done, emit, say, style } from "../ui.ts";
+import { CliError, done, emit, say, style, warn } from "../ui.ts";
 import path from "node:path";
 import { syncTargets, type SyncTarget } from "../targets.ts";
 import { countVariables, describePush } from "../output.ts";
@@ -14,7 +14,7 @@ import { confirm } from "../prompt.ts";
 import { pullTarget } from "./pull.ts";
 import { resolveWritePath } from "../write-path.ts";
 import { flagValue, hasFlag, type ParsedArgs } from "../args.ts";
-import { recordSynced } from "../sync-state.ts";
+import { loadSyncState, recordSynced } from "../sync-state.ts";
 import { vaultFiles } from "../vault-files.ts";
 
 /**
@@ -80,7 +80,17 @@ export async function push(
   const files = vaultFiles(api, tree, cipher);
 
   type Stats = { variables: number; added: number; removed: number };
-  const pending: { resolved: ResolvedTarget; source: string; plaintext: string; summary: string; stats: Stats }[] = [];
+  const pending: {
+    resolved: ResolvedTarget;
+    source: string;
+    plaintext: string;
+    summary: string;
+    stats: Stats;
+    base: string | null;
+  }[] = [];
+  // Which vault version each file last matched on this machine, to say when
+  // someone else has saved since.
+  const baselines = await loadSyncState(env);
   const results: Record<string, unknown>[] = [];
   // What `sync` measures "edited since" against: every file that now matches
   // the vault, whether it was pushed or already the same.
@@ -109,8 +119,17 @@ export async function push(
     );
     const newline = finalNewlineNote(stored, plaintext);
     if (newline) say(`  ${newline}`);
+    const baseline = baselines[path.resolve(source)];
+    if (version && baseline && baseline.versionId !== version.id) {
+      warn(
+        `Someone saved a newer version of ${resolved.fileName} since you last synced it. Pushing replaces it; ${command("sync")} merges instead.`,
+        "vault_changed",
+      );
+    }
     if (version) say(style.dim("  The version it replaces is kept and can be restored."));
-    pending.push({ resolved, source, plaintext, summary, stats });
+    // The version this diff was made against: if another save lands before
+    // ours, the server refuses ours rather than replacing theirs unseen.
+    pending.push({ resolved, source, plaintext, summary, stats, base: version?.id ?? null });
   }
 
   if (pending.length === 0) {
@@ -127,8 +146,8 @@ export async function push(
     return 1;
   }
 
-  for (const { resolved, source, plaintext, summary, stats } of pending) {
-    const saved = await files.save(resolved.fileId, plaintext);
+  for (const { resolved, source, plaintext, summary, stats, base } of pending) {
+    const saved = await files.save(resolved.fileId, plaintext, base);
     synced.push({ file: source, versionId: saved.id });
     results.push({ file: resolved.fileName, path: path.relative(cwd, source), action: "pushed", ...stats, version: saved.id });
     done(`Pushed ${summary} to ${resolved.fileName} (version ${saved.id.slice(0, 8)})`);

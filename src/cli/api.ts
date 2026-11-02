@@ -160,11 +160,20 @@ export class KlefApi {
    * current one and every earlier version stays, so a bad push is recoverable
    * from the web app rather than destructive.
    */
-  saveVersion(fileId: string, blob: EncryptedBlob, keyGen?: number): Promise<{ id: string; createdAt: string }> {
+  saveVersion(
+    fileId: string,
+    blob: EncryptedBlob,
+    keyGen?: number,
+    baseVersionId?: string | null,
+  ): Promise<{ id: string; createdAt: string }> {
     return this.request(`/api/files/${encodeURIComponent(fileId)}/versions`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(keyGen === undefined ? { blob } : { blob, keyGen }),
+      body: JSON.stringify({
+        blob,
+        ...(keyGen === undefined ? {} : { keyGen }),
+        ...(baseVersionId === undefined ? {} : { baseVersionId }),
+      }),
     });
   }
 

@@ -13,6 +13,7 @@ import type { EncryptedBlob, WrappedKey } from "../shared/types.ts";
 import type { UserKeyRecord } from "../shared/user-key.ts";
 import { ApiError, type KlefApi } from "./api.ts";
 import type { TeamKeyRequest } from "./team-cipher.ts";
+import { command } from "./invocation.ts";
 import { CliError } from "./ui.ts";
 import type { VaultCipher } from "./vault-key.ts";
 
@@ -32,8 +33,12 @@ interface Place {
 export interface VaultFiles {
   /** The text of a stored version, whichever key it is under. */
   decrypt(version: StoredVersion): Promise<string>;
-  /** Encrypt `text` for this file and save it as a new version. */
-  save(fileId: string, text: string): Promise<{ id: string; createdAt: string }>;
+  /**
+   * Encrypt `text` for this file and save it as a new version. With
+   * `baseVersionId` (the version this text was compared with; null for none),
+   * a save that lost a race with someone else's is refused as a `conflict`.
+   */
+  save(fileId: string, text: string, baseVersionId?: string | null): Promise<{ id: string; createdAt: string }>;
   /** A file created since the tree was read, so a save knows which team (if any) it is in. */
   track(fileId: string, file: { projectId: string; environment: string | null }): void;
 }
@@ -41,7 +46,19 @@ export interface VaultFiles {
 type Api = Pick<KlefApi, "whoami" | "myKey" | "putMyKey" | "workspaceKeys" | "saveVersion">;
 
 /** A read-only member pushing, or an environment that has no key yet: say what to do. */
+/** Someone saved this file between our read and our write. */
+function conflictError(err: unknown): never {
+  if (err instanceof ApiError && err.reason === "version_conflict") {
+    throw new CliError("conflict", "Someone saved a newer version of this file while you were pushing. Nothing was written.", {
+      hint: "Bring their changes in, then push again.",
+      next: [command("sync")],
+    });
+  }
+  throw err;
+}
+
 function teamWriteError(err: unknown): never {
+  if (err instanceof ApiError && err.reason === "version_conflict") conflictError(err);
   if (err instanceof NoTeamKeyError) throw new CliError("no_access", err.message);
   if (err instanceof ApiError && (err.reason === "read_only" || err.reason === "no_access" || err.reason === "not_admin")) {
     throw new CliError("no_access", err.message, { hint: "Ask a team admin for edit access to this environment." });
@@ -127,9 +144,9 @@ export function vaultFiles(api: Api, tree: VaultTree, cipher: VaultCipher): Vaul
       });
     },
 
-    async save(fileId, text) {
+    async save(fileId, text, baseVersionId) {
       const place = places.get(fileId);
-      if (!place?.team) return api.saveVersion(fileId, await cipher.encrypt(text));
+      if (!place?.team) return api.saveVersion(fileId, await cipher.encrypt(text), undefined, baseVersionId).catch(conflictError);
       const once = async (fresh: boolean) => {
         const { blob, keyGen } = await cipher.teamEncrypt({
           ...(await request(place.workspaceId, fresh)),
@@ -137,7 +154,7 @@ export function vaultFiles(api: Api, tree: VaultTree, cipher: VaultCipher): Vaul
           environment: place.environment,
           plaintext: text,
         });
-        return api.saveVersion(fileId, blob, keyGen);
+        return api.saveVersion(fileId, blob, keyGen, baseVersionId);
       };
       try {
         return await once(false);

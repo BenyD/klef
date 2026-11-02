@@ -136,7 +136,7 @@ export async function applySync(
       if (text !== file.local!.text) await writeEnvFile(file.destination, text);
       let versionId = file.vault!.versionId;
       if (text !== file.vault!.text) {
-        versionId = (await filesOf(ctx).save(file.resolved!.fileId, text)).id;
+        versionId = (await filesOf(ctx).save(file.resolved!.fileId, text, file.vault!.versionId)).id;
       }
       synced.push({ file: file.destination, versionId });
       const { fromVault, fromLocal, removedHere, removedThere } = file.merge!;
@@ -157,7 +157,7 @@ export async function applySync(
         // with the label a team stores for it (its name's, when none given).
         filesOf(ctx).track(fileId, { projectId: project.id, environment: environment ?? environmentFromName(file.entry.file) });
       }
-      const saved = await filesOf(ctx).save(fileId, file.local!.text);
+      const saved = await filesOf(ctx).save(fileId, file.local!.text, file.vault?.versionId ?? null);
       synced.push({ file: file.destination, versionId: saved.id });
       lines.push(`Pushed ${summary} to ${fileName} (version ${saved.id.slice(0, 8)})`);
     }

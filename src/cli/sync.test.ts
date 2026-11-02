@@ -8,6 +8,7 @@ import { parseArgs } from "./args.ts";
 import { diff } from "./commands/diff.ts";
 import { link } from "./commands/link.ts";
 import { pull } from "./commands/pull.ts";
+import { push } from "./commands/push.ts";
 import { restore } from "./commands/restore.ts";
 import { sync } from "./commands/sync.ts";
 import type { CliError } from "./ui.ts";
@@ -24,6 +25,8 @@ const PROD = `# App\nAPI_KEY=${SECRET}_prod\n`;
 interface FakeFile {
   environment: string | null;
   versions: EncryptedBlob[];
+  /** Set for a team file this person cannot open. */
+  access?: "none";
 }
 
 let vault: VaultSetupResult;
@@ -32,6 +35,8 @@ let cwd: string;
 let env: NodeJS.ProcessEnv;
 let files: Map<string, FakeFile>;
 let output: string[];
+/** Runs just before the fake server stores a version: another person's save landing first. */
+let beforeSave: (() => Promise<void>) | null;
 
 beforeAll(async () => {
   vault = await setupVault(PASSPHRASE);
@@ -51,6 +56,7 @@ async function fakeFetch(input: string | URL | Request, init?: RequestInit): Pro
       currentVersionId: f.versions.length ? `v${f.versions.length}` : null,
       environment: f.environment,
       createdAt: "",
+      ...(f.access ? { access: f.access } : {}),
     }));
     return json({
       workspaces: [
@@ -83,7 +89,17 @@ async function fakeFetch(input: string | URL | Request, init?: RequestInit): Pro
       return json({ version: blob ? { id: `v${file.versions.length}`, blob, createdAt: "" } : null });
     }
     if (init?.method === "POST") {
-      const { blob } = JSON.parse(String(init.body)) as { blob: EncryptedBlob };
+      const { blob, baseVersionId } = JSON.parse(String(init.body)) as { blob: EncryptedBlob; baseVersionId?: string | null };
+      if (beforeSave) {
+        const other = beforeSave;
+        beforeSave = null;
+        await other();
+      }
+      // As the server does: a save from a version that is no longer current is refused.
+      const current = file.versions.length ? `v${file.versions.length}` : null;
+      if (baseVersionId !== undefined && baseVersionId !== current) {
+        return json({ ok: false, error: "Someone saved a newer version while you were editing", code: "version_conflict" }, 409);
+      }
       file.versions.push(blob);
       return json({ id: `v${file.versions.length}`, createdAt: "" });
     }
@@ -140,6 +156,7 @@ beforeEach(async () => {
   };
   files = new Map();
   output = [];
+  beforeSave = null;
   vi.stubGlobal("fetch", fakeFetch);
   const capture = (...parts: unknown[]) => void output.push(parts.join(" "));
   vi.spyOn(console, "log").mockImplementation(capture);
@@ -184,6 +201,22 @@ describe("link", () => {
     const config = JSON.parse(await local(".klef.json"));
     expect(config.file).toBe(".env");
     expect(config.files).toBeUndefined();
+  });
+
+  it("links a team member only to files they can open", async () => {
+    await save(".env.development", LOCAL);
+    await save(".env.staging", LOCAL);
+    await save(".env.production", PROD);
+    files.get(".env.production")!.access = "none";
+
+    expect(await link(parseArgs(["link", "Personal", "lensdrop"]), env, cwd)).toBe(0);
+    const config = JSON.parse(await local(".klef.json"));
+    expect(config.file).toBe(".env.development");
+    expect(config.files).toBeUndefined();
+
+    // Naming the file you cannot open says so, not "no saved version".
+    expect(await link(parseArgs(["link", "Personal", "lensdrop", ".env.production"]), env, cwd)).toBe(0);
+    expect(output.join("\n")).toContain("You do not have access to .env.production");
   });
 
   it("keeps the audit map when relinking", async () => {
@@ -309,6 +342,43 @@ describe("sync", () => {
     expect(await sync(parseArgs(["sync", "--dry-run"]), env, cwd, prompt, yes)).toBe(0);
     await expect(stat(path.join(cwd, ".env.local"))).rejects.toThrow();
     expect(output).toContain("Dry run: nothing written.");
+  });
+});
+
+describe("push over someone else's save", () => {
+  beforeEach(async () => {
+    await writeConfig();
+    await save(".env.local", LOCAL);
+    await save(".env.production", PROD);
+  });
+
+  it("warns when the vault changed since this machine last synced, and still lets you replace it", async () => {
+    await sync(parseArgs(["sync"]), env, cwd, prompt, no);
+    await save(".env.local", `${LOCAL}THEIRS=1\n`);
+    await edit(".env.local", `${LOCAL}MINE=1\n`);
+
+    expect(await push(parseArgs(["push", "--yes"]), env, cwd, prompt, yes)).toBe(0);
+    expect(output.join("\n")).toContain("Someone saved a newer version of .env.local since you last synced it");
+    expect(await stored(".env.local")).toBe(`${LOCAL}MINE=1\n`);
+    expect(files.get(".env.local")!.versions).toHaveLength(3);
+  });
+
+  it("refuses when someone saves between the diff and the write, and writes nothing", async () => {
+    await sync(parseArgs(["sync"]), env, cwd, prompt, no);
+    await edit(".env.local", `${LOCAL}MINE=1\n`);
+    beforeSave = () => save(".env.local", `${LOCAL}THEIRS=1\n`);
+
+    await expect(push(parseArgs(["push", "--yes"]), env, cwd, prompt, yes)).rejects.toMatchObject({ code: "conflict" });
+    expect(await stored(".env.local")).toBe(`${LOCAL}THEIRS=1\n`);
+  });
+
+  it("makes sync stop too when a save lands mid-push", async () => {
+    await sync(parseArgs(["sync"]), env, cwd, prompt, no);
+    await edit(".env.local", `${LOCAL}MINE=1\n`);
+    beforeSave = () => save(".env.local", `${LOCAL}THEIRS=1\n`);
+
+    await expect(sync(parseArgs(["sync"]), env, cwd, prompt, yes)).rejects.toMatchObject({ code: "conflict" });
+    expect(await stored(".env.local")).toBe(`${LOCAL}THEIRS=1\n`);
   });
 });
 

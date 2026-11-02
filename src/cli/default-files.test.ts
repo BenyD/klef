@@ -12,6 +12,12 @@ describe("defaultLinkedFile", () => {
     expect(defaultLinkedFile([])).toBe(".env");
   });
 
+  it("without .env, takes .env.development, then the first file there is", () => {
+    // A team Developer's openable files: no .env.local, and no production.
+    expect(defaultLinkedFile([".env.staging", ".env.development"])).toBe(".env.development");
+    expect(defaultLinkedFile(["mobile.env", "web.env"])).toBe("mobile.env");
+  });
+
   it("matches names case-insensitively, like the vault", () => {
     expect(defaultLinkedFile([".ENV.LOCAL"])).toBe(".env.local");
   });

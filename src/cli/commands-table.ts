@@ -639,7 +639,7 @@ export function topicHelp(topic: (typeof TOPICS)[number], cli: string): string {
       ["locked", "Locked on this device; the user approves klef login, or runs unlock (exit 4)"],
       ["no_terminal", "A person must do this at a terminal (exit 4)"],
       ["wrong_passphrase", "The passphrase did not unlock the vault (exit 4)"],
-      ["conflict", "Both sides changed; nothing was written (exit 5)"],
+      ["conflict", "Both sides changed, or a save landed mid-push; nothing was written (exit 5)"],
       ["timed_out", "klef ask waited and the value was not saved in time; nothing was written (exit 7)"],
       ["not_linked", "No .klef.json here (exit 6)"],
       ["not_found", "No such workspace, project or file (exit 6)"],
