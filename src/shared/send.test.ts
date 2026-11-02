@@ -11,7 +11,7 @@ import {
   unpadSendText,
 } from "./send.ts";
 
-const secret = "sk_live_51HxExampleNotARealKey0123456789";
+const secret = "klef-test-9f3a7c2e5b1d8a64";
 
 describe("padding", () => {
   it("pads to the first bucket that fits and comes back exactly", () => {

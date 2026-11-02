@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createRedactor, MIN_REDACT_LENGTH, REDACTED, redactable } from "./redact.ts";
 
-const SECRET = "sk_live_abcdefghijklmnop";
+const SECRET = "klef-test-9f3a7c2e5b1d8a64";
 
 describe("redactable", () => {
   it("drops values too short to mask safely, and settings that are never secret", () => {
