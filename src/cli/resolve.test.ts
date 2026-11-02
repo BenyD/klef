@@ -92,3 +92,19 @@ describe("resolveTarget", () => {
     );
   });
 });
+
+describe("team access", () => {
+  const base = {
+    workspaceId: "w", projectId: "p", fileId: "f", workspaceName: "Acme", projectName: "api",
+    fileName: ".env.production", environment: "production", currentVersionId: null,
+  };
+  it("refuses environments your access does not cover, and writes where you can only read", async () => {
+    const { requireAccess } = await import("./resolve.ts");
+    expect(() => requireAccess({ ...base, access: "none" })).toThrow(/do not have access to .env.production in Acme/);
+    expect(requireAccess({ ...base, access: "read" }).fileId).toBe("f");
+    expect(() => requireAccess({ ...base, access: "read" }, true)).toThrow(/can read .env.production/);
+    expect(requireAccess({ ...base, access: "write" }, true).fileId).toBe("f");
+    // Personal files carry no access field and are always yours.
+    expect(requireAccess(base, true).fileId).toBe("f");
+  });
+});

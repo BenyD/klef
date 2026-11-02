@@ -14,8 +14,9 @@ import { vaultFingerprint } from "./agent-protocol.ts";
 import { agentSocketPath } from "./paths.ts";
 import { unlockVaultBytes } from "./unlock.ts";
 import { forgetKey, loadRememberedKey, rememberKey } from "./key-store.ts";
+import { teamOps, type TeamOps } from "./team-cipher.ts";
 
-export interface VaultCipher {
+export interface VaultCipher extends TeamOps {
   /** How the vault was opened, for tests and for nothing that prints. */
   source: "remembered" | "agent" | "passphrase";
   encrypt: (plaintext: string) => Promise<EncryptedBlob>;
@@ -28,6 +29,7 @@ export function localCipher(dek: CryptoKey, source: "remembered" | "passphrase" 
     source,
     encrypt: (plaintext) => encryptBlob(dek, plaintext),
     decrypt: (blob) => decryptBlob(dek, blob),
+    ...teamOps(dek),
   };
 }
 
@@ -51,6 +53,27 @@ export function agentCipher(socketPath: string): VaultCipher {
       if (!res.ok) throw new AgentError(res.error);
       if (!("plaintext" in res)) throw new AgentError("The unlock agent sent the wrong reply.");
       return res.plaintext;
+    },
+    async teamDecrypt(req) {
+      const res = await agentRequest(socketPath, { op: "teamDecrypt", ...req });
+      if (!res) throw new AgentError(LOCKED_MID_COMMAND);
+      if (!res.ok) throw new AgentError(res.error);
+      if (!("plaintext" in res)) throw new AgentError("The unlock agent sent the wrong reply.");
+      return res.plaintext;
+    },
+    async teamEncrypt(req) {
+      const res = await agentRequest(socketPath, { op: "teamEncrypt", ...req });
+      if (!res) throw new AgentError(LOCKED_MID_COMMAND);
+      if (!res.ok) throw new AgentError(res.error);
+      if (!("blob" in res) || typeof res.keyGen !== "number") throw new AgentError("The unlock agent sent the wrong reply.");
+      return { blob: res.blob, keyGen: res.keyGen };
+    },
+    async newUserKey(userId) {
+      const res = await agentRequest(socketPath, { op: "newUserKey", userId });
+      if (!res) throw new AgentError(LOCKED_MID_COMMAND);
+      if (!res.ok) throw new AgentError(res.error);
+      if (!("userKey" in res)) throw new AgentError("The unlock agent sent the wrong reply.");
+      return res.userKey;
     },
   };
 }

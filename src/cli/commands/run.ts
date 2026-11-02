@@ -10,11 +10,12 @@ import { envEntries } from "../dotenv-values.ts";
 import { command } from "../invocation.ts";
 import type { ProjectConfig } from "../project-config.ts";
 import { createRedactor, REDACTED, redactable } from "../redact.ts";
-import { resolveTarget } from "../resolve.ts";
+import { requireAccess, resolveTarget } from "../resolve.ts";
 import { requireApi } from "../session.ts";
 import { syncTargets } from "../targets.ts";
 import { CliError, emit, note, uiMode, warn } from "../ui.ts";
 import { resolveWritePath } from "../write-path.ts";
+import { vaultFiles } from "../vault-files.ts";
 
 /**
  * How long a partial line is held before it is forwarded anyway. A prompt
@@ -156,7 +157,18 @@ async function vaultValues(
 ): Promise<Loaded[]> {
   const api = await requireApi(env);
   const tree = await api.tree();
-  const resolved = files.map((file) => resolveTarget(tree, { ...config, file }));
+  // With several files, one in a team environment this person cannot open is
+  // skipped and said so; asked for alone, it is an error.
+  const resolved = files
+    .map((file) => resolveTarget(tree, { ...config, file }))
+    .filter((r) => {
+      if (files.length > 1 && r.access === "none") {
+        warn(`Skipped ${r.fileName}: you do not have access to it in ${r.workspaceName}.`, "no_access");
+        return false;
+      }
+      return true;
+    })
+    .map((r) => requireAccess(r));
   const versions = [];
   for (const file of resolved) {
     const { version } = await api.currentVersion(file.fileId);
@@ -166,9 +178,10 @@ async function vaultValues(
   // Ciphertext only up to here. The plaintext below lives in this process
   // and the child's environment, and nowhere else.
   const cipher = await unlockedVault(await requireVault(api), env, prompt);
+  const vault = vaultFiles(api, tree, cipher);
   const out: Loaded[] = [];
   for (const [i, file] of resolved.entries()) {
-    out.push({ file: file.fileName, source: "vault", values: envEntries(await cipher.decrypt(versions[i]!.blob)) });
+    out.push({ file: file.fileName, source: "vault", values: envEntries(await vault.decrypt(versions[i]!)) });
   }
   return out;
 }

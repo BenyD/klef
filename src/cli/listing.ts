@@ -17,6 +17,11 @@ export interface ListedFile {
   environment: string | null;
   /** False until the file's first save — there is nothing to pull yet. */
   hasVersion: boolean;
+  /**
+   * Team files only: what you can do with it. "none" is an environment your
+   * access does not cover, listed by name and never pulled.
+   */
+  access?: "admin" | "write" | "read" | "none";
 }
 
 /** Every env file in the vault, flattened, in tree order. */
@@ -31,6 +36,7 @@ export function listFiles(tree: VaultTree): ListedFile[] {
           file: file.name,
           environment: file.environment,
           hasVersion: file.currentVersionId !== null,
+          ...(workspace.team && file.access ? { access: file.access } : {}),
         });
       }
     }
@@ -56,7 +62,7 @@ export function listingJson(tree: VaultTree): { files: ListedFile[] } {
  * `'Beny'\''s Team'` teaches shell escaping rather than the command.
  */
 function pickExample(entries: ListedFile[]): ListedFile {
-  const pullable = entries.filter((e) => e.hasVersion);
+  const pullable = entries.filter((e) => e.hasVersion && e.access !== "none");
   const candidates = pullable.length ? pullable : entries;
   return (
     candidates.find((e) => ![e.workspace, e.project, e.file].some(hasAwkwardQuoting)) ??
@@ -70,7 +76,9 @@ function annotate(entry: ListedFile): string {
   // doesn't already carry is worth the space. --json keeps the raw field.
   const env = environmentWorthShowing(entry.file, entry.environment);
   if (env) parts.push(env);
-  if (!entry.hasVersion) parts.push("no saved version yet");
+  if (entry.access === "none") parts.push("no access");
+  else if (entry.access === "read") parts.push("read only");
+  if (!entry.hasVersion && entry.access !== "none") parts.push("no saved version yet");
   return parts.length ? `  (${parts.join(", ")})` : "";
 }
 
@@ -91,7 +99,7 @@ export function formatListing(
   const width = Math.max(...entries.map((e) => e.file.length));
 
   for (const entry of entries) {
-    const group = `${entry.workspace} / ${entry.project}`;
+    const group = `${entry.workspace} / ${entry.project}${entry.access ? " (team)" : ""}`;
     if (group !== heading) {
       lines.push("", `  ${group}`);
       heading = group;

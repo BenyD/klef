@@ -72,6 +72,9 @@ value, which is what makes it safe for you to run.
 - Never ask the user for their master passphrase or access token, and never
   pipe or pass one to the CLI. It reads the passphrase from the terminal on
   purpose, so it cannot pass through you.
+- In a team project, an error with the code \`no_access\` means the user's
+  access does not cover that environment (often production). Tell the user;
+  don't look for the values another way. A team admin can change it.
 - To start the app, run the tests, or run any script that needs the
   variables, use \`${cli} run -- <command>\` instead of reading the file:
   it puts the variables straight into that command's environment, and

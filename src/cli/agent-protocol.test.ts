@@ -111,3 +111,32 @@ describe("describeLockAfter", () => {
     expect(describeLockAfter(7 * 24 * 60)).toBe("7 days");
   });
 });
+
+describe("team operations on the agent socket", () => {
+  const userKey = {
+    publicJwk: { kty: "EC", crv: "P-256", x: "x", y: "y" },
+    fingerprint: "ab".repeat(16),
+    privateWrapped: { v: 1, alg: "AES-GCM", nonce: "n", ciphertext: "c" },
+  };
+  const keys = { workspace: null, envKeys: [], senders: {} };
+  const blob = { v: 1, alg: "AES-GCM", nonce: "n", ciphertext: "c" };
+  const base = { userId: "u", userKey, workspaceId: "w", keys };
+
+  it("accepts well-formed team requests", () => {
+    expect(parseRequest(JSON.stringify({ op: "teamDecrypt", ...base, blob, keyScope: "k", keyGen: 2 }))).toMatchObject({ op: "teamDecrypt", keyGen: 2 });
+    expect(parseRequest(JSON.stringify({ op: "teamEncrypt", ...base, projectId: "p", environment: "", plaintext: "A=1" }))).toMatchObject({ op: "teamEncrypt", environment: "" });
+    expect(parseRequest(JSON.stringify({ op: "newUserKey", userId: "u" }))).toEqual({ op: "newUserKey", userId: "u" });
+  });
+
+  it("refuses anything missing or malformed", () => {
+    const bad = [
+      { op: "teamDecrypt", ...base, blob, keyScope: "k", keyGen: 1.5 },
+      { op: "teamDecrypt", ...base, keyScope: "k", keyGen: 1 },
+      { op: "teamDecrypt", ...base, userKey: { ...userKey, fingerprint: 3 }, blob, keyScope: "k", keyGen: 1 },
+      { op: "teamEncrypt", ...base, keys: { envKeys: "no", senders: {} }, projectId: "p", environment: "", plaintext: "" },
+      { op: "teamEncrypt", ...base, projectId: "p", plaintext: "" },
+      { op: "newUserKey" },
+    ];
+    for (const req of bad) expect(() => parseRequest(JSON.stringify(req))).toThrow(ProtocolError);
+  });
+});

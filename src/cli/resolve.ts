@@ -19,6 +19,8 @@ export interface ResolvedTarget {
   fileName: string;
   environment: string | null;
   currentVersionId: string | null;
+  /** Team files only: what your access lets you do with it. */
+  access?: "admin" | "write" | "read" | "none";
 }
 
 export class ResolveError extends CliError {
@@ -76,7 +78,27 @@ export function findFile(
     fileName: file.name,
     environment: file.environment,
     currentVersionId: file.currentVersionId,
+    ...(file.access ? { access: file.access } : {}),
   };
+}
+
+/**
+ * A team file in an environment your access does not cover cannot be pulled
+ * or pushed: there is no key for it on this machine to use. Say so, rather
+ * than letting the server's 404 read as a missing file.
+ */
+export function requireAccess(resolved: ResolvedTarget, write = false): ResolvedTarget {
+  if (resolved.access === "none") {
+    throw new CliError("no_access", `You do not have access to ${resolved.fileName} in ${resolved.workspaceName}.`, {
+      hint: "A team admin can give it to you in the web app.",
+    });
+  }
+  if (write && resolved.access === "read") {
+    throw new CliError("no_access", `You can read ${resolved.fileName} in ${resolved.workspaceName} but not change it.`, {
+      hint: "A team admin can give you edit access in the web app.",
+    });
+  }
+  return resolved;
 }
 
 export function resolveTarget(

@@ -258,3 +258,23 @@ describe("formatListing", () => {
     expect(render(EMPTY)).toBe("No env files in your vault yet. Create one in the web app first.");
   });
 });
+
+describe("team files in the listing", () => {
+  it("marks teams, read-only files and files you cannot open", () => {
+    const tree: VaultTree = {
+      workspaces: [{
+        id: "w", name: "Acme", icon: null, createdAt: "", team: { keyGen: 1, role: "member", trialEndsAt: null, plan: "trial" },
+        projects: [{ id: "p", name: "api", framework: null, icon: null, createdAt: "", files: [
+          { id: "a", name: ".env.development", currentVersionId: "v", environment: "development", createdAt: "", access: "write" },
+          { id: "b", name: ".env.staging", currentVersionId: "v", environment: "staging", createdAt: "", access: "read" },
+          { id: "c", name: ".env.production", currentVersionId: null, environment: "production", createdAt: "", access: "none" },
+        ] }],
+      }],
+    };
+    const lines = formatListing(listFiles(tree), { link: "klef link", list: "klef list" }).join("\n");
+    expect(lines).toContain("Acme / api (team)");
+    expect(lines).toMatch(/\.env\.staging\s+\(read only\)/);
+    expect(lines).toMatch(/\.env\.production\s+\(no access\)/);
+    expect(lines).toContain("klef link Acme api .env.development");
+  });
+});

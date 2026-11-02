@@ -42,6 +42,7 @@ export type ErrorCode =
   | "no_vault"
   | "not_linked"
   | "not_found"
+  | "no_access"
   | "conflict"
   | "timed_out"
   | "unsafe_path"
@@ -62,6 +63,7 @@ const EXIT_FOR: Record<ErrorCode, number> = {
   no_vault: EXIT.notFound,
   not_linked: EXIT.notFound,
   not_found: EXIT.notFound,
+  no_access: EXIT.auth,
   conflict: EXIT.conflict,
   timed_out: EXIT.timedOut,
   unsafe_path: EXIT.usage,

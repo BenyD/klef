@@ -19,6 +19,8 @@ import { createServer, connect, type Server, type Socket } from "node:net";
 import { chmod, unlink } from "node:fs/promises";
 import path from "node:path";
 import { decryptBlob, encryptBlob, unlockWithKekBytes } from "../shared/crypto.ts";
+import { NoTeamKeyError } from "../shared/team-unlock.ts";
+import { teamOps } from "./team-cipher.ts";
 import { base64ToBytes } from "../shared/encoding.ts";
 import type { WrappedKey } from "../shared/types.ts";
 import {
@@ -138,6 +140,22 @@ export async function startAgent(options: AgentOptions): Promise<RunningAgent> {
         } catch {
           return { ok: false, error: "That blob does not decrypt with this vault's key." };
         }
+      case "teamDecrypt":
+      case "teamEncrypt":
+      case "newUserKey": {
+        lastUse = now();
+        arm();
+        const team = teamOps(key);
+        try {
+          if (req.op === "teamDecrypt") return { ok: true, plaintext: await team.teamDecrypt(req) };
+          if (req.op === "teamEncrypt") return { ok: true, ...(await team.teamEncrypt(req)) };
+          return { ok: true, userKey: await team.newUserKey(req.userId) };
+        } catch (err) {
+          // Only the message: a NoTeamKeyError says what to do, anything else
+          // means the material did not open with this vault's key.
+          return { ok: false, error: err instanceof NoTeamKeyError ? err.message : "That team key does not open with this vault's key." };
+        }
+      }
       case "lock":
         return { ok: true };
     }

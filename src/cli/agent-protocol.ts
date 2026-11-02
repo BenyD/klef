@@ -11,11 +11,21 @@
 
 import type { EncryptedBlob, WrappedKey } from "../shared/types.ts";
 import { bytesToBase64 } from "../shared/encoding.ts";
+import { isUserKeyRecord, type UserKeyRecord } from "../shared/user-key.ts";
+import type { TeamDecryptRequest, TeamEncryptRequest, TeamKeyRequest } from "./team-cipher.ts";
 
+// Team operations carry what the server served (the sharing key record, a
+// team's keys response) and get back plaintext or a blob. The agent opens the
+// team's keys with the DEK it holds; neither the private key nor any team key
+// crosses the socket. newUserKey returns a record whose private half is sealed
+// under the DEK, which is what the server stores.
 export type AgentRequest =
   | { op: "status" }
   | { op: "encrypt"; plaintext: string }
   | { op: "decrypt"; blob: EncryptedBlob }
+  | ({ op: "teamDecrypt" } & TeamDecryptRequest)
+  | ({ op: "teamEncrypt" } & TeamEncryptRequest)
+  | { op: "newUserKey"; userId: string }
   | { op: "lock" };
 
 export interface AgentStatus {
@@ -29,8 +39,9 @@ export interface AgentStatus {
 
 export type AgentResponse =
   | { ok: true; status: AgentStatus }
-  | { ok: true; blob: EncryptedBlob }
+  | { ok: true; blob: EncryptedBlob; keyGen?: number }
   | { ok: true; plaintext: string }
+  | { ok: true; userKey: UserKeyRecord }
   | { ok: true }
   | { ok: false; error: string };
 
@@ -51,6 +62,32 @@ function isBlob(value: unknown): value is EncryptedBlob {
     typeof blob.nonce === "string" &&
     typeof blob.ciphertext === "string"
   );
+}
+
+/** The parts every team operation shares; the keys response is checked by opening it. */
+function teamKeyRequest(req: Record<string, unknown>, op: string): TeamKeyRequest {
+  const keys = req.keys as Record<string, unknown> | null;
+  if (
+    typeof req.userId !== "string" ||
+    typeof req.workspaceId !== "string" ||
+    !isUserKeyRecord(req.userKey) ||
+    typeof keys !== "object" ||
+    keys === null ||
+    !Array.isArray(keys.envKeys) ||
+    typeof keys.senders !== "object" ||
+    keys.senders === null
+  ) {
+    throw new ProtocolError(`"${op}" needs "userId", "userKey", "workspaceId" and "keys".`);
+  }
+  const pins = req.pins;
+  if (pins !== undefined && pins !== null && !isBlob(pins)) throw new ProtocolError(`"${op}" got malformed "pins".`);
+  return {
+    userId: req.userId,
+    userKey: req.userKey,
+    workspaceId: req.workspaceId,
+    keys: req.keys as TeamKeyRequest["keys"],
+    ...(pins ? { pins: pins as TeamKeyRequest["pins"] } : {}),
+  };
 }
 
 /** Validate one request line. Anything unexpected is refused, not coerced. */
@@ -78,6 +115,23 @@ export function parseRequest(line: string): AgentRequest {
     case "decrypt":
       if (!isBlob(req.blob)) throw new ProtocolError('"decrypt" needs a "blob".');
       return { op: "decrypt", blob: req.blob };
+    case "teamDecrypt": {
+      const base = teamKeyRequest(req, "teamDecrypt");
+      if (!isBlob(req.blob) || typeof req.keyScope !== "string" || !Number.isInteger(req.keyGen)) {
+        throw new ProtocolError('"teamDecrypt" needs a "blob", "keyScope" and "keyGen".');
+      }
+      return { op: "teamDecrypt", ...base, blob: req.blob, keyScope: req.keyScope, keyGen: req.keyGen as number };
+    }
+    case "teamEncrypt": {
+      const base = teamKeyRequest(req, "teamEncrypt");
+      if (typeof req.projectId !== "string" || typeof req.environment !== "string" || typeof req.plaintext !== "string") {
+        throw new ProtocolError('"teamEncrypt" needs "projectId", "environment" and "plaintext".');
+      }
+      return { op: "teamEncrypt", ...base, projectId: req.projectId, environment: req.environment, plaintext: req.plaintext };
+    }
+    case "newUserKey":
+      if (typeof req.userId !== "string") throw new ProtocolError('"newUserKey" needs a "userId".');
+      return { op: "newUserKey", userId: req.userId };
     default:
       throw new ProtocolError(`Unknown operation ${JSON.stringify(req.op)}.`);
   }

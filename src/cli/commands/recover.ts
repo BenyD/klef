@@ -3,11 +3,12 @@
 import { flagValue, type ParsedArgs } from "../args.ts";
 import { requireConfig, requireVault, unlockedVault } from "../common.ts";
 import { command } from "../invocation.ts";
-import { resolveTarget } from "../resolve.ts";
+import { requireAccess, resolveTarget } from "../resolve.ts";
 import { requireApi } from "../session.ts";
 import { isKeyName, rawValueOf } from "../set-key.ts";
 import { cmd, CliError, done, emit, note } from "../ui.ts";
 import { localTarget, writeKey } from "./set.ts";
+import { vaultFiles } from "../vault-files.ts";
 
 /**
  * Bring one variable back from an earlier vault version into the local file,
@@ -34,7 +35,8 @@ export async function recover(
   const config = await requireConfig(cwd);
   const target = localTarget(config, flagValue(args, "file"), cwd);
   const api = await requireApi(env);
-  const resolved = resolveTarget(await api.tree(), { ...config, file: target.file });
+  const tree = await api.tree();
+  const resolved = requireAccess(resolveTarget(tree, { ...config, file: target.file }));
   const { versions } = await api.versions(resolved.fileId);
   const matches = versions.filter((v) => v.id.startsWith(from));
   if (matches.length !== 1) {
@@ -45,8 +47,9 @@ export async function recover(
   const version = matches[0]!;
 
   const cipher = await unlockedVault(await requireVault(api), env, prompt);
+  const files = vaultFiles(api, tree, cipher);
   const { version: stored } = await api.version(resolved.fileId, version.id);
-  const raw = rawValueOf(await cipher.decrypt(stored.blob), name);
+  const raw = rawValueOf(await files.decrypt(stored), name);
   if (raw === null) {
     throw new CliError("not_found", `${name} is not in version ${version.id.slice(0, 8)} of ${resolved.fileName}.`, {
       next: [command(`list --versions${target.flag}`)],

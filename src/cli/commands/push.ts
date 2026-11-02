@@ -4,7 +4,7 @@ import { command } from "../invocation.ts";
 import { readFile } from "node:fs/promises";
 import { diffLines, diffStats, finalNewlineNote, isUnchanged } from "../../shared/diff.ts";
 import { requireApi } from "../session.ts";
-import { resolveTarget, type ResolvedTarget } from "../resolve.ts";
+import { requireAccess, resolveTarget, type ResolvedTarget } from "../resolve.ts";
 import { confirmOrFail, requireConfig, requireVault, unlockedVault } from "../common.ts";
 import { CliError, done, emit, say, style } from "../ui.ts";
 import path from "node:path";
@@ -15,6 +15,7 @@ import { pullTarget } from "./pull.ts";
 import { resolveWritePath } from "../write-path.ts";
 import { flagValue, hasFlag, type ParsedArgs } from "../args.ts";
 import { recordSynced } from "../sync-state.ts";
+import { vaultFiles } from "../vault-files.ts";
 
 /**
  * Send this directory's env files to the vault as new versions: the linked
@@ -72,10 +73,11 @@ export async function push(
   const api = await requireApi(env);
   const tree = await api.tree();
   const resolvedAll = local.map(({ target }) =>
-    resolveTarget(tree, pullTarget(config, target.file)),
+    requireAccess(resolveTarget(tree, pullTarget(config, target.file)), true),
   );
 
   const cipher = await unlockedVault(await requireVault(api), env, prompt);
+  const files = vaultFiles(api, tree, cipher);
 
   type Stats = { variables: number; added: number; removed: number };
   const pending: { resolved: ResolvedTarget; source: string; plaintext: string; summary: string; stats: Stats }[] = [];
@@ -86,7 +88,7 @@ export async function push(
   for (const [i, { source, plaintext }] of local.entries()) {
     const resolved = resolvedAll[i]!;
     const { version } = await api.currentVersion(resolved.fileId);
-    const stored = version ? await cipher.decrypt(version.blob) : "";
+    const stored = version ? await files.decrypt(version) : "";
 
     const shown = path.relative(cwd, source);
     if (version && isUnchanged(stored, plaintext)) {
@@ -126,7 +128,7 @@ export async function push(
   }
 
   for (const { resolved, source, plaintext, summary, stats } of pending) {
-    const saved = await api.saveVersion(resolved.fileId, await cipher.encrypt(plaintext));
+    const saved = await files.save(resolved.fileId, plaintext);
     synced.push({ file: source, versionId: saved.id });
     results.push({ file: resolved.fileName, path: path.relative(cwd, source), action: "pushed", ...stats, version: saved.id });
     done(`Pushed ${summary} to ${resolved.fileName} (version ${saved.id.slice(0, 8)})`);

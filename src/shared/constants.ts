@@ -57,6 +57,26 @@ export const AES = {
   tagBits: 128,
 } as const;
 
+/** A user's sharing keypair (user-key.ts). */
+export const USER_KEY = {
+  /** Fingerprint: the first 16 bytes of a SHA-256 over the public key. */
+  fingerprintBytes: 16,
+  /** The part shown to people: 10 bytes, 16 Crockford characters. */
+  displayBytes: 10,
+} as const;
+
+/** One-time sends (send.ts). */
+export const SEND = {
+  /** Random id, chosen by the client. */
+  idBytes: 16,
+  /** The key that travels in the URL fragment. */
+  keyBytes: 32,
+  /** Plaintext is padded up to the first bucket that fits, length prefix included. */
+  paddingBuckets: [256, 1024, 4096, 16384, 65536],
+  /** Bytes of the big-endian length prefix inside the padded plaintext. */
+  lengthPrefixBytes: 4,
+} as const;
+
 /** Recovery key: 128-bit CSPRNG material, shown once, Crockford-Base32 encoded. */
 export const RECOVERY_KEY = {
   /** 16 bytes = 128 bits of entropy. */

@@ -18,6 +18,8 @@ import { loadSyncState, recordSynced, type Baseline } from "./sync-state.ts";
 import { mergeEnv, type MergeReport } from "./env-merge.ts";
 import type { VaultCipher } from "./vault-key.ts";
 import { resolveWritePath } from "./write-path.ts";
+import { vaultFiles, type VaultFiles } from "./vault-files.ts";
+import { environmentFromName } from "../shared/env-from-name.ts";
 
 export interface FileSync {
   /** The vault name and the local path, relative to the project directory. */
@@ -42,6 +44,17 @@ export interface SyncContext {
   env: NodeJS.ProcessEnv;
 }
 
+// One file layer per context, so a team's keys are fetched once per run.
+const files = new WeakMap<SyncContext, VaultFiles>();
+function filesOf(ctx: SyncContext): VaultFiles {
+  let f = files.get(ctx);
+  if (!f) {
+    f = vaultFiles(ctx.api, ctx.tree, ctx.cipher);
+    files.set(ctx, f);
+  }
+  return f;
+}
+
 /**
  * Read and compare every entry. Paths are checked before anything is read,
  * so a bad entry fails the project rather than half of it. Writes nothing.
@@ -59,12 +72,16 @@ export async function inspectProject(
   for (const [i, entry] of entries.entries()) {
     const destination = destinations[i]!;
     const resolved = findFile(ctx.tree, { ...config, file: entry.file });
+    // A team environment your access does not cover is not yours to sync:
+    // a repo can list .env.production while a developer only holds
+    // development's key. It is left alone, on disk and in the vault.
+    if (resolved?.access === "none") continue;
     const local = await readLocalFile(destination);
 
     let vault: FileSync["vault"] = null;
     if (resolved?.currentVersionId) {
       const { version } = await ctx.api.currentVersion(resolved.fileId);
-      if (version) vault = { text: await ctx.cipher.decrypt(version.blob), versionId: version.id };
+      if (version) vault = { text: await filesOf(ctx).decrypt(version), versionId: version.id };
     }
 
     const decision = decideSync({
@@ -119,7 +136,7 @@ export async function applySync(
       if (text !== file.local!.text) await writeEnvFile(file.destination, text);
       let versionId = file.vault!.versionId;
       if (text !== file.vault!.text) {
-        versionId = (await ctx.api.saveVersion(file.resolved!.fileId, await ctx.cipher.encrypt(text))).id;
+        versionId = (await filesOf(ctx).save(file.resolved!.fileId, text)).id;
       }
       synced.push({ file: file.destination, versionId });
       const { fromVault, fromLocal, removedHere, removedThere } = file.merge!;
@@ -132,11 +149,15 @@ export async function applySync(
       let fileName = file.resolved?.fileName ?? file.entry.file;
       if (!fileId) {
         const { project } = resolveProject(ctx.tree, config);
-        const created = await ctx.api.createFile(project.id, file.entry.file, environmentFor(file.entry.file));
+        const environment = environmentFor(file.entry.file);
+        const created = await ctx.api.createFile(project.id, file.entry.file, environment);
         fileId = created.id;
         fileName = created.name;
+        // The tree predates this file: tell the file layer where it lives,
+        // with the label a team stores for it (its name's, when none given).
+        filesOf(ctx).track(fileId, { projectId: project.id, environment: environment ?? environmentFromName(file.entry.file) });
       }
-      const saved = await ctx.api.saveVersion(fileId, await ctx.cipher.encrypt(file.local!.text));
+      const saved = await filesOf(ctx).save(fileId, file.local!.text);
       synced.push({ file: file.destination, versionId: saved.id });
       lines.push(`Pushed ${summary} to ${fileName} (version ${saved.id.slice(0, 8)})`);
     }
@@ -160,7 +181,7 @@ export async function planMerges(ctx: SyncContext, files: FileSync[]): Promise<v
     if (file.baseline) {
       try {
         const { version } = await ctx.api.version(file.resolved.fileId, file.baseline.versionId);
-        base = await ctx.cipher.decrypt(version.blob);
+        base = await filesOf(ctx).decrypt(version);
       } catch {
         base = null; // The base is gone; fall back to the union.
       }

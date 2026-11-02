@@ -5,15 +5,16 @@ import path from "node:path";
 import { requireApi } from "../session.ts";
 import type { CurrentVersion } from "../api.ts";
 import type { ProjectConfig } from "../project-config.ts";
-import { resolveTarget } from "../resolve.ts";
+import { requireAccess, resolveTarget } from "../resolve.ts";
 import { requireConfig, requireVault, unlockedVault } from "../common.ts";
-import { CliError, done, emit } from "../ui.ts";
+import { CliError, done, emit, warn } from "../ui.ts";
 import { syncTargets } from "../targets.ts";
 import { countVariables, describeWrite } from "../output.ts";
 import { flagValue, hasFlag, type ParsedArgs } from "../args.ts";
 import { resolveWritePath } from "../write-path.ts";
 import { writeEnvFile } from "../env-file.ts";
 import { recordSynced } from "../sync-state.ts";
+import { vaultFiles } from "../vault-files.ts";
 
 /**
  * Which file in the vault to pull. `--file` names a sibling in the same
@@ -57,8 +58,20 @@ export async function pull(
 
   // Resolve and check everything before writing anything, so `--all` either
   // writes every file or fails without touching the working tree.
-  const planned = targets.map((target) => {
+  // Under --all, a team environment this person cannot open is skipped and
+  // said so (a repo can list .env.production for a developer who holds only
+  // development); named on its own, it is an error.
+  const all = hasFlag(args, "all");
+  const reachable = targets.filter((target) => {
     const resolved = resolveTarget(tree, pullTarget(config, target.file));
+    if (all && resolved.access === "none") {
+      warn(`Skipped ${resolved.fileName}: you do not have access to it in ${resolved.workspaceName}.`, "no_access");
+      return false;
+    }
+    return true;
+  });
+  const planned = reachable.map((target) => {
+    const resolved = requireAccess(resolveTarget(tree, pullTarget(config, target.file)));
     // Constrained to this directory on purpose: an agent that can be talked
     // into running `klef pull` must not be able to choose where the plaintext
     // lands.
@@ -92,8 +105,9 @@ export async function pull(
   // either in this process or in the unlock agent, and the key is
   // non-extractable in both.
   const cipher = await unlockedVault(keyMaterial, env, prompt);
+  const files = vaultFiles(api, tree, cipher);
   const plaintexts = [];
-  for (const version of versions) plaintexts.push(await cipher.decrypt(version.blob));
+  for (const version of versions) plaintexts.push(await files.decrypt(version));
 
   const written: { file: string; path: string; variables: number; version: string }[] = [];
   for (const [i, { resolved, destination }] of planned.entries()) {

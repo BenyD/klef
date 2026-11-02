@@ -14,17 +14,31 @@
 
 import { command } from "./invocation.ts";
 import { CliError, type NextStep } from "./ui.ts";
-import type { VaultTree } from "../shared/api-types.ts";
+import type { UserKeyResponse, VaultTree, WorkspaceKeysResponse } from "../shared/api-types.ts";
+import type { UserKeyRecord } from "../shared/user-key.ts";
 import type { EncryptedBlob, VaultKeyMaterial } from "../shared/types.ts";
 
 export class ApiError extends CliError {
   readonly status: number;
+  /** The server's machine-readable reason, when it sent one ("key_rotated", "read_only"). */
+  readonly reason: string | undefined;
 
-  constructor(message: string, status: number, options: { hint?: string; next?: (string | NextStep)[] } = {}) {
+  constructor(
+    message: string,
+    status: number,
+    options: { hint?: string; next?: (string | NextStep)[]; reason?: string } = {},
+  ) {
     super(status === 0 ? "network" : status === 401 ? "token_rejected" : "server", message, options);
     this.status = status;
+    this.reason = options.reason;
   }
 }
+
+/**
+ * Sent with every request: this CLI understands team keys, so the server
+ * shows it teams and serves their files instead of refusing with 426.
+ */
+export const FEATURES = "team-keys";
 
 /** A 401 means the token is gone, expired, or revoked — always actionable. */
 export class UnauthorizedError extends ApiError {
@@ -45,6 +59,9 @@ export interface CurrentVersion {
   id: string;
   blob: EncryptedBlob;
   createdAt: string;
+  /** Team files: the environment key and generation it is under. Null for personal. */
+  keyScope?: string | null;
+  keyGen?: number | null;
 }
 
 export class KlefApi {
@@ -64,6 +81,7 @@ export class KlefApi {
         headers: {
           ...init?.headers,
           Authorization: `Bearer ${this.#token}`,
+          "X-Klef-Features": FEATURES,
         },
       });
     } catch {
@@ -72,15 +90,15 @@ export class KlefApi {
     }
 
     if (res.status === 401) throw new UnauthorizedError();
-    if (res.status === 403) {
+    const body = res.ok ? null : ((await res.json().catch(() => null)) as { error?: string; code?: string } | null);
+    if (res.status === 403 && !body?.code) {
       throw new ApiError(
         "That action needs a browser session; access tokens can't perform it.",
         403,
       );
     }
     if (!res.ok) {
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
-      throw new ApiError(body?.error ?? `Request failed (${res.status})`, res.status);
+      throw new ApiError(body?.error ?? `Request failed (${res.status})`, res.status, { reason: body?.code });
     }
 
     return res.json() as Promise<T>;
@@ -142,11 +160,30 @@ export class KlefApi {
    * current one and every earlier version stays, so a bad push is recoverable
    * from the web app rather than destructive.
    */
-  saveVersion(fileId: string, blob: EncryptedBlob): Promise<{ id: string; createdAt: string }> {
+  saveVersion(fileId: string, blob: EncryptedBlob, keyGen?: number): Promise<{ id: string; createdAt: string }> {
     return this.request(`/api/files/${encodeURIComponent(fileId)}/versions`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ blob }),
+      body: JSON.stringify(keyGen === undefined ? { blob } : { blob, keyGen }),
     });
+  }
+
+  /** My sharing keypair: the public half, and the private half sealed under my DEK. */
+  myKey(): Promise<UserKeyResponse> {
+    return this.request("/api/keys/me");
+  }
+
+  /** Upload a new sharing keypair. Create-only; the server refuses a second. */
+  putMyKey(record: UserKeyRecord): Promise<{ ok: true }> {
+    return this.request("/api/keys/me", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(record),
+    });
+  }
+
+  /** The keys I can open in one team, all wrapped: opening them happens locally. */
+  workspaceKeys(workspaceId: string): Promise<WorkspaceKeysResponse> {
+    return this.request(`/api/workspaces/${encodeURIComponent(workspaceId)}/keys`);
   }
 }

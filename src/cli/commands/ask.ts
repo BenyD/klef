@@ -7,7 +7,7 @@ import { requireConfig, requireVault, unlockedVault } from "../common.ts";
 import { openBrowser } from "../device-login.ts";
 import { command } from "../invocation.ts";
 import { apiBaseUrl } from "../paths.ts";
-import { resolveTarget } from "../resolve.ts";
+import { requireAccess, resolveTarget } from "../resolve.ts";
 import { requireApi } from "../session.ts";
 import { rawValueOf } from "../set-key.ts";
 import { recordSynced } from "../sync-state.ts";
@@ -15,6 +15,7 @@ import { cmd, CliError, done, emit, note, say, style, uiMode } from "../ui.ts";
 import { pullTarget } from "./pull.ts";
 import { localTarget, writeKey } from "./set.ts";
 import { askAnswered, askLinkPath, cleanAskReason, isAskName } from "../../shared/ask-link.ts";
+import { vaultFiles } from "../vault-files.ts";
 
 /** How long `ask` waits by default, and at most. */
 export const ASK_TIMEOUT_MINUTES = 15;
@@ -77,13 +78,15 @@ export async function ask(
   const config = await requireConfig(cwd);
   const target = localTarget(config, flagValue(args, "file"), cwd);
   const api = await requireApi(env);
-  const resolved = resolveTarget(await api.tree(), pullTarget(config, target.file));
+  const tree = await api.tree();
+  const resolved = requireAccess(resolveTarget(tree, pullTarget(config, target.file)));
   // Before anything opens: if the vault is locked here, say so now, not
   // after the user has typed the value.
   const cipher = await unlockedVault(await requireVault(api), env, deps.prompt);
+  const files = vaultFiles(api, tree, cipher);
 
   const start = await api.currentVersion(resolved.fileId);
-  const before = start.version ? rawValueOf(await cipher.decrypt(start.version.blob), name) : null;
+  const before = start.version ? rawValueOf(await files.decrypt(start.version), name) : null;
 
   const url = `${apiBaseUrl(env)}${askLinkPath({ fileId: resolved.fileId, name, reason })}`;
   // On stderr even under --json: the person has to see it while this waits,
@@ -106,7 +109,7 @@ export async function ask(
     const { version } = await api.currentVersion(resolved.fileId);
     if (!version || version.id === seen) continue;
     seen = version.id;
-    const text = await cipher.decrypt(version.blob);
+    const text = await files.decrypt(version);
     const raw = rawValueOf(text, name);
     if (raw !== null && askAnswered(text, name) && raw !== before) found = { versionId: version.id, text, raw };
   }

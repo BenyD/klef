@@ -5,6 +5,8 @@
 // types.ts / BLOB_FORMAT.md).
 
 import type { WrappedKey } from "./types.ts";
+import type { DeviceJwk } from "./device-seal.ts";
+import type { PersonWrap } from "./team-keys.ts";
 
 /**
  * A per-passkey DEK wrap for WebAuthn PRF unlock. The wrap is opaque
@@ -92,6 +94,11 @@ export interface EnvFileNode {
   /** Optional environment label; plaintext like the name. */
   environment: Environment | null;
   createdAt: string;
+  /**
+   * Team files only: what the caller can do with it. "none" files are listed
+   * by name and never fetched.
+   */
+  access?: "admin" | "write" | "read" | "none";
 }
 
 export interface ProjectNode {
@@ -111,12 +118,131 @@ export interface WorkspaceNode {
   /** Uploaded image (data URL) or https URL; null shows the cube glyph. */
   icon: string | null;
   createdAt: string;
+  /**
+   * Set for a team workspace; null for a personal one. Absent from servers
+   * that predate teams, which is the same as personal.
+   */
+  team?: TeamInfo | null;
   projects: ProjectNode[];
+}
+
+/** What a member sees about the team a workspace is. */
+export interface TeamInfo {
+  /** Current workspace key generation. */
+  keyGen: number;
+  role: "owner" | "admin" | "member";
+  /** End of the Team trial, ISO 8601; null when there is none. */
+  trialEndsAt: string | null;
+  /** Paid, in its trial, or neither (read-only until its owner picks a plan). */
+  plan: TeamPlan;
+}
+
+/** Whether a team can grow: "active" when paid, "trial" in its free days, else "inactive" (src/api/team-billing.ts). */
+export type TeamPlan = "trial" | "active" | "inactive";
+
+/** Which key a stored version is encrypted under. Both null: the owner's account DEK. */
+export interface VersionKey {
+  keyScope: string | null;
+  keyGen: number | null;
+}
+
+/** GET /api/keys/me. */
+export interface UserKeyResponse {
+  key: {
+    publicJwk: DeviceJwk;
+    fingerprint: string;
+    privateWrapped: WrappedKey;
+    pins: WrappedKey | null;
+    createdAt: string;
+  } | null;
+}
+
+/** One environment key and the generations a member can open. */
+export interface EnvKeyInfo {
+  id: string;
+  projectId: string;
+  environment: string;
+  gen: number;
+  /**
+   * Every generation's chain link, and for admins its copy under the
+   * workspace key (null for members, who open it through their grant).
+   */
+  gens: { gen: number; workspaceGen: number; adminWrapped: WrappedKey | null; prevWrapped: WrappedKey | null }[];
+  /** Members: their grant, with the current generation wrapped to them. */
+  grant?: { access: "read" | "write"; keyGen: number; wrap: PersonWrap };
+}
+
+/** GET /api/workspaces/:id/keys. */
+export interface WorkspaceKeysResponse {
+  /** The workspace key wrapped to the caller (owners and admins). */
+  workspace: { gen: number; wrap: PersonWrap } | null;
+  envKeys: EnvKeyInfo[];
+  /**
+   * Public keys of everyone who made a wrap above, by fingerprint, so the
+   * client can open them. Check each against its fingerprint and the
+   * caller's pins before trusting it.
+   */
+  senders: Record<string, DeviceJwk>;
+  /**
+   * Who each sender is and their role in this team now (null once they have
+   * left). Absent from older servers.
+   */
+  senderInfo?: Record<string, { userId: string; role: "owner" | "admin" | "member" | null }>;
+}
+
+/** A member as GET /api/workspaces/:id/members lists them. */
+export interface TeamMember {
+  userId: string;
+  name: string;
+  email: string;
+  role: "owner" | "admin" | "member";
+  preset: "admin" | "developer" | "read" | "custom";
+  /** Null until they set up their sharing key. */
+  fingerprint: string | null;
+  /** Admins see each member's public key, to wrap keys to them in a rotation. */
+  publicJwk?: DeviceJwk | null;
+  /** Admins see each member's grants, and whether each has its wrap yet. */
+  grants?: { projectId: string; environment: string; access: "read" | "write"; ready: boolean }[];
+  /** Admins see whether an admin has the current workspace key. */
+  ready?: boolean;
+}
+
+export interface TeamMembersResponse {
+  role: "owner" | "admin" | "member";
+  members: TeamMember[];
+  /** Admins only: invites not yet accepted. */
+  invites?: { id: string; email: string; role: "admin" | "member"; preset: string; expiresAt: string; createdAt: string }[];
+}
+
+/** Someone an admin's client can wrap a key to. */
+export interface WrapTarget {
+  userId: string;
+  name: string;
+  email: string;
+  publicJwk: DeviceJwk;
+  fingerprint: string;
+}
+
+/** GET /api/workspaces/:id/pending: what an admin's client should do now. */
+export interface PendingWraps {
+  workspaceGen: number;
+  admins: WrapTarget[];
+  grants: (WrapTarget & { projectId: string; environment: string; gen: number })[];
+  rotationDue: { workspace: boolean; envKeys: { projectId: string; environment: string }[] };
+}
+
+/** Shape check for a WrappedKey from the wire. */
+export function isWrappedKey(v: unknown): v is WrappedKey {
+  if (typeof v !== "object" || v === null) return false;
+  const w = v as Record<string, unknown>;
+  return w.v === 1 && w.alg === "AES-GCM" && typeof w.nonce === "string" && typeof w.ciphertext === "string";
 }
 
 /** The full navigation tree for the signed-in user. */
 export interface VaultTree {
   workspaces: WorkspaceNode[];
+  /** False on a self-hosted server, where there are no teams. Absent from older servers. */
+  teamsEnabled?: boolean;
 }
 
 /**
@@ -131,4 +257,18 @@ export interface AccessTokenSummary {
   lastUsedAt: string | null;
   expiresAt: string | null;
   createdAt: string;
+}
+
+/** A one-time send as its sender's list shows it. Never the blob. */
+export interface SendSummary {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  views: number;
+  viewsLeft: number;
+  /** The last time it was opened. */
+  openedAt: string | null;
+  /** True when the sender added a passphrase. */
+  passphrase: boolean;
+  state: "waiting" | "opened" | "expired" | "revoked";
 }

@@ -30,6 +30,7 @@ diverged it is marked inline.
 | Platform audit | `klef audit [vercel\|github\|cloudflare] [--json]`: key names only, read-only (`src/cli/audit.ts`) |
 | Run with the variables | `klef run [--from-vault] -- <command>`: the file (local, or decrypted in memory) injected into the child's environment, values masked in its output (`src/cli/commands/run.ts`, `redact.ts`, `dotenv-values.ts`) |
 | Ask for a missing value | `klef ask NAME [--reason ...]`: opens the file in the editor with the key ready to fill in, waits for a saved version that sets it, then sets it locally (`src/shared/ask-link.ts`, `src/cli/commands/ask.ts`, `VaultHome`/`FilePane`/`EnvTable`) |
+| Team projects | `pull`, `push`, `sync`, `run`, `ask` and `recover` on a team's files: the CLI fetches the team's wrapped keys and my sharing key record, and the cipher opens them next to the DEK, in the process or inside the unlock agent (`teamDecrypt` / `teamEncrypt` / `newUserKey` ops). No key crosses the agent's socket. Environments outside your access are refused with `no_access`, and `sync` leaves them alone (`src/cli/vault-files.ts`, `team-cipher.ts`, `src/shared/team-unlock.ts`) |
 | Machine output | `--json` on every command: one envelope with `ok`, `data` or `error.code` + `next`; fixed exit codes (`src/cli/ui.ts`, `klef help json`, `klef help exit-codes`) |
 | Published package | `@klefsh/cli`, one bundled file, zero required dependencies |
 | Browser sign-in | `db/migrations/0013_device_authorizations.sql`, `src/api/device.ts`, `/cli` |

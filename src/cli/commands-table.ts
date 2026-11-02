@@ -635,6 +635,7 @@ export function topicHelp(topic: (typeof TOPICS)[number], cli: string): string {
       ["unsafe_path", "A path outside this directory (exit 2)"],
       ["not_signed_in", "No token on this machine (exit 3)"],
       ["token_rejected", "The token expired or was revoked (exit 3)"],
+      ["no_access", "A team file your access does not cover (exit 3)"],
       ["locked", "Locked on this device; the user approves klef login, or runs unlock (exit 4)"],
       ["no_terminal", "A person must do this at a terminal (exit 4)"],
       ["wrong_passphrase", "The passphrase did not unlock the vault (exit 4)"],

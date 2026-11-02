@@ -100,6 +100,81 @@ Same shape as a blob; the plaintext is the 32-byte DEK rather than env text.
   "hashLengthBytes": 32, "salt": "<base64, 16 bytes>" }
 ```
 
+## User keys, team keys and sends
+
+Added for team workspaces and one-time sends (design:
+`docs/SHARING_DESIGN.md`). **Env blobs do not change**: a team's blobs are the
+same `v: 1` `EncryptedBlob`, encrypted with `encryptBlob` under a different
+32-byte key, which the row names beside the blob (`env_versions.key_scope`,
+`key_gen`; both empty means the owner's account DEK).
+
+### Key objects with context (`aead.ts`)
+
+Every small key object below is the `WrappedKey` shape, AES-256-GCM with a
+fresh 12-byte nonce, and **additional data** naming what it is for: UTF-8 of
+the purpose string and its context parts joined by `\n` (no part may contain a
+newline). Opening it in any other context fails.
+
+### User keypair (`user-key.ts`)
+
+- P-256 ECDH. Public key served as JWK `{ kty: "EC", crv: "P-256", x, y }`.
+- Fingerprint: hex of the first 16 bytes of
+  `SHA-256(utf8("klef/user-key/v1\n" + crv + "\n" + x + "\n" + y))`.
+  Displayed as Crockford Base32 of its first 10 bytes in four groups of four.
+- Private key: PKCS8 bytes sealed under the account DEK, context
+  `klef/user-key/v1`, `userId`, `fingerprint`.
+- Pins: UTF-8 JSON `{ userId: fingerprint }` sealed under the DEK, context
+  `klef/user-pins/v1`, `userId`.
+
+### Wrapping a key to a person (`team-keys.ts`)
+
+An authenticated ephemeral-static seal (the shape of HPKE `mode_auth`). With
+granter `S`, recipient `R` and a fresh ephemeral keypair `E`:
+
+```
+ikm  = ECDH(E.priv, R.pub) || ECDH(S.priv, R.pub)      // 32 + 32 bytes
+k    = HKDF-SHA-256(ikm, salt = empty, info = purpose) // AES-256-GCM key
+aad  = purpose \n scope... \n gen \n fpr(S) \n fpr(R)
+```
+
+The recipient computes `ECDH(R.priv, E.pub) || ECDH(R.priv, S.pub)`.
+
+| Purpose | Scope parts | Wraps |
+|---|---|---|
+| `klef/workspace-key/v1` | workspaceId | The workspace key, to the owner and each admin |
+| `klef/env-key/v1` | workspaceId, projectId, environment | An environment key, to a granted member |
+
+Environment is the file's label, `""` for unlabelled files.
+
+```jsonc
+{ "v": 1, "alg": "P256-AUTH+HKDF-SHA256+AES-GCM", "gen": 3,
+  "sender": "<fingerprint hex of S>",
+  "ephemeralPublicJwk": { "kty": "EC", "crv": "P-256", "x": "...", "y": "..." },
+  "nonce": "<base64, 12 bytes>", "ciphertext": "<base64, 32-byte key + tag>" }
+```
+
+### Environment keys under the workspace key, and chains
+
+- Admin copy: the environment key sealed under workspace key generation `w`,
+  context `klef/env-key-admin/v1`, workspaceId, projectId, environment, `gen`,
+  `w`.
+- Chain link stored with generation `g`: generation `g - 1` sealed under
+  generation `g`, context `klef/env-key-chain/v1`, projectId, environment, `g`.
+  It names no workspace, so it survives a project moving between teams.
+
+### Sends (`send.ts`)
+
+```
+k    = 32 random bytes, base64url in the URL fragment only
+id   = 16 random bytes, base64url, chosen by the client
+k'   = HKDF-SHA-256(k, salt = empty, info = "klef/send/v1")
+       or, with a passphrase p and stored KdfParams:
+       HKDF-SHA-256(k || KDF(p), salt = empty, info = "klef/send/v1/passphrase")
+pt   = uint32be(len(utf8(text))) || utf8(text), zero-padded to the first of
+       256, 1024, 4096, 16384, 65536 bytes that fits
+blob = WrappedKey shape, AES-256-GCM(k', pt), context "klef/send/v1", id
+```
+
 ## What the server can and cannot do
 
 | Server sees | Server can read? |
@@ -107,7 +182,11 @@ Same shape as a blob; the plaintext is the 32-byte DEK rather than env text.
 | Workspace / project / file names | Yes (plaintext, for navigation) |
 | `kdf_params`, salts, nonces | Yes (not secret) |
 | `wrapped_dek`, `wrapped_dek_recovery` | No (needs passphrase/recovery key) |
-| `env_versions.ciphertext` | No (needs the DEK) |
+| `env_versions.ciphertext` | No (needs the DEK, or the environment key) |
+| User public keys, fingerprints, send ids | Yes (not secret) |
+| User private keys, pins | No (sealed under the DEK) |
+| Workspace and environment key wraps, chain links | No (need a member's private key or a key above them) |
+| Send blobs | No (the key is only in the link's fragment) |
 
 ## Versioning rules
 
