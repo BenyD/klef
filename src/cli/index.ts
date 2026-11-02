@@ -36,6 +36,7 @@ import { set } from "./commands/set.ts";
 import { ask } from "./commands/ask.ts";
 import { recover } from "./commands/recover.ts";
 import { scan } from "./commands/scan.ts";
+import { kit, kitUpdateNotice } from "./commands/kit.ts";
 import { AGENT_COMMAND } from "./agent-spawn.ts";
 import { runAgentProcess } from "./agent.ts";
 import { CLI_VERSION } from "./version.ts";
@@ -67,6 +68,7 @@ const RUN: Record<string, Run> = {
   unlock: (args, env) => unlock(args, env),
   lock: (_args, env) => lock(env),
   scan: (args, env, cwd) => scan(args, env, cwd),
+  kit: (args, env) => kit(args, env),
 };
 
 function resolveCwd(args: ParsedArgs): string {
@@ -176,6 +178,8 @@ if (args.command === AGENT_COMMAND) {
   );
   try {
     process.exitCode = await main(args);
+    // Once a day, on a machine that set up a self-host kit (commands/kit.ts).
+    if (args.command !== "kit") await kitUpdateNotice(process.env);
   } catch (err) {
     // Errors reach the user as one line plus a next step. Stack traces are
     // noise here, and a stack could carry values a message wouldn't. The

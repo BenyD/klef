@@ -383,6 +383,25 @@ export const COMMANDS: CommandSpec[] = [
     json: "{ signedOut, revoked, tokenStillInEnvironment }",
   },
   {
+    name: "kit",
+    group: "More",
+    args: "<setup|update|status> [name]",
+    summary: "Deploy and update the self-host kit on your own Cloudflare account",
+    description:
+      "For people who bought the self-host kit. setup asks for the licence key and a Worker name, activates " +
+      "the licence for this one deployment, downloads the kit into a temporary folder, creates the database, " +
+      "deploys, deletes the folder, and prints the commands that set the Worker's secrets, which you run " +
+      "yourself. update installs the newest kit on a deployment set up from this machine (name it when there " +
+      "is more than one) and asks for the key again; status lists them. Needs a terminal and Node.js 22.18 or newer.",
+    flags: [],
+    examples: [
+      ["klef kit setup", "Licence, database, deploy, then the secret commands"],
+      ["klef kit update", "Newest kit, migrations, redeploy"],
+      ["klef kit status", "Deployments set up from this machine"],
+    ],
+    json: "setup: { workerName, url, version }; update: { workerName, version, updated }; status: { deployments: [ { workerName, url, version } ] }",
+  },
+  {
     name: "completion",
     group: "More",
     args: "<bash|zsh|fish>",
@@ -575,6 +594,7 @@ export function topicHelp(topic: (typeof TOPICS)[number], cli: string): string {
       ...table([
         ["KLEF_API_URL", "Server to use (default https://klef.sh), for self-hosting"],
         ["KLEF_TOKEN", "Access token to use instead of the stored one"],
+        ["KLEF_KIT_SERVER", "Where klef kit gets the self-host kit (default https://klef.sh)"],
         ["KLEF_NO_KEYCHAIN", "Store the token in a 0600 file instead of the OS keychain"],
         ["KLEF_CONFIG_DIR", "Where klef keeps state (default ~/.config/klef)"],
         ["KLEF_AGENT_SOCK", "Where the unlock agent's socket lives"],
