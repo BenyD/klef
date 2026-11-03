@@ -52,8 +52,12 @@ export interface OpenOptions {
  * Open everything in a keys response that `me` can open. Wraps are checked
  * against their senders' public keys from the same response, each of those
  * against its fingerprint, and each sender against `options.trust`. A wrap
- * that fails any of that is skipped, not fatal: the rest of the team still
- * opens, and what was skipped reads as a key this person does not hold.
+ * that does not open (wrong recipient, scope or generation, or a sender key
+ * that fails its fingerprint) is skipped, not fatal: the rest of the team
+ * still opens, and what was skipped reads as a key this person does not hold.
+ * A sender that `options.trust` refuses, or whose public key is missing from
+ * the response, stops the whole open with that error, so the reason reaches
+ * the person.
  */
 export async function openTeamKeys(
   me: UserKeypair,
