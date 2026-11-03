@@ -288,6 +288,24 @@ export async function enrollPasskeyWrap(
   return wrapKeyBytes(passkeyKek, dekBytes);
 }
 
+/**
+ * Move a passkey wrap from one PRF secret to another of the same passkey
+ * (a new salt): unwrap with the old, wrap the same DEK bytes under the new.
+ * Throws, writing nothing, if the old secret doesn't open the wrap.
+ */
+export async function rewrapPasskeyDek(
+  oldPrfSecret: Bytes,
+  wrappedDekPasskey: WrappedKey,
+  newPrfSecret: Bytes,
+): Promise<WrappedKey> {
+  const dekBytes = await unwrapKeyBytes(await derivePasskeyWrappingKey(oldPrfSecret), wrappedDekPasskey);
+  try {
+    return await wrapKeyBytes(await derivePasskeyWrappingKey(newPrfSecret), dekBytes);
+  } finally {
+    dekBytes.fill(0);
+  }
+}
+
 /** Unlock with a passkey's PRF secret: unwrap the DEK, return it live. */
 export async function unlockWithPrfSecret(
   prfSecret: Bytes,

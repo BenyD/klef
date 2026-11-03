@@ -8,6 +8,7 @@ import {
   generateRecoveryKey,
   parseRecoveryKey,
   resetPassphraseWithRecoveryKey,
+  rewrapPasskeyDek,
   rotateRecoveryKey,
   setupVault,
   unlockWithPassphrase,
@@ -249,6 +250,20 @@ describe("passkey (PRF) unlock", () => {
 
     const unlocked = await unlockWithPrfSecret(secret, wrappedDekPasskey);
     expect(await decryptBlob(unlocked, blob)).toBe("SECRET=1");
+  });
+
+  it("moves a passkey wrap to a new PRF secret, and refuses a wrong old one", async () => {
+    const passphrase = "passkey passphrase";
+    const { keyMaterial, dek } = await setupVault(passphrase);
+    const blob = await encryptBlob(dek, "SECRET=1");
+    const oldSecret = prfSecret();
+    const wrapped = await enrollPasskeyWrap(passphrase, keyMaterial.kdfParams, keyMaterial.wrappedDek, oldSecret);
+
+    const newSecret = prfSecret();
+    const moved = await rewrapPasskeyDek(oldSecret, wrapped, newSecret);
+    expect(await decryptBlob(await unlockWithPrfSecret(newSecret, moved), blob)).toBe("SECRET=1");
+    await expect(unlockWithPrfSecret(oldSecret, moved)).rejects.toThrow();
+    await expect(rewrapPasskeyDek(prfSecret(), wrapped, newSecret)).rejects.toThrow();
   });
 
   it("rejects enrollment with a wrong passphrase", async () => {
