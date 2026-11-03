@@ -2,9 +2,19 @@
   "name": "klef",
   "displayName": "Klef",
   "description": "Run your app with secrets the agent never sees, ask for a missing key in the browser instead of the chat, and sync .env files with the Klef vault.",
-  "author": { "name": "Beny Dishon K", "url": "https://klef.sh" },
+  "author": {
+    "name": "Beny Dishon K",
+    "url": "https://klef.sh"
+  },
   "homepage": "https://klef.sh/docs/guides/coding-agents/",
   "repository": "https://github.com/BenyD/klef",
   "license": "MIT",
-  "keywords": ["secrets", "env", "dotenv", "encryption", "vault"]
+  "icon": ".claude-plugin/icon.png",
+  "keywords": [
+    "secrets",
+    "env",
+    "dotenv",
+    "encryption",
+    "vault"
+  ]
 }
