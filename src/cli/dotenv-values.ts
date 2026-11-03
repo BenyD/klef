@@ -10,7 +10,7 @@
 // Nothing here is ever printed. The functions take and return values, and
 // the callers hand them to a child process's environment and nowhere else.
 
-import { parseEnvText } from "../shared/env-table.ts";
+import { fullValue, parseEnvText } from "../shared/env-table.ts";
 
 /**
  * A raw value as dotenv loaders read it: double quotes with `\n`-style
@@ -38,7 +38,7 @@ export function decodeValue(raw: string): string {
 export function envEntries(text: string): Map<string, string> {
   const entries = new Map<string, string>();
   for (const line of parseEnvText(text)) {
-    if (line.kind === "entry") entries.set(line.key, decodeValue(line.value));
+    if (line.kind === "entry") entries.set(line.key, decodeValue(fullValue(line)));
   }
   return entries;
 }

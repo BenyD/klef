@@ -17,8 +17,14 @@
 // was deleted, so it takes the union of keys. Either way, a key whose value
 // differs on both sides is a conflict, and a merge with conflicts writes
 // nothing.
+//
+// Keys are compared by their whole value, every line of a multi-line one.
+// Lines that are not part of any key (comments, mostly) are not merged: when
+// the vault changed them since the base and this file has them differently,
+// the merge stops rather than quietly keep this file's, and `otherLines` says
+// so.
 
-import { appendEntry, parseEnvText, removeLines, setEntry } from "../shared/env-table.ts";
+import { appendEntry, entryLines, fullValue, parseEnvText, removeLines, replaceEntryValue } from "../shared/env-table.ts";
 
 export interface MergeReport {
   /** The merged text, or null when there are conflicts. */
@@ -33,29 +39,40 @@ export interface MergeReport {
   removedHere: string[];
   /** Keys the vault loses because this file deleted them since the base. */
   removedThere: string[];
+  /** The vault changed comments or other non-key lines that differ here too: no merge. */
+  otherLines: boolean;
 }
 
 interface Entries {
-  /** Last assignment's raw value per key: what a loader would use. */
+  /** Last assignment's whole raw value per key: what a loader would use. */
   values: Map<string, string>;
   /** Line indices of every assignment per key. */
   lines: Map<string, number[]>;
-  /** Raw line of the last assignment, to copy across as written. */
+  /** Raw lines of the last assignment, every line of a multi-line one, to copy across as written. */
   raw: Map<string, string>;
   order: string[];
+  /** The lines that belong to no key, blank ones left out. */
+  other: string[];
 }
 
 function entries(text: string): Entries {
-  const out: Entries = { values: new Map(), lines: new Map(), raw: new Map(), order: [] };
+  const out: Entries = { values: new Map(), lines: new Map(), raw: new Map(), order: [], other: [] };
+  const raws = text.split("\n");
+  const inEntry = new Set<number>();
   for (const line of parseEnvText(text)) {
     if (line.kind !== "entry") continue;
     if (!out.values.has(line.key)) out.order.push(line.key);
-    out.values.set(line.key, line.value);
-    out.raw.set(line.key, line.raw);
+    const covered = entryLines(line);
+    for (const i of covered) inEntry.add(i);
+    out.values.set(line.key, fullValue(line));
+    out.raw.set(line.key, covered.map((i) => raws[i]).join("\n"));
     out.lines.set(line.key, [...(out.lines.get(line.key) ?? []), line.index]);
   }
+  out.other = raws.filter((raw, i) => !inEntry.has(i) && raw.trim() !== "").map((raw) => raw.replace(/\r$/, ""));
   return out;
 }
+
+const sameLines = (a: string[], b: string[]) => a.length === b.length && a.every((line, i) => line === b[i]);
 
 const sorted = (keys: string[]) => keys.sort((a, b) => a.localeCompare(b));
 
@@ -64,7 +81,15 @@ export function mergeEnv(local: string, vault: string, base: string | null): Mer
   const V = entries(vault);
   const B = base === null ? null : entries(base);
 
-  const report: MergeReport = { text: null, conflicts: [], fromVault: [], fromLocal: [], removedHere: [], removedThere: [] };
+  const report: MergeReport = {
+    text: null,
+    conflicts: [],
+    fromVault: [],
+    fromLocal: [],
+    removedHere: [],
+    removedThere: [],
+    otherLines: B !== null && !sameLines(V.other, B.other) && !sameLines(V.other, L.other),
+  };
   const setHere = new Map<string, string>(); // key -> vault's raw value
   const addHere: string[] = []; // keys to append, vault order
   const dropHere: string[] = [];
@@ -112,14 +137,18 @@ export function mergeEnv(local: string, vault: string, base: string | null): Mer
   for (const list of [report.conflicts, report.fromVault, report.fromLocal, report.removedHere, report.removedThere]) {
     sorted(list);
   }
-  if (report.conflicts.length) return report;
+  if (report.conflicts.length || report.otherLines) return report;
 
+  // Bottom up, so a multi-line value growing or shrinking doesn't move the
+  // lines still to be edited.
+  const edits = [
+    ...[...setHere].map(([key, value]) => ({ index: L.lines.get(key)!.at(-1)!, value })),
+    ...dropHere.flatMap((key) => L.lines.get(key)!.map((index) => ({ index, value: null }))),
+  ].sort((a, b) => b.index - a.index);
   let text = local;
-  for (const [key, value] of setHere) {
-    const indices = L.lines.get(key)!;
-    text = setEntry(text, indices[indices.length - 1]!, { value });
+  for (const edit of edits) {
+    text = edit.value === null ? removeLines(text, [edit.index]) : replaceEntryValue(text, edit.index, edit.value);
   }
-  text = removeLines(text, dropHere.flatMap((key) => L.lines.get(key)!));
   for (const key of addHere) text = appendRaw(text, V.raw.get(key)!, key, V.values.get(key)!);
   report.text = text;
   return report;

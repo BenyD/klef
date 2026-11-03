@@ -36,3 +36,20 @@ describe("envEntries and formatEnvText", () => {
     expect([...envEntries(formatEnvText(entries))]).toEqual(entries);
   });
 });
+
+describe("envEntries on files written other ways", () => {
+  it("loads a CRLF file", () => {
+    expect([...envEntries("A=hello\r\nB='world'\r\n")]).toEqual([
+      ["A", "hello"],
+      ["B", "world"],
+    ]);
+  });
+
+  it("loads a quoted value over several lines whole, and no key from inside it", () => {
+    const text = 'KEY="-----BEGIN KEY-----\nMIIE\nTail==\n-----END KEY-----"\nB=2\n';
+    expect([...envEntries(text)]).toEqual([
+      ["KEY", "-----BEGIN KEY-----\nMIIE\nTail==\n-----END KEY-----"],
+      ["B", "2"],
+    ]);
+  });
+});

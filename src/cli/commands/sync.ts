@@ -115,8 +115,8 @@ function fileJson(file: FileSync, cwd: string): Record<string, unknown> {
     out.keys = keyDiff(file.local.text, file.vault.text) satisfies KeyDiff;
   }
   if (file.merge) {
-    const { conflicts, fromVault, fromLocal, removedHere, removedThere } = file.merge;
-    out.merge = { conflicts, fromVault, fromLocal, removedHere, removedThere, base: file.baseline ? "last-synced" : "none" };
+    const { conflicts, fromVault, fromLocal, removedHere, removedThere, otherLines } = file.merge;
+    out.merge = { conflicts, fromVault, fromLocal, removedHere, removedThere, otherLines, base: file.baseline ? "last-synced" : "none" };
   }
   return out;
 }
@@ -155,6 +155,10 @@ export function describeConflicts(conflicts: FileSync[], cwd: string): string[] 
       lines.push(...file.merge.conflicts.map((k) => `  ~ ${k}`));
       const gains = describeMerge(file);
       if (gains.length) lines.push("Once they are settled, the merge brings:", ...gains);
+      continue;
+    }
+    if (file.merge?.otherLines) {
+      lines.push("", `${path.relative(cwd, file.destination)}: the vault changed comments that differ here too, so it was not merged.`);
       continue;
     }
     if (file.local && file.vault) {

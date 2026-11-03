@@ -5,7 +5,7 @@
 // app's table editor does (src/shared/env-table.ts), so comments, order and
 // every other line stay exactly as they were.
 
-import { appendEntry, ENV_KEY_RE, parseEnvText, setEntry } from "../shared/env-table.ts";
+import { appendEntry, ENV_KEY_RE, fullValue, parseEnvText, replaceEntryValue } from "../shared/env-table.ts";
 
 export function isKeyName(name: string): boolean {
   return ENV_KEY_RE.test(name);
@@ -19,7 +19,7 @@ export function isKeyName(name: string): boolean {
 export function setKey(text: string, key: string, rawValue: string): { text: string; added: boolean } {
   const assignments = parseEnvText(text).filter((l) => l.kind === "entry" && l.key === key);
   const last = assignments.at(-1);
-  if (last) return { text: setEntry(text, last.index, { value: rawValue }), added: false };
+  if (last) return { text: replaceEntryValue(text, last.index, rawValue), added: false };
   return { text: appendEntry(text, key, rawValue), added: true };
 }
 
@@ -27,5 +27,5 @@ export function setKey(text: string, key: string, rawValue: string): { text: str
 export function rawValueOf(text: string, key: string): string | null {
   const assignments = parseEnvText(text).filter((l) => l.kind === "entry" && l.key === key);
   const last = assignments.at(-1);
-  return last && last.kind === "entry" ? last.value : null;
+  return last && last.kind === "entry" ? fullValue(last) : null;
 }

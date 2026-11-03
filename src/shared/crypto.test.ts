@@ -30,6 +30,12 @@ UNICODE=café_☕_🔐
 `;
 
 describe("blob encryption", () => {
+  it("returns a leading byte order mark byte for byte", async () => {
+    const { dek } = await setupVault("pw");
+    const text = "\uFEFFA=1\r\nB=2\r\n";
+    expect(await decryptBlob(dek, await encryptBlob(dek, text))).toBe(text);
+  });
+
   it("round-trips env text byte-for-byte", async () => {
     const { dek } = await setupVault("correct horse battery staple");
     const blob = await encryptBlob(dek, SAMPLE_ENV);
@@ -111,6 +117,11 @@ describe("recovery key", () => {
     await expect(
       unlockWithRecoveryKey(wrong, keyMaterial.wrappedDekRecovery),
     ).rejects.toThrow();
+  });
+
+  it("refuses a recovery key with extra characters on the end", () => {
+    const { display } = generateRecoveryKey();
+    expect(() => parseRecoveryKey(`${display}-ZZZZ`)).toThrow();
   });
 
   it("formats and parses recovery keys symmetrically", () => {

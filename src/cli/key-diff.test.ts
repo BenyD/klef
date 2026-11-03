@@ -53,3 +53,17 @@ describe("commented-out keys", () => {
     expect(keyDiff("# A=old\nA=1\n", "A=1\n").declaredLocal).toEqual([]);
   });
 });
+
+describe("multi-line values", () => {
+  const pem = (tail: string) => `P="-----BEGIN KEY-----\nMIIEbody\n${tail}==\n-----END KEY-----"\n`;
+
+  it("never names a line of key material as a key", () => {
+    const diff = keyDiff(pem("Abc123Tail"), pem("Xyz789Tail"));
+    expect(diff).toMatchObject({ onlyLocal: [], onlyVault: [], changed: ["P"] });
+    expect(formatKeyDiff(diff, pem("Abc123Tail"), pem("Xyz789Tail")).join("\n")).not.toMatch(/Abc123|Xyz789/);
+  });
+
+  it("reads a CRLF file's keys, and its values as equal to the LF copy's", () => {
+    expect(isEmptyDiff(keyDiff("A=1\r\nB=2\r\n", "A=1\nB=2\n"))).toBe(true);
+  });
+});

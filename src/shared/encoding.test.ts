@@ -63,3 +63,17 @@ describe("base64url", () => {
     expect(base64UrlToBytes(padded)).toEqual(bytes);
   });
 });
+
+describe("byte for byte", () => {
+  it("keeps a leading byte order mark", () => {
+    const text = "\uFEFFA=1\n";
+    expect(bytesToUtf8(utf8ToBytes(text))).toBe(text);
+  });
+
+  it("refuses Crockford text longer than the bytes it should hold", () => {
+    const display = bytesToCrockford(new Uint8Array(16).fill(7));
+    expect(crockfordToBytes(display, 16)).toEqual(new Uint8Array(16).fill(7));
+    expect(() => crockfordToBytes(`${display}ZZZZ`, 16)).toThrow(/longer than 16 bytes/);
+    expect(() => crockfordToBytes(`${display}0`, 16)).toThrow();
+  });
+});

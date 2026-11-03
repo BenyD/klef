@@ -15,9 +15,12 @@ export function utf8ToBytes(s: string): Bytes {
   return new TextEncoder().encode(s) as Bytes;
 }
 
-/** Bytes → UTF-8 string. */
+/**
+ * Bytes → UTF-8 string. A leading byte order mark is kept: the default
+ * decoder drops it, and decrypted text must come back byte for byte.
+ */
 export function bytesToUtf8(b: Uint8Array): string {
-  return new TextDecoder().decode(b);
+  return new TextDecoder("utf-8", { ignoreBOM: true }).decode(b);
 }
 
 /** Bytes → standard (padded) base64. Chunked so large inputs don't overflow the stack. */
@@ -98,6 +101,9 @@ export function bytesToCrockford(bytes: Uint8Array): string {
  */
 export function crockfordToBytes(text: string, byteLength: number): Bytes {
   const clean = text.replace(/[\s-]/g, "");
+  if (clean.length > Math.ceil((byteLength * 8) / 5)) {
+    throw new Error(`Recovery key is longer than ${byteLength} bytes`);
+  }
   const out = new Uint8Array(byteLength);
   let bits = 0;
   let value = 0;

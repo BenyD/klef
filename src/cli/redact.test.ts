@@ -113,3 +113,12 @@ describe("createRedactor", () => {
     expect(r.write(`${SECRET}\n`)).toBe(`${SECRET}\n`);
   });
 });
+
+describe("a multi-line value split across reads", () => {
+  it("is masked line by line, whatever the chunk boundaries", () => {
+    const value = "-----BEGIN KEY-----\nMIIEsecretbody\n-----END KEY-----\n";
+    const r = createRedactor(redactable([value]));
+    const out = r.write("-----BEGIN KEY-----\nMIIEsec") + r.write("retbody\n-----END KEY-----\n") + r.flush();
+    expect(out).toBe(`${REDACTED}\n${REDACTED}\n${REDACTED}\n`);
+  });
+});

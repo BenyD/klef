@@ -5,7 +5,7 @@
 // text in the browser — the server never sees keys or values — using the same
 // line parser as the table editor, so "key" means exactly what an edit means.
 
-import { parseEnvText } from "./env-table.ts";
+import { fullValue, parseEnvText } from "./env-table.ts";
 
 export interface DriftFile {
   /** Stable id (the file id) so the UI can map a column back to a file. */
@@ -57,7 +57,7 @@ export function keysOf(text: string): string[] {
 export function valuesOf(text: string): Map<string, string> {
   const values = new Map<string, string>();
   for (const line of parseEnvText(text)) {
-    if (line.kind === "entry") values.set(line.key, line.value);
+    if (line.kind === "entry") values.set(line.key, fullValue(line));
   }
   return values;
 }

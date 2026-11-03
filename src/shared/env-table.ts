@@ -8,9 +8,15 @@
 // spacing around `=` all survive edits verbatim.
 //
 // Deliberately line-based: a multi-line quoted value parses as one entry line
-// (the opening line) plus "other" continuation lines. Inline comments after a
-// value are part of the value text. Both are honest trade-offs that keep the
-// mutations byte-safe.
+// (the opening line) plus "other" continuation lines, and `value` is the
+// opening line's part. `span` carries the whole value for readers that need
+// it. A continuation line is never an entry, however much it looks like one:
+// the tail of a PEM body (`Abc123==`) would otherwise read as a key named
+// after key material. Inline comments after a value are part of the value
+// text. Both are honest trade-offs that keep the mutations byte-safe.
+//
+// CRLF files parse like LF ones: a line's trailing \r stays in `raw` and out
+// of `value`, and edits put it back.
 
 export interface EnvEntry {
   kind: "entry";
@@ -19,6 +25,12 @@ export interface EnvEntry {
   key: string;
   value: string;
   raw: string;
+  /**
+   * Set when a quoted value runs onto later lines: the index of its closing
+   * line, and the whole value from the opening quote to the line that closes
+   * it, lines joined with \n.
+   */
+  span?: { end: number; value: string };
 }
 
 export interface EnvOther {
@@ -33,16 +45,71 @@ export type EnvLine = EnvEntry | EnvOther;
 export const ENV_KEY_RE = /^[A-Za-z_][A-Za-z0-9_.-]*$/;
 
 // prefix (indent + optional `export `), key, separator (spacing around `=`),
-// value (everything after). The prefix admits only whitespace and `export`,
-// so full-line comments never match and stay "other".
-const ENTRY_RE = /^(\s*(?:export\s+)?)([A-Za-z_][A-Za-z0-9_.-]*)(\s*=\s*)(.*)$/;
+// value (everything after, including a lone \r or U+2028 inside it). The
+// prefix admits only whitespace and `export`, so full-line comments never
+// match and stay "other". Matched against a line without its trailing \r.
+const ENTRY_RE = /^(\s*(?:export\s+)?)([A-Za-z_][A-Za-z0-9_.-]*)(\s*=\s*)([\s\S]*)$/;
+
+/** A line without the \r a CRLF file ends it with. */
+function body(raw: string): string {
+  return raw.endsWith("\r") ? raw.slice(0, -1) : raw;
+}
+
+/**
+ * Where `quote` closes in `s`, searching from `from`: the next one, or for
+ * double quotes the next one not escaped with a backslash. -1 if it doesn't.
+ */
+function closingQuote(s: string, quote: string, from: number): number {
+  for (let i = from; i < s.length; i++) {
+    if (quote === '"' && s[i] === "\\") i++;
+    else if (s[i] === quote) return i;
+  }
+  return -1;
+}
+
+/**
+ * The line that closes a value opened on line `index` but not closed there,
+ * or -1. A quote that never closes is a one-line value, as dotenv loaders
+ * read it, so one stray quote doesn't swallow the rest of the file.
+ */
+function closingLine(bodies: string[], index: number, value: string): number {
+  const quote = value[0];
+  if (quote !== '"' && quote !== "'" && quote !== "`") return -1;
+  if (closingQuote(value, quote, 1) !== -1) return -1;
+  for (let j = index + 1; j < bodies.length; j++) {
+    if (closingQuote(bodies[j]!, quote, 0) !== -1) return j;
+  }
+  return -1;
+}
 
 export function parseEnvText(text: string): EnvLine[] {
-  return text.split("\n").map((raw, index): EnvLine => {
-    const m = ENTRY_RE.exec(raw);
-    if (!m) return { kind: "other", index, raw };
-    return { kind: "entry", index, key: m[2]!, value: m[4]!, raw };
-  });
+  const raws = text.split("\n");
+  const bodies = raws.map(body);
+  const lines: EnvLine[] = [];
+  for (let index = 0; index < raws.length; index++) {
+    const raw = raws[index]!;
+    const m = ENTRY_RE.exec(bodies[index]!);
+    if (!m) {
+      lines.push({ kind: "other", index, raw });
+      continue;
+    }
+    const entry: EnvEntry = { kind: "entry", index, key: m[2]!, value: m[4]!, raw };
+    const end = closingLine(bodies, index, entry.value);
+    if (end !== -1) {
+      entry.span = { end, value: [entry.value, ...bodies.slice(index + 1, end + 1)].join("\n") };
+    }
+    lines.push(entry);
+    while (index < end) {
+      index++;
+      lines.push({ kind: "other", index, raw: raws[index]! });
+    }
+  }
+  return lines;
+}
+
+/** An entry's whole value: every line of a multi-line one, else its line's. */
+export function fullValue(entry: EnvEntry): string {
+  return entry.span?.value ?? entry.value;
 }
 
 /**
@@ -58,27 +125,54 @@ export function setEntry(
   const lines = text.split("\n");
   const raw = lines[index];
   if (raw === undefined) return text;
-  const m = ENTRY_RE.exec(raw);
+  const line = body(raw);
+  const m = ENTRY_RE.exec(line);
   if (!m) return text;
-  lines[index] = `${m[1]}${next.key ?? m[2]}${m[3]}${next.value ?? m[4]}`;
+  const cr = raw.slice(line.length);
+  // A new value with line breaks takes the line's own ending at each one.
+  const value = next.value === undefined ? m[4] : cr ? next.value.replace(/\r?\n/g, "\r\n") : next.value;
+  lines[index] = `${m[1]}${next.key ?? m[2]}${m[3]}${value}${cr}`;
   return lines.join("\n");
 }
 
-/** Delete the line at `index` (entry or otherwise). */
-export function removeLine(text: string, index: number): string {
+/**
+ * Give the entry at `index` a new value, replacing every line of a
+ * multi-line one. For writers that set a key outright (`klef set`, a merge),
+ * where keeping the old continuation lines would leave half a value behind.
+ */
+export function replaceEntryValue(text: string, index: number, value: string): string {
+  const entry = parseEnvText(text)[index];
+  if (!entry || entry.kind !== "entry") return text;
   const lines = text.split("\n");
-  if (index < 0 || index >= lines.length) return text;
-  lines.splice(index, 1);
-  return lines.join("\n");
+  if (entry.span) lines.splice(index + 1, entry.span.end - index);
+  return setEntry(lines.join("\n"), index, { value });
+}
+
+/** The line indices an entry covers: its own, and any continuation lines. */
+export function entryLines(entry: EnvEntry): number[] {
+  const end = entry.span?.end ?? entry.index;
+  return Array.from({ length: end - entry.index + 1 }, (_, i) => entry.index + i);
+}
+
+/** Delete the line at `index` (entry or otherwise), with a multi-line value's continuation lines. */
+export function removeLine(text: string, index: number): string {
+  return removeLines(text, [index]);
 }
 
 /** Delete several lines at once (bulk selection); indices may be unordered. */
 export function removeLines(text: string, indices: number[]): string {
-  const lines = text.split("\n");
-  for (const i of [...indices].sort((a, b) => b - a)) {
-    if (i >= 0 && i < lines.length) lines.splice(i, 1);
+  const parsed = parseEnvText(text);
+  const doomed = new Set<number>();
+  for (const i of indices) {
+    const line = parsed[i];
+    if (!line) continue;
+    for (const j of line.kind === "entry" ? entryLines(line) : [i]) doomed.add(j);
   }
-  return lines.join("\n");
+  if (doomed.size === 0) return text;
+  return text
+    .split("\n")
+    .filter((_, i) => !doomed.has(i))
+    .join("\n");
 }
 
 /**
@@ -167,7 +261,7 @@ export function diffEntryRows(
     used.set(e.key, n + 1);
     const base = byKey.get(e.key)?.[n];
     if (!base) changes.set(e.index, { status: "added" });
-    else if (base.value !== e.value) {
+    else if (fullValue(base) !== fullValue(e)) {
       changes.set(e.index, { status: "modified", baseValue: base.value });
     }
   }

@@ -4,10 +4,12 @@ import {
   appendEntry,
   diffEntryRows,
   ENV_KEY_RE,
+  fullValue,
   isEnvBlock,
   parseEnvText,
   removeLine,
   removeLines,
+  replaceEntryValue,
   setEntry,
   splitEntryLine,
 } from "./env-table.ts";
@@ -205,5 +207,102 @@ describe("diffEntryRows", () => {
     const { changes, removed } = diffEntryRows(base, base);
     expect(changes.size).toBe(0);
     expect(removed).toEqual([]);
+  });
+});
+
+const entriesOf = (text: string) =>
+  parseEnvText(text).flatMap((l) => (l.kind === "entry" ? [[l.key, fullValue(l)]] : []));
+
+describe("CRLF files", () => {
+  const crlf = "# App\r\nA=1\r\nexport B = two\r\n";
+
+  it("parse like LF ones, keeping the \\r out of values and in raw", () => {
+    expect(entriesOf(crlf)).toEqual([
+      ["A", "1"],
+      ["B", "two"],
+    ]);
+    const a = parseEnvText(crlf)[1]!;
+    expect(a.raw).toBe("A=1\r");
+  });
+
+  it("keep every \\r through an edit", () => {
+    expect(setEntry(crlf, 1, { value: "9" })).toBe("# App\r\nA=9\r\nexport B = two\r\n");
+    expect(setEntry(crlf, 2, { key: "C" })).toBe("# App\r\nA=1\r\nexport C = two\r\n");
+  });
+});
+
+describe("values holding other line breaks", () => {
+  it("keeps a key whose value has a lone \\r, U+2028 or U+2029", () => {
+    for (const odd of ["\r", "\u2028", "\u2029"]) {
+      expect(entriesOf(`A=x${odd}y\nB=2\n`)).toEqual([
+        ["A", `x${odd}y`],
+        ["B", "2"],
+      ]);
+    }
+  });
+});
+
+describe("multi-line quoted values", () => {
+  const PEM = 'A=1\nKEY="-----BEGIN KEY-----\nMIIEabc\nTail123==\n-----END KEY-----"\nB=2\n';
+
+  it("are one entry whose continuation lines are never keys", () => {
+    const lines = parseEnvText(PEM);
+    expect(lines.map((l) => l.kind)).toEqual(["entry", "entry", "other", "other", "other", "entry", "other"]);
+    expect(entriesOf(PEM).map(([k]) => k)).toEqual(["A", "KEY", "B"]);
+  });
+
+  it("carry the whole value, joined with \\n even in a CRLF file", () => {
+    const key = parseEnvText(PEM)[1]!;
+    expect(key.kind === "entry" && key.value).toBe('"-----BEGIN KEY-----');
+    expect(key.kind === "entry" && key.span).toEqual({ end: 4, value: '"-----BEGIN KEY-----\nMIIEabc\nTail123==\n-----END KEY-----"' });
+    expect(entriesOf(PEM.replace(/\n/g, "\r\n"))[1]).toEqual(["KEY", '"-----BEGIN KEY-----\nMIIEabc\nTail123==\n-----END KEY-----"']);
+  });
+
+  it("close on the matching quote, past escaped double quotes", () => {
+    expect(entriesOf("A='one\nB=two'\nC=3\n")).toEqual([
+      ["A", "'one\nB=two'"],
+      ["C", "3"],
+    ]);
+    expect(entriesOf('A="say \\"\nB=x"\nC=3\n')).toEqual([
+      ["A", '"say \\"\nB=x"'],
+      ["C", "3"],
+    ]);
+    expect(entriesOf("A=`one\nB=two`\n")).toEqual([["A", "`one\nB=two`"]]);
+  });
+
+  it("read a quote that never closes as a one-line value, not the rest of the file", () => {
+    expect(entriesOf('A="oops\nB=2\nC=3\n')).toEqual([
+      ["A", '"oops'],
+      ["B", "2"],
+      ["C", "3"],
+    ]);
+  });
+
+  it("are removed whole, continuation lines and all", () => {
+    expect(removeLine(PEM, 1)).toBe("A=1\nB=2\n");
+    expect(removeLines(PEM, [5, 1])).toBe("A=1\n");
+  });
+
+  it("are replaced whole by replaceEntryValue, while setEntry edits the opening line", () => {
+    expect(replaceEntryValue(PEM, 1, "new")).toBe("A=1\nKEY=new\nB=2\n");
+    expect(replaceEntryValue(PEM, 1, '"x\ny"')).toBe('A=1\nKEY="x\ny"\nB=2\n');
+    expect(replaceEntryValue("A=1\r\nB=2\r\n", 0, '"x\ny"')).toBe('A="x\r\ny"\r\nB=2\r\n');
+    expect(setEntry(PEM, 1, { key: "PEM" })).toBe(PEM.replace("KEY=", "PEM="));
+  });
+
+  it("count as modified when only a continuation line changed", () => {
+    const { changes } = diffEntryRows(PEM, PEM.replace("MIIEabc", "MIIExyz"));
+    expect(changes.get(1)).toEqual({ status: "modified", baseValue: '"-----BEGIN KEY-----' });
+  });
+});
+
+describe("a leading byte order mark", () => {
+  it("leaves the first key readable and stays in the line", () => {
+    const text = "\uFEFFA=1\nB=2\n";
+    expect(entriesOf(text)).toEqual([
+      ["A", "1"],
+      ["B", "2"],
+    ]);
+    expect(setEntry(text, 0, { value: "9" })).toBe("\uFEFFA=9\nB=2\n");
   });
 });

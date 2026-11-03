@@ -151,6 +151,54 @@ describe("sync --merge", () => {
     expect(await stored()).toBe("A=1\nB=2\nD=4\n");
     expect(output).toEqual(expect.arrayContaining(["  - C  removed in the vault (deleted here)"]));
   });
+
+  it("keeps a multi-line value the vault rotated, instead of pushing the old one back", async () => {
+    const key = (body: string) => `PRIVATE_KEY="-----BEGIN KEY-----\n${body}\n-----END KEY-----"\n`;
+    await save(`${key(`${SECRET}_old`)}A=1\n`);
+    expect(await sync(parseArgs(["sync"]), env, cwd, prompt, yes)).toBe(0);
+    await edit(`${key(`${SECRET}_old`)}A=1\nB=2\n`);
+    await save(`${key(`${SECRET}_new`)}A=1\n`);
+    expect(await sync(parseArgs(["sync", "--merge", "-y"]), env, cwd, prompt, yes)).toBe(0);
+    expect(await local()).toBe(`${key(`${SECRET}_new`)}A=1\nB=2\n`);
+    expect(await stored()).toBe(await local());
+  });
+
+  it("merges a CRLF file by key instead of reverting the vault's change", async () => {
+    await save("A=1\r\nB=2\r\n");
+    expect(await sync(parseArgs(["sync"]), env, cwd, prompt, yes)).toBe(0);
+    await edit("A=1\r\nB=2\r\nC=3\r\n");
+    await save("A=9\r\nB=2\r\n");
+    expect(await sync(parseArgs(["sync", "--merge", "-y"]), env, cwd, prompt, yes)).toBe(0);
+    expect(await stored()).toBe("A=9\r\nB=2\r\nC=3\r\n");
+  });
+
+  it("stops when the vault changed a comment that differs here, and writes nothing", async () => {
+    await save("# Old\nA=1\n");
+    expect(await sync(parseArgs(["sync"]), env, cwd, prompt, yes)).toBe(0);
+    await edit("# Old\nA=1\nB=2\n");
+    await save("# New\nA=1\n");
+    await expect(sync(parseArgs(["sync", "--merge", "-y"]), env, cwd, prompt, yes)).rejects.toMatchObject({ code: "conflict" });
+    expect(output.join("\n")).toContain("the vault changed comments that differ here too");
+    expect(await local()).toBe("# Old\nA=1\nB=2\n");
+    expect(versions).toHaveLength(2);
+  });
+
+  it("keeps an edit made at the push prompt unsynced, so the next sync pushes it", async () => {
+    await save("A=1\nB=2\n");
+    expect(await sync(parseArgs(["sync"]), env, cwd, prompt, yes)).toBe(0);
+    await edit("A=1\nL=3\n"); // B deleted here, L added
+    await save("A=1\n"); // B deleted in the vault too
+    // The merged text is this file as it stands, so nothing is written here;
+    // the file is edited while the push question waits.
+    const editAtPrompt = async () => {
+      await edit("A=1\nL=3\nLATE=4\n");
+      return true;
+    };
+    expect(await sync(parseArgs(["sync", "--merge"]), env, cwd, prompt, editAtPrompt)).toBe(0);
+    expect(await stored()).toBe("A=1\nL=3\n");
+    expect(await sync(parseArgs(["sync", "-y"]), env, cwd, prompt, yes)).toBe(0);
+    expect(await stored()).toBe("A=1\nL=3\nLATE=4\n");
+  });
 });
 
 describe("klef set", () => {

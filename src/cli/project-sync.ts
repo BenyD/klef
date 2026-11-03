@@ -138,7 +138,9 @@ export async function applySync(
       if (text !== file.vault!.text) {
         versionId = (await filesOf(ctx).save(file.resolved!.fileId, text, file.vault!.versionId)).id;
       }
-      synced.push({ file: file.destination, versionId });
+      // Unwritten, the file is the one inspected: record that, so an edit
+      // made since (at the push prompt) still reads as unsynced.
+      synced.push({ file: file.destination, versionId, seen: text === file.local!.text ? file.local! : undefined });
       const { fromVault, fromLocal, removedHere, removedThere } = file.merge!;
       lines.push(
         `Merged ${file.resolved!.fileName}: ${fromVault.length + removedHere.length} ${fromVault.length + removedHere.length === 1 ? "change" : "changes"} here, ${fromLocal.length + removedThere.length} to the vault${versionId !== file.vault!.versionId ? ` (version ${versionId.slice(0, 8)})` : ""}`,
@@ -195,6 +197,8 @@ export async function planMerges(ctx: SyncContext, files: FileSync[]): Promise<v
         action: "conflict",
         reason: `values differ on both sides: ${report.conflicts.join(", ")}`,
       };
+    } else if (report.otherLines) {
+      file.decision = { action: "conflict", reason: "comments differ on both sides" };
     } else {
       const here = report.fromVault.length + report.removedHere.length;
       const there = report.fromLocal.length + report.removedThere.length;

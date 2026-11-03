@@ -16,7 +16,8 @@ export interface LocalFile {
   size: number;
 }
 
-const UTF8 = new TextDecoder("utf-8", { fatal: true });
+// ignoreBOM keeps a leading byte order mark, which the default drops.
+const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /**
  * The file's text, or a usage error when it isn't valid UTF-8. The vault keeps
