@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 //
-// One lock policy for every client. The web vault's inactivity auto-lock and
-// the CLI's unlock agent both read this, so "the key is forgotten after 15
-// idle minutes" stays true wherever the key lives. Kept free of React and DOM
-// so the CLI bundle can import it without dragging the web app along.
+// Lock limits shared by every client. The CLI's unlock agent forgets the key
+// after AUTO_LOCK_DEFAULT_MINUTES idle; the web vault has its own, longer
+// default (src/web/lib/auto-lock.ts) and shares the 7-day ceiling. Kept free
+// of React and DOM so the CLI bundle can import it without the web app.
 
 export const AUTO_LOCK_DEFAULT_MINUTES = 15;
 
