@@ -6,7 +6,11 @@
     "name": "Beny Dishon K",
     "url": "https://klef.sh"
   },
-  "homepage": "https://klef.sh/docs/guides/coding-agents/",
+  "homepage": "https://klef.sh",
+  "documentationUrl": "https://klef.sh/docs/guides/coding-agents/",
+  "supportUrl": "https://klef.sh/contact",
+  "privacyPolicyUrl": "https://klef.sh/privacy",
+  "termsOfServiceUrl": "https://klef.sh/terms",
   "repository": "https://github.com/BenyD/klef",
   "license": "MIT",
   "icon": ".claude-plugin/icon.png",
