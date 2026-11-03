@@ -115,7 +115,7 @@ export async function applySync(
   actions: ReadonlySet<SyncDecision["action"]>,
 ): Promise<string[]> {
   const lines: string[] = [];
-  const synced: { file: string; versionId: string }[] = [];
+  const synced: { file: string; versionId: string; seen?: { mtimeMs: number; size: number } }[] = [];
 
   for (const file of files) {
     const { action } = file.decision;
@@ -123,17 +123,17 @@ export async function applySync(
     const shown = path.relative(cwd, file.destination);
 
     if (action === "in-sync") {
-      synced.push({ file: file.destination, versionId: file.vault!.versionId });
+      synced.push({ file: file.destination, versionId: file.vault!.versionId, seen: file.local ?? undefined });
     } else if (action === "pull") {
       const text = file.vault!.text;
-      await writeEnvFile(file.destination, text);
+      await writeEnvFile(file.destination, text, cwd);
       synced.push({ file: file.destination, versionId: file.vault!.versionId });
       lines.push(describeWrite({ path: shown, variableCount: countVariables(text) }));
     } else if (action === "merge") {
       // Both sides gain what the other had: the merged text goes here, and
       // to the vault as a new version unless the vault already has it.
       const text = file.merge!.text!;
-      if (text !== file.local!.text) await writeEnvFile(file.destination, text);
+      if (text !== file.local!.text) await writeEnvFile(file.destination, text, cwd);
       let versionId = file.vault!.versionId;
       if (text !== file.vault!.text) {
         versionId = (await filesOf(ctx).save(file.resolved!.fileId, text, file.vault!.versionId)).id;
@@ -158,7 +158,9 @@ export async function applySync(
         filesOf(ctx).track(fileId, { projectId: project.id, environment: environment ?? environmentFromName(file.entry.file) });
       }
       const saved = await filesOf(ctx).save(fileId, file.local!.text, file.vault?.versionId ?? null);
-      synced.push({ file: file.destination, versionId: saved.id });
+      // The file as inspected, which is what was pushed: an edit since then
+      // was not, so it must read as unsynced.
+      synced.push({ file: file.destination, versionId: saved.id, seen: file.local! });
       lines.push(`Pushed ${summary} to ${fileName} (version ${saved.id.slice(0, 8)})`);
     }
   }

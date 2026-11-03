@@ -56,7 +56,7 @@ export async function recover(
     });
   }
 
-  const result = await writeKey(target.absolute, name, raw);
+  const result = await writeKey(target.absolute, name, raw, cwd);
   done(`set ${name} in ${target.shown} from version ${version.id.slice(0, 8)}`);
   note(`${cmd(command("push"), true)} or ${cmd(command("sync"), true)} saves it to the vault.`);
   emit({ name, file: resolved.fileName, path: target.shown, version: version.id, added: result.added });

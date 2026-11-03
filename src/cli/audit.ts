@@ -182,19 +182,6 @@ function namesOf(items: unknown, field: string, what: string): string[] {
 }
 
 /** wrangler is usually a dev dependency rather than a global install. */
-/**
- * wrangler is usually a dev dependency rather than a global install: the
- * Worker's own node_modules first, then the repository's, then PATH.
- */
-function binary(dirs: string[], name: string): string {
-  if (name !== "wrangler") return name;
-  for (const dir of dirs) {
-    const local = path.join(dir, "node_modules", ".bin", name);
-    if (existsSync(local)) return local;
-  }
-  return name;
-}
-
 const WRANGLER_CONFIGS = ["wrangler.jsonc", "wrangler.json", "wrangler.toml"];
 const SKIP_DIRS = new Set(["node_modules", "dist", "build", "out", ".next", ".turbo", "vendor", "target"]);
 
@@ -241,7 +228,11 @@ export async function listPlatformNames(
           ]
         : ["wrangler", ["secret", "list", "--format", "json"], "wrangler secret list"];
 
-  const result = await runTool(binary([ctx.cwd, ctx.root ?? ctx.cwd], tool), args, { cwd: ctx.cwd, env: ctx.env });
+  // From PATH only, never the repo's node_modules/.bin: audit and setup run in
+  // repositories people have just cloned, and a committed
+  // node_modules/.bin/wrangler would otherwise run as this user, for a
+  // command that promises to read names and nothing else.
+  const result = await runTool(tool, args, { cwd: ctx.cwd, env: ctx.env });
   if (result.code !== 0) {
     if (scope.platform === "github" && scope.environment && result.stderr.includes("HTTP 404")) {
       throw new ToolError(`no GitHub environment "${scope.environment}" in this repository`);

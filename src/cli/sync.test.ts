@@ -312,9 +312,45 @@ describe("sync", () => {
 
   it("settles that conflict once one side is chosen", async () => {
     await writeFile(path.join(cwd, ".env.local"), "PORT=1\n");
-    expect(await pull(parseArgs(["pull", "--file", ".env.local"]), env, cwd, prompt)).toBe(0);
+    // A plain pull refuses to replace an edit it can't place; --force is the choice.
+    await expect(pull(parseArgs(["pull", "--file", ".env.local"]), env, cwd, prompt)).rejects.toMatchObject({ code: "conflict" });
+    expect(await local(".env.local")).toBe("PORT=1\n");
+    expect(await pull(parseArgs(["pull", "--file", ".env.local", "--force"]), env, cwd, prompt)).toBe(0);
     expect(await sync(parseArgs(["sync"]), env, cwd, prompt, no)).toBe(0);
     expect(await local(".env.local")).toBe(LOCAL);
+  });
+
+  it("pulls over a file untouched since it last matched, and refuses one edited since", async () => {
+    expect(await pull(parseArgs(["pull", "--file", ".env.local"]), env, cwd, prompt)).toBe(0);
+    // Someone else saves; this copy was not touched, so pull takes the new one.
+    await save(".env.local", `${LOCAL}NEW=1\n`);
+    expect(await pull(parseArgs(["pull", "--file", ".env.local"]), env, cwd, prompt)).toBe(0);
+    expect(await local(".env.local")).toBe(`${LOCAL}NEW=1\n`);
+
+    // Edited here, and the vault moved on: pull refuses and writes nothing.
+    await edit(".env.local", `${LOCAL}NEW=1\nMINE=1\n`);
+    await save(".env.local", `${LOCAL}NEW=2\n`);
+    await expect(pull(parseArgs(["pull", "--file", ".env.local"]), env, cwd, prompt)).rejects.toMatchObject({ code: "conflict" });
+    expect(await local(".env.local")).toBe(`${LOCAL}NEW=1\nMINE=1\n`);
+  });
+
+  it("records the file as pushed, so an edit saved while Push? waits is not marked synced", async () => {
+    expect(await pull(parseArgs(["pull", "--file", ".env.local"]), env, cwd, prompt)).toBe(0);
+    await edit(".env.local", `${LOCAL}PUSHED=1\n`);
+    // The answer comes after another edit lands on disk.
+    const lateEdit = async () => {
+      const file = path.join(cwd, ".env.local");
+      await writeFile(file, `${LOCAL}PUSHED=1\nLATER=1\n`);
+      const later = new Date(Date.now() + 10_000);
+      await utimes(file, later, later);
+      return true;
+    };
+    expect(await push(parseArgs(["push", "--file", ".env.local"]), env, cwd, prompt, lateEdit)).toBe(0);
+    expect(await stored(".env.local")).toBe(`${LOCAL}PUSHED=1\n`);
+    // The later edit is still unpushed, so pull will not replace it.
+    await save(".env.local", `${LOCAL}OTHER=1\n`);
+    await expect(pull(parseArgs(["pull", "--file", ".env.local"]), env, cwd, prompt)).rejects.toMatchObject({ code: "conflict" });
+    expect(await local(".env.local")).toBe(`${LOCAL}PUSHED=1\nLATER=1\n`);
   });
 
   it("creates a vault file it lacks, labelled by its name", async () => {

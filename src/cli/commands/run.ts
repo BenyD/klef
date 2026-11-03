@@ -16,6 +16,7 @@ import { syncTargets } from "../targets.ts";
 import { CliError, emit, note, uiMode, warn } from "../ui.ts";
 import { resolveWritePath } from "../write-path.ts";
 import { vaultFiles } from "../vault-files.ts";
+import { childEnv } from "../run-tool.ts";
 
 /**
  * How long a partial line is held before it is forwarded anyway. A prompt
@@ -111,7 +112,8 @@ export async function run(
 
   const result = await spawnChild(program, programArgs, {
     cwd,
-    env: { ...env, ...Object.fromEntries(selected) },
+    // Klef's own token is not one of the variables asked for.
+    env: { ...childEnv(env), ...Object.fromEntries(selected) },
     secrets: redact ? redactable(selected.values()) : null,
     // Under --json stdout is the JSON object's, so the child's goes to stderr.
     stdout: uiMode().json ? deps.stderr : deps.stdout,

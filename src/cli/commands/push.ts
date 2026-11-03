@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { command } from "../invocation.ts";
-import { readFile } from "node:fs/promises";
+import { readLocalFile } from "../env-file.ts";
 import { diffLines, diffStats, finalNewlineNote, isUnchanged } from "../../shared/diff.ts";
 import { requireApi } from "../session.ts";
 import { requireAccess, resolveTarget, type ResolvedTarget } from "../resolve.ts";
@@ -47,27 +47,32 @@ export async function push(
 
   // Read every file before touching the network, so a missing or empty one
   // stops the whole push rather than half of it.
-  const local: { target: SyncTarget; source: string; plaintext: string }[] = [];
+  const local: { target: SyncTarget; source: string; plaintext: string; seen: { mtimeMs: number; size: number } }[] = [];
   for (const target of targets) {
     const shown = target.path ?? target.file;
     const source = resolveWritePath(cwd, shown);
 
-    let plaintext: string;
-    try {
-      plaintext = await readFile(source, "utf8");
-    } catch {
+    // The file as it is now; its mtime and size go in the sync record, so an
+    // edit saved while "Push?" waits reads as not pushed.
+    const read = await readLocalFile(source).catch((err: unknown) => {
+      if (err instanceof CliError) throw err;
+      return null;
+    });
+    if (!read) {
       throw new CliError("not_found", `Can't read ${shown} here. Nothing pushed.`, {
         hint: "Pull it first, or check the path in .klef.json.",
         next: [command(`pull --file ${target.file}`)],
       });
     }
+    const plaintext = read.text;
+    const seen = { mtimeMs: read.mtimeMs, size: read.size };
 
     // An empty file is almost always a mistake rather than an intention, and
     // it would become the current version of everything that file holds.
     if (plaintext.trim() === "") {
       throw new CliError("usage", `${shown} is empty. Nothing pushed: an empty file would replace the saved one.`);
     }
-    local.push({ target, source, plaintext });
+    local.push({ target, source, plaintext, seen });
   }
 
   const api = await requireApi(env);
@@ -84,6 +89,7 @@ export async function push(
     resolved: ResolvedTarget;
     source: string;
     plaintext: string;
+    seen: { mtimeMs: number; size: number };
     summary: string;
     stats: Stats;
     base: string | null;
@@ -94,8 +100,8 @@ export async function push(
   const results: Record<string, unknown>[] = [];
   // What `sync` measures "edited since" against: every file that now matches
   // the vault, whether it was pushed or already the same.
-  const synced: { file: string; versionId: string }[] = [];
-  for (const [i, { source, plaintext }] of local.entries()) {
+  const synced: { file: string; versionId: string; seen: { mtimeMs: number; size: number } }[] = [];
+  for (const [i, { source, plaintext, seen }] of local.entries()) {
     const resolved = resolvedAll[i]!;
     const { version } = await api.currentVersion(resolved.fileId);
     const stored = version ? await files.decrypt(version) : "";
@@ -103,7 +109,7 @@ export async function push(
     const shown = path.relative(cwd, source);
     if (version && isUnchanged(stored, plaintext)) {
       done(`${resolved.fileName} is already up to date`);
-      synced.push({ file: source, versionId: version.id });
+      synced.push({ file: source, versionId: version.id, seen });
       results.push({ file: resolved.fileName, path: shown, action: "unchanged", variables: countVariables(plaintext), added: 0, removed: 0, version: version.id });
       continue;
     }
@@ -129,7 +135,7 @@ export async function push(
     if (version) say(style.dim("  The version it replaces is kept and can be restored."));
     // The version this diff was made against: if another save lands before
     // ours, the server refuses ours rather than replacing theirs unseen.
-    pending.push({ resolved, source, plaintext, summary, stats, base: version?.id ?? null });
+    pending.push({ resolved, source, plaintext, seen, summary, stats, base: version?.id ?? null });
   }
 
   if (pending.length === 0) {
@@ -146,9 +152,9 @@ export async function push(
     return 1;
   }
 
-  for (const { resolved, source, plaintext, summary, stats, base } of pending) {
+  for (const { resolved, source, plaintext, seen, summary, stats, base } of pending) {
     const saved = await files.save(resolved.fileId, plaintext, base);
-    synced.push({ file: source, versionId: saved.id });
+    synced.push({ file: source, versionId: saved.id, seen });
     results.push({ file: resolved.fileName, path: path.relative(cwd, source), action: "pushed", ...stats, version: saved.id });
     done(`Pushed ${summary} to ${resolved.fileName} (version ${saved.id.slice(0, 8)})`);
   }

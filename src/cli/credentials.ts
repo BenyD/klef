@@ -15,8 +15,7 @@
 import { CliError } from "./ui.ts";
 import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import path from "node:path";
-import { configDir, credentialsFile } from "./paths.ts";
+import { configDir, credentialsFile, tokenSlot } from "./paths.ts";
 import { isTokenShape } from "../shared/access-token-format.ts";
 
 const SERVICE = "klef";
@@ -54,7 +53,8 @@ async function keyringEntry(env: NodeJS.ProcessEnv): Promise<KeyringEntry | null
     const mod = (await import("@napi-rs/keyring")) as {
       Entry: new (service: string, account: string) => KeyringEntry;
     };
-    return new mod.Entry(SERVICE, ACCOUNT);
+    const slot = tokenSlot(env);
+    return new mod.Entry(SERVICE, slot ? `${ACCOUNT}@${slot}` : ACCOUNT);
   } catch {
     return null;
   }
@@ -89,7 +89,7 @@ export async function saveToken(
 
   const dir = configDir(env, homedir());
   await mkdir(dir, { recursive: true, mode: OWNER_ONLY_DIR });
-  const file = path.join(dir, "credentials.json");
+  const file = credentialsFile(env, homedir());
   await writeFile(file, `${JSON.stringify({ token }, null, 2)}\n`, {
     mode: OWNER_ONLY_FILE,
   });

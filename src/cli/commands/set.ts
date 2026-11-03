@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { flagValue, type ParsedArgs } from "../args.ts";
 import { requireConfig } from "../common.ts";
 import { encodeValue } from "../dotenv-values.ts";
-import { writeEnvFile } from "../env-file.ts";
+import { readLocalFile, writeEnvFile } from "../env-file.ts";
 import { command } from "../invocation.ts";
 import { localPathFor, type ProjectConfig } from "../project-config.ts";
 import { NoTerminalError, promptSecret } from "../prompt.ts";
@@ -54,7 +53,7 @@ export async function set(
     });
   }
 
-  const result = await writeKey(target.absolute, name, encodeValue(value));
+  const result = await writeKey(target.absolute, name, encodeValue(value), cwd);
   done(`set ${name} in ${target.shown}`);
   note(`${cmd(command("push"), true)} or ${cmd(command("sync"), true)} saves it to the vault.`);
   emit({ name, file: target.file, path: target.shown, added: result.added });
@@ -69,10 +68,14 @@ export function localTarget(config: ProjectConfig, fileFlag: string | null, cwd:
   return { file, absolute, shown: path.relative(cwd, absolute), flag: fileFlag ? ` --file ${fileFlag}` : "" };
 }
 
-/** Set one key in a local file, creating the file (0600) if it is not there. */
-export async function writeKey(file: string, key: string, rawValue: string): Promise<{ added: boolean }> {
-  const text = await readFile(file, "utf8").catch(() => "");
+/**
+ * Set one key in a local file, creating the file (0600) if it is not there.
+ * Only a missing file starts empty: any other read failure stops here, since
+ * writing on from "" would replace the whole file with this one key.
+ */
+export async function writeKey(file: string, key: string, rawValue: string, root: string): Promise<{ added: boolean }> {
+  const text = (await readLocalFile(file))?.text ?? "";
   const next = setKey(text, key, rawValue);
-  await writeEnvFile(file, next.text);
+  await writeEnvFile(file, next.text, root);
   return { added: next.added };
 }

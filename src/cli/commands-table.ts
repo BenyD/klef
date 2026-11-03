@@ -47,6 +47,7 @@ export const GLOBAL_FLAGS: FlagSpec[] = [
 const FILE: FlagSpec = { name: "file", value: "name", description: "One env file in the vault, by name" };
 const PATH: FlagSpec = { name: "path", value: "path", description: "Where it lives here (default: its name)" };
 const ALL: FlagSpec = { name: "all", description: "Every file listed in .klef.json" };
+const FORCE: FlagSpec = { name: "force", description: "Replace local edits that are not in the vault" };
 const EXIT_CODE: FlagSpec = { name: "exit-code", description: "Exit 10 when there are differences" };
 
 export const COMMANDS: CommandSpec[] = [
@@ -165,12 +166,14 @@ export const COMMANDS: CommandSpec[] = [
     summary: "Write the vault's copy of env files here",
     description:
       "Writes each file at mode 0600 and reports how many variables it holds; never a value. " +
-      "Overwrites the local copy: `klef sync` is the safe choice when this one may have been edited. " +
+      "Refuses, writing nothing, when a local file has edits that are not in the vault; " +
+      "`klef sync` merges them, and --force replaces them. " +
       "To run something with the variables and no file on disk, see `klef run`.",
-    flags: [FILE, PATH, ALL],
+    flags: [FILE, PATH, ALL, FORCE],
     examples: [
       ["klef pull --all", "Every file listed in .klef.json"],
       ["klef pull --file .env.production", "One file"],
+      ["klef pull --force", "Replace local edits with the vault's copy"],
     ],
     json: "{ files: [ { file, path, variables, version } ] }",
   },

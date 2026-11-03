@@ -6,14 +6,14 @@ import { requireApi } from "../session.ts";
 import type { CurrentVersion } from "../api.ts";
 import type { ProjectConfig } from "../project-config.ts";
 import { requireAccess, resolveTarget } from "../resolve.ts";
-import { requireConfig, requireVault, unlockedVault } from "../common.ts";
+import { requireConfig, requireVault, rerun, unlockedVault } from "../common.ts";
 import { CliError, done, emit, warn } from "../ui.ts";
 import { syncTargets } from "../targets.ts";
 import { countVariables, describeWrite } from "../output.ts";
 import { flagValue, hasFlag, type ParsedArgs } from "../args.ts";
 import { resolveWritePath } from "../write-path.ts";
-import { writeEnvFile } from "../env-file.ts";
-import { recordSynced } from "../sync-state.ts";
+import { readLocalFile, writeEnvFile } from "../env-file.ts";
+import { loadSyncState, recordSynced } from "../sync-state.ts";
 import { vaultFiles } from "../vault-files.ts";
 
 /**
@@ -109,10 +109,33 @@ export async function pull(
   const plaintexts = [];
   for (const version of versions) plaintexts.push(await files.decrypt(version));
 
+  // Never lose an edit: a local file that differs from the vault and has
+  // changed since it last matched it (or never matched it on this machine)
+  // holds work the vault doesn't. Checked for every file before writing any,
+  // so a refusal leaves the whole working tree as it was.
+  if (!hasFlag(args, "force")) {
+    const baselines = await loadSyncState(env);
+    const edited: string[] = [];
+    for (const [i, { destination }] of planned.entries()) {
+      const local = await readLocalFile(destination);
+      if (!local || local.text === plaintexts[i]) continue;
+      const baseline = baselines[destination];
+      const untouched = baseline && baseline.mtimeMs === local.mtimeMs && baseline.size === local.size;
+      if (!untouched) edited.push(path.relative(cwd, destination) || destination);
+    }
+    if (edited.length > 0) {
+      const which = edited.length === 1 ? `${edited[0]} has` : `${edited.join(", ")} have`;
+      throw new CliError("conflict", `${which} edits that aren't in the vault. Nothing was written.`, {
+        hint: "sync merges them with the vault; --force replaces them with the vault's copy.",
+        next: [command("sync"), rerun("pull", args, ["--force"])],
+      });
+    }
+  }
+
   const written: { file: string; path: string; variables: number; version: string }[] = [];
   for (const [i, { resolved, destination }] of planned.entries()) {
     const plaintext = plaintexts[i]!;
-    await writeEnvFile(destination, plaintext);
+    await writeEnvFile(destination, plaintext, cwd);
     const shown = path.relative(cwd, destination) || resolved.fileName;
     const variables = countVariables(plaintext);
     written.push({ file: resolved.fileName, path: shown, variables, version: versions[i]!.id });

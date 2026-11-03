@@ -5,6 +5,7 @@
 // filesystem or a real HOME.
 
 import path from "node:path";
+import { CliError } from "./ui.ts";
 
 /** Directory holding the credentials fallback file. XDG on Unix, APPDATA on Windows. */
 export function configDir(env: NodeJS.ProcessEnv, homedir: string): string {
@@ -32,13 +33,43 @@ export function agentSocketPath(env: NodeJS.ProcessEnv, homedir: string): string
     : path.join(configDir(env, homedir), "run", "agent.sock");
 }
 
-export function credentialsFile(env: NodeJS.ProcessEnv, homedir: string): string {
-  return path.join(configDir(env, homedir), "credentials.json");
+/** The default server, whose token keeps the names it has always had. */
+export const DEFAULT_API = "https://klef.sh";
+
+/**
+ * Where a server's token is kept: one per server, so a token issued by one is
+ * never sent to another. klef.sh keeps the original names; any other server
+ * gets its own, named by origin.
+ */
+export function tokenSlot(env: NodeJS.ProcessEnv): string | null {
+  const base = apiBaseUrl(env);
+  return base === DEFAULT_API ? null : new URL(base).host.replace(/[^a-zA-Z0-9.-]/g, "_");
 }
 
-/** The API the CLI talks to. Overridable so a self-hoster can point at their own. */
+export function credentialsFile(env: NodeJS.ProcessEnv, homedir: string): string {
+  const slot = tokenSlot(env);
+  return path.join(configDir(env, homedir), slot ? `credentials-${slot}.json` : "credentials.json");
+}
+
+const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/**
+ * The API the CLI talks to. Overridable so a self-hoster can point at their
+ * own, over https: the access token goes in every request, so plain http is
+ * refused except to this machine.
+ */
 export function apiBaseUrl(env: NodeJS.ProcessEnv): string {
   const raw = env.KLEF_API_URL?.trim();
-  if (!raw) return "https://klef.sh";
-  return raw.replace(/\/+$/, "");
+  if (!raw) return DEFAULT_API;
+  const base = raw.replace(/\/+$/, "");
+  let url: URL;
+  try {
+    url = new URL(base);
+  } catch {
+    throw new CliError("usage", `KLEF_API_URL is not a URL (${base})`);
+  }
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && LOOPBACK.has(url.hostname))) {
+    throw new CliError("usage", `KLEF_API_URL must use https, except for localhost (${base})`);
+  }
+  return base;
 }

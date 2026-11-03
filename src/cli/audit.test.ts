@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseArgs } from "./args.ts";
-import { groupNames, localFileFor, readWorkerName, SCOPES } from "./audit.ts";
+import { groupNames, listPlatformNames, localFileFor, readWorkerName, SCOPES } from "./audit.ts";
 import type { ProjectConfig } from "./project-config.ts";
 import { audit } from "./commands/audit.ts";
 import { resetUi, setUiMode } from "./ui.ts";
@@ -310,5 +310,23 @@ describe("localFileFor", () => {
   it("falls back to the conventional name when nothing matches", () => {
     const config = { ...base, file: ".env", environment: null };
     expect(localFileFor(vercel("preview"), config)).toBe(".env.preview");
+  });
+});
+
+describe("the tools audit runs", () => {
+  it("never runs a wrangler committed to the repository", async () => {
+    const repo = await mkdtemp(path.join(tmpdir(), "klef-audit-bin-"));
+    const marker = path.join(repo, "ran");
+    await mkdir(path.join(repo, "node_modules", ".bin"), { recursive: true });
+    const fake = path.join(repo, "node_modules", ".bin", "wrangler");
+    await writeFile(fake, `#!/bin/sh\ntouch "${marker}"\necho '[]'\n`);
+    await chmod(fake, 0o755);
+    // A PATH with no wrangler on it: the repo's copy is the only one there is.
+    const env = { PATH: path.join(repo, "empty"), KLEF_TOKEN: "klef_pat_x" };
+    await expect(
+      listPlatformNames({ platform: "cloudflare", label: "Worker" } as never, { cwd: repo, env, root: repo }),
+    ).rejects.toThrow(/not installed/);
+    await expect(readFile(marker)).rejects.toThrow();
+    await rm(repo, { recursive: true, force: true });
   });
 });

@@ -54,20 +54,24 @@ export async function loadSyncState(env: NodeJS.ProcessEnv): Promise<State> {
 }
 
 /**
- * Record that each file now matches the given vault version, reading its
- * mtime and size from disk. Best effort: a pull or push that succeeded is not
- * failed by bookkeeping, and a missing record only makes the next `sync` ask.
+ * Record that each file now matches the given vault version. `seen` is the
+ * file as it was read for the text that was synced: a push reads, then waits
+ * at "Push?", and an edit saved in that wait was not pushed, so the record
+ * must describe the file as read, not as it is now. Without `seen` (a pull,
+ * which just wrote the file), its mtime and size come from disk. Best effort:
+ * a pull or push that succeeded is not failed by bookkeeping, and a missing
+ * record only makes the next `sync` ask.
  */
 export async function recordSynced(
   env: NodeJS.ProcessEnv,
-  synced: { file: string; versionId: string }[],
+  synced: { file: string; versionId: string; seen?: { mtimeMs: number; size: number } }[],
 ): Promise<void> {
   if (synced.length === 0) return;
   try {
     const state = await loadSyncState(env);
-    for (const { file, versionId } of synced) {
-      const info = await stat(file);
-      state[path.resolve(file)] = { versionId, mtimeMs: info.mtimeMs, size: info.size };
+    for (const { file, versionId, seen } of synced) {
+      const { mtimeMs, size } = seen ?? (await stat(file));
+      state[path.resolve(file)] = { versionId, mtimeMs, size };
     }
     const target = syncStateFile(env);
     await mkdir(path.dirname(target), { recursive: true, mode: 0o700 });

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { agentSocketPath, apiBaseUrl, configDir, credentialsFile } from "./paths.ts";
+import { agentSocketPath, apiBaseUrl, configDir, credentialsFile, tokenSlot } from "./paths.ts";
 
 const HOME = "/home/dev";
 
@@ -26,6 +26,27 @@ describe("credentialsFile", () => {
       path.join("/tmp/x", "credentials.json"),
     );
   });
+  it("keeps another server's token in its own file, so klef.sh's is never sent there", () => {
+    const env = { KLEF_CONFIG_DIR: "/tmp/x", KLEF_API_URL: "https://klef.example.com/" };
+    expect(credentialsFile(env, HOME)).toBe(path.join("/tmp/x", "credentials-klef.example.com.json"));
+    expect(tokenSlot(env)).toBe("klef.example.com");
+    expect(tokenSlot({ KLEF_API_URL: "https://klef.sh" })).toBeNull();
+    expect(tokenSlot({})).toBeNull();
+  });
+});
+
+describe("apiBaseUrl", () => {
+  it("defaults to klef.sh and trims a trailing slash", () => {
+    expect(apiBaseUrl({})).toBe("https://klef.sh");
+    expect(apiBaseUrl({ KLEF_API_URL: "https://klef.example.com/" })).toBe("https://klef.example.com");
+  });
+
+  it("refuses plain http except to this machine, since the token goes in every request", () => {
+    expect(() => apiBaseUrl({ KLEF_API_URL: "http://klef.example.com" })).toThrow(/https/);
+    expect(() => apiBaseUrl({ KLEF_API_URL: "not a url" })).toThrow(/not a URL/);
+    expect(apiBaseUrl({ KLEF_API_URL: "http://localhost:5173" })).toBe("http://localhost:5173");
+    expect(apiBaseUrl({ KLEF_API_URL: "http://127.0.0.1:8787" })).toBe("http://127.0.0.1:8787");
+  });
 });
 
 describe("agentSocketPath", () => {
@@ -46,7 +67,7 @@ describe("agentSocketPath", () => {
   });
 });
 
-describe("apiBaseUrl", () => {
+describe("apiBaseUrl over the network", () => {
   it("defaults to the hosted instance", () => {
     expect(apiBaseUrl({})).toBe("https://klef.sh");
   });

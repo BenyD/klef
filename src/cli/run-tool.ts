@@ -19,6 +19,17 @@ export interface ToolResult {
 
 export class ToolError extends Error {}
 
+/**
+ * The environment for a program Klef starts on your behalf, without Klef's
+ * own credentials: its access token is for Klef's server, and nothing a child
+ * runs (an npm script, a dependency's install step, a platform CLI) needs it
+ * or should be able to print it.
+ */
+export function childEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const { KLEF_TOKEN: _token, ...rest } = env;
+  return rest;
+}
+
 export async function runTool(
   cmd: string,
   args: string[],
@@ -27,7 +38,7 @@ export async function runTool(
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, {
       cwd: options.cwd,
-      env: options.env,
+      env: childEnv(options.env),
       stdio: ["pipe", "pipe", "pipe"],
     });
     let stdout = "";

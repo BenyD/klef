@@ -125,7 +125,7 @@ export async function ask(
   const local = await readFile(target.absolute, "utf8").catch(() => null);
   let added: boolean | null = null;
   if (local !== null) {
-    added = (await writeKey(target.absolute, name, found.raw)).added;
+    added = (await writeKey(target.absolute, name, found.raw, cwd)).added;
     // Matching the vault byte for byte is matching it: record that, so
     // `status` and `sync` read the file as in sync.
     if ((await readFile(target.absolute, "utf8")) === found.text) {
