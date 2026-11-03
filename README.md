@@ -44,6 +44,18 @@ block to `CLAUDE.md` and `AGENTS.md`, and `setup claude --global` installs the
 skill for every project. Rerun it to refresh them; it only ever rewrites its
 own marked block.
 
+### Claude Code plugin
+
+This repository is also a Claude Code plugin marketplace. The plugin carries
+the same skill `klef setup` writes, for every project, plus `/klef:setup`:
+
+```
+/plugin install klef --marketplace BenyD/klef
+```
+
+On Claude Code older than 2.1.275, add the marketplace first:
+`/plugin marketplace add BenyD/klef`, then `/plugin install klef@klef`.
+
 The individual commands:
 
 ```bash

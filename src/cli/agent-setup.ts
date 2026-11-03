@@ -47,8 +47,10 @@ export function isSetupTarget(value: string): value is SetupTarget {
 
 /** One line for the description fields that decide when an agent loads this. */
 const SUMMARY =
-  "Sync this project's .env files with the Klef vault using the klef CLI " +
-  "(status, sync, pull, push, run, ask, login) without ever reading or printing a secret value.";
+  "Use whenever a task touches this project's env files, environment variables, API keys or other " +
+  "secrets: run the app or a script with them (klef run), get a missing value from the user without " +
+  "it entering the chat (klef ask), and sync .env files with the Klef vault (status, sync, pull, push), " +
+  "never reading or printing a secret value.";
 
 /**
  * The shared body. `cli` is how the user reaches the CLI ("klef" or
@@ -217,6 +219,16 @@ function ownedFile(target: SetupTarget, cli: string): string {
   // Cursor project rule. alwaysApply keeps it in context without the agent
   // having to guess that an env question is a Klef question.
   return `---\ndescription: ${SUMMARY}\nglobs:\nalwaysApply: true\n---\n\n${block(cli)}\n`;
+}
+
+/**
+ * The Claude Code skill as the plugin ships it (oss/plugins/klef, published
+ * from the public repo). A plugin can't know whether `klef` is on PATH, so it
+ * always says `npx @klefsh/cli`.
+ */
+export const PLUGIN_CLI = "npx @klefsh/cli";
+export function pluginSkill(): string {
+  return ownedFile("claude", PLUGIN_CLI);
 }
 
 /** The marked block in `text`, as [start, end) offsets, or null if absent. */
