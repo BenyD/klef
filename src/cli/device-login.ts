@@ -12,6 +12,7 @@ import { spawn } from "node:child_process";
 import { hostname, type as osType } from "node:os";
 import { DEVICE_POLL_INTERVAL_MS } from "../shared/device-code.ts";
 import { tidyMachineLabel } from "./machine-label.ts";
+import { REQUEST_TIMEOUT_MS } from "./api.ts";
 import {
   generateSealKeypair,
   isSealedToken,
@@ -67,6 +68,7 @@ async function post(url: string, body: unknown): Promise<Response> {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch {
     throw new DeviceLoginError(`Couldn't reach ${new URL(url).origin}. Are you online?`);
@@ -109,9 +111,15 @@ export async function beginDeviceLogin(
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, intervalMs));
 
+      // One dropped poll in a wait of minutes is no reason to give up: try
+      // again on the next tick, until the code expires.
       const poll = await post(`${baseUrl}/api/cli/device/token`, {
         deviceCode: started.deviceCode,
+      }).catch((err: unknown) => {
+        if (err instanceof DeviceLoginError) return null;
+        throw err;
       });
+      if (!poll) continue;
 
       if (poll.status === 428) continue; // still waiting on the browser
       if (poll.status === 403) {

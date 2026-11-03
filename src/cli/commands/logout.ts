@@ -5,6 +5,9 @@ import { clearToken, loadToken } from "../credentials.ts";
 import { apiBaseUrl } from "../paths.ts";
 import { done, emit, note, warn } from "../ui.ts";
 import { forgetKey } from "../key-store.ts";
+import { homedir } from "node:os";
+import { agentSocketPath } from "../paths.ts";
+import { lockAgent } from "../agent-client.ts";
 
 /**
  * Revoke the stored token on the server, so signing out leaves nothing behind
@@ -28,8 +31,10 @@ export async function logout(env: NodeJS.ProcessEnv): Promise<number> {
   // this machine is no reason to kill it everywhere.
   const revoked = existing && !inEnv ? await revoke(env, existing.token) : false;
   await clearToken(env);
-  // Signing out of this device forgets its vault key too.
+  // Signing out of this device forgets its vault key too: the remembered one,
+  // and the one a running `klef unlock` holds in memory.
   await forgetKey(env);
+  await lockAgent(agentSocketPath(env, homedir()));
 
   if (!existing) done("Not signed in; nothing to forget");
   else if (inEnv) {

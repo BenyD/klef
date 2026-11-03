@@ -1,9 +1,9 @@
-import { mkdtemp, rm, stat } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { changePassphrase, decryptBlob, dekBytesWithPassphrase, encryptBlob, setupVault, type VaultSetupResult } from "../shared/crypto.ts";
-import { forgetKey, loadRememberedKey, rememberedKeySource, rememberKey, writeSettings } from "./key-store.ts";
+import { forgetKey, loadRememberedKey, REMEMBER_DAYS, rememberedKeySource, rememberKey, writeSettings } from "./key-store.ts";
 
 let vault: VaultSetupResult;
 let other: VaultSetupResult;
@@ -62,5 +62,37 @@ describe("the remembered key", () => {
     expect(await forgetKey(env)).toBe(true);
     expect(await loadRememberedKey(env, vault.keyMaterial)).toBeNull();
     expect(await forgetKey(env)).toBe(false);
+  });
+});
+
+describe("how long the key is remembered", () => {
+  const file = () => path.join(dir, "vault-key.json");
+  const rewrite = async (change: (record: Record<string, unknown>) => void) => {
+    const record = JSON.parse(await readFile(file(), "utf8")) as Record<string, unknown>;
+    change(record);
+    await writeFile(file(), JSON.stringify(record));
+  };
+
+  it("lasts REMEMBER_DAYS from the unlock that stored it", async () => {
+    const before = Date.now();
+    await rememberKey(env, vault.keyMaterial, await bytes());
+    const { expires } = JSON.parse(await readFile(file(), "utf8")) as { expires: string };
+    const days = (Date.parse(expires) - before) / 86_400_000;
+    expect(days).toBeGreaterThan(REMEMBER_DAYS - 0.01);
+    expect(days).toBeLessThan(REMEMBER_DAYS + 0.01);
+    expect(await loadRememberedKey(env, vault.keyMaterial)).not.toBeNull();
+  });
+
+  it("is forgotten once expired, so a copy stops working too", async () => {
+    await rememberKey(env, vault.keyMaterial, await bytes());
+    await rewrite((r) => (r.expires = new Date(Date.now() - 1000).toISOString()));
+    expect(await loadRememberedKey(env, vault.keyMaterial)).toBeNull();
+    expect(await rememberedKeySource(env)).toBeNull();
+  });
+
+  it("treats a key stored before keys expired as expired", async () => {
+    await rememberKey(env, vault.keyMaterial, await bytes());
+    await rewrite((r) => delete r.expires);
+    expect(await loadRememberedKey(env, vault.keyMaterial)).toBeNull();
   });
 });

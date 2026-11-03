@@ -173,6 +173,17 @@ describe("klef audit", () => {
     expect(targets[4]!.reason).toBe("`wrangler` is not installed, or not on PATH.");
   });
 
+  it("with --exit-code, fails when a platform could not be checked rather than passing", async () => {
+    await seed({ ...FULL, signedOut: ["vercel"] });
+    expect(await audit(parseArgs(["audit", "vercel", "--exit-code"]), env, cwd)).toBe(1);
+    // Nothing set up to check at all is not a pass either.
+    await rm(path.join(cwd, ".vercel"), { recursive: true });
+    await seed(FULL);
+    expect(await audit(parseArgs(["audit", "vercel", "--exit-code"]), env, cwd)).toBe(1);
+    // Differences still exit 10.
+    expect(await audit(parseArgs(["audit", "github", "--exit-code"]), env, cwd)).toBe(10);
+  });
+
   it("reports a missing GitHub environment instead of failing", async () => {
     await seed({ ...FULL, github: { repo: ["API_KEY"], envs: {} } });
     expect(await audit(parseArgs(["audit", "github"]), env, cwd)).toBe(0);

@@ -40,6 +40,9 @@ export class ApiError extends CliError {
  */
 export const FEATURES = "team-keys";
 
+/** How long one API request may take before it fails as unreachable. */
+export const REQUEST_TIMEOUT_MS = 30_000;
+
 /** A 401 means the token is gone, expired, or revoked — always actionable. */
 export class UnauthorizedError extends ApiError {
   constructor() {
@@ -78,14 +81,19 @@ export class KlefApi {
     try {
       res = await fetch(`${this.#baseUrl}${path}`, {
         ...init,
+        // A stalled connection must not hang an agent or a CI job forever.
+        signal: init?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         headers: {
           ...init?.headers,
           Authorization: `Bearer ${this.#token}`,
           "X-Klef-Features": FEATURES,
         },
       });
-    } catch {
+    } catch (err) {
       // Status 0 marks "never got a response", distinct from any HTTP failure.
+      if (err instanceof Error && err.name === "TimeoutError") {
+        throw new ApiError(`${this.#baseUrl} didn't answer within ${REQUEST_TIMEOUT_MS / 1000} seconds.`, 0);
+      }
       throw new ApiError(`Couldn't reach ${this.#baseUrl}. Are you online?`, 0);
     }
 

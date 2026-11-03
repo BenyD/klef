@@ -16,6 +16,7 @@ import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import type { ParsedArgs } from "../args.ts";
 import { configDir } from "../paths.ts";
+import { childEnv } from "../run-tool.ts";
 import { promptLine, promptSecret } from "../prompt.ts";
 import { command as suggested } from "../invocation.ts";
 import { CliError, cmd, done, emit, note, say, uiMode } from "../ui.ts";
@@ -82,6 +83,8 @@ async function call(ctx: Ctx, route: string, body?: unknown): Promise<Response> 
       method: body === undefined ? "GET" : "POST",
       headers: body === undefined ? {} : { "content-type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
+      // Generous: a download carries the whole kit.
+      signal: AbortSignal.timeout(120_000),
     });
   } catch {
     throw new CliError("network", `Could not reach ${ctx.server}.`, { hint: "Check your connection and run the same command again." });
@@ -153,14 +156,17 @@ function wrangler(
   opts: { capture?: boolean; unattended?: boolean } = {},
 ): { ok: boolean; out: string } {
   const capture = opts.capture ?? false;
+  // Under --json, stdout carries the one JSON object, so Wrangler's own
+  // output goes to stderr instead.
+  const out = uiMode().json ? process.stderr : process.stdout;
   const res = spawnSync("npx", ["--yes", `wrangler@${version}`, ...wranglerArgs], {
     cwd: kitDir,
-    env: opts.unattended ? { ...process.env, CI: "1" } : process.env,
+    env: opts.unattended ? { ...childEnv(process.env), CI: "1" } : childEnv(process.env),
     encoding: "utf8",
-    stdio: capture ? ["inherit", "pipe", "inherit"] : "inherit",
+    stdio: ["inherit", capture ? "pipe" : uiMode().json ? 2 : "inherit", "inherit"],
     shell: process.platform === "win32",
   });
-  if (capture && res.stdout) process.stdout.write(res.stdout);
+  if (capture && res.stdout) out.write(res.stdout);
   return { ok: res.status === 0, out: res.stdout ?? "" };
 }
 
@@ -213,7 +219,7 @@ function deployKit(kitDir: string, info: KitInfo, state: KitState, rerun: string
 async function healthy(url: string, attempts = 12, intervalMs = 5000): Promise<boolean> {
   for (let i = 0; i < attempts; i++) {
     try {
-      const res = await fetch(`${url}/api/health`);
+      const res = await fetch(`${url}/api/health`, { signal: AbortSignal.timeout(10_000) });
       if (res.ok && ((await res.json()) as { ok?: boolean }).ok === true) return true;
     } catch {
       // Not resolving yet.

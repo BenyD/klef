@@ -15,6 +15,11 @@
 // over the .env files `pull` already wrote here. A leaked token, or the
 // server's whole database, still decrypts nothing.
 //
+// A remembered key lasts REMEMBER_DAYS from the unlock that stored it, then is
+// forgotten and the passphrase is asked again. A copy taken from the keychain
+// or the key file stops working on the same day, instead of opening the vault
+// for as long as it exists.
+//
 // The vault is recognised by a fingerprint of its recovery wrapping, which a
 // passphrase change leaves alone (the DEK stays the same) and a new vault
 // replaces. A key whose fingerprint no longer matches is ignored and the CLI
@@ -31,6 +36,10 @@ import { apiBaseUrl, configDir } from "./paths.ts";
 
 const SERVICE = "klef";
 
+/** How long a remembered key lasts, from the unlock that stored it. */
+export const REMEMBER_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 interface KeyringEntry {
   getPassword(): string | null;
   setPassword(password: string): void;
@@ -44,6 +53,8 @@ interface StoredKey {
   vault: string;
   /** The raw DEK, base64. */
   key: string;
+  /** When this key stops working, ISO 8601. A record without one is from before keys expired, and is treated as expired. */
+  expires?: string;
 }
 
 export type KeySource = "keychain" | "file";
@@ -122,6 +133,7 @@ export async function rememberKey(
     server: apiBaseUrl(env),
     vault: await vaultId(keyMaterial),
     key: bytesToBase64(dekBytes),
+    expires: new Date(Date.now() + REMEMBER_DAYS * DAY_MS).toISOString(),
   };
   const text = JSON.stringify(record);
 
@@ -185,6 +197,13 @@ export async function loadRememberedKey(
   if (!stored) return null;
   const { record, source } = stored;
   if (record.server !== apiBaseUrl(env) || record.vault !== (await vaultId(keyMaterial))) return null;
+  // Past its date, or from before keys had one: forget it, so the next
+  // command asks for the passphrase and remembers a fresh one.
+  const expires = record.expires ? Date.parse(record.expires) : NaN;
+  if (!(expires > Date.now())) {
+    await forgetKey(env);
+    return null;
+  }
   const bytes = base64ToBytes(record.key);
   try {
     return { key: await importAesKey(bytes), source };

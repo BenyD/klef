@@ -30,15 +30,44 @@ const NEVER_SECRET = new Set([
 ]);
 
 /**
- * The values worth masking, longest first so a value that contains another
- * is replaced whole rather than leaving its ends around a marker.
+ * The common ways a program re-encodes a value it prints: a logger escaping
+ * it into JSON, a URL builder percent-encoding it, an auth header or a debug
+ * dump in base64 or hex. Masking only the exact text would let any of these
+ * through. Not every transformation can be caught (a value reversed, split,
+ * or folded into a larger base64 string still gets out), which is why `run`
+ * says so; these are the ones that happen by accident.
+ */
+function encodings(value: string): string[] {
+  const bytes = Buffer.from(value, "utf8");
+  const base64 = bytes.toString("base64").replace(/=+$/, "");
+  return [
+    JSON.stringify(value).slice(1, -1),
+    encodeURIComponent(value),
+    base64,
+    base64.replace(/\+/g, "-").replace(/\//g, "_"),
+    bytes.toString("hex"),
+  ];
+}
+
+/**
+ * The values worth masking, with their encoded forms and, for a multi-line
+ * value such as a PEM key, each of its lines (output is matched a line at a
+ * time, so a value spanning lines would never match whole). Longest first, so
+ * a value that contains another is replaced whole rather than leaving its
+ * ends around a marker.
  */
 export function redactable(values: Iterable<string>): string[] {
   const set = new Set<string>();
+  const add = (text: string) => {
+    if (text.length < MIN_REDACT_LENGTH) return;
+    if (NEVER_SECRET.has(text.toLowerCase())) return;
+    set.add(text);
+  };
   for (const value of values) {
-    if (value.length < MIN_REDACT_LENGTH) continue;
-    if (NEVER_SECRET.has(value.toLowerCase())) continue;
-    set.add(value);
+    if (value.length < MIN_REDACT_LENGTH || NEVER_SECRET.has(value.toLowerCase())) continue;
+    add(value);
+    for (const encoded of encodings(value)) add(encoded);
+    if (/[\r\n]/.test(value)) for (const line of value.split(/\r?\n/)) add(line.trim());
   }
   return [...set].sort((a, b) => b.length - a.length);
 }

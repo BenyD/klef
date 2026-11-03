@@ -355,7 +355,12 @@ export const COMMANDS: CommandSpec[] = [
       "Read-only, names only, through your own vercel, gh and wrangler sign-ins. klef never " +
       "writes to those platforms. A platform not set up here, or whose CLI is missing or signed " +
       "out, is reported and the rest still run.",
-    flags: [EXIT_CODE],
+    flags: [
+      {
+        name: "exit-code",
+        description: "Exit 10 on differences, 1 if a platform could not be checked",
+      },
+    ],
     examples: [
       ["klef audit", "Every platform set up in this directory"],
       ["klef audit vercel --json", "One platform, for an agent"],

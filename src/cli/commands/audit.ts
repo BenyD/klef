@@ -76,8 +76,14 @@ export async function audit(args: ParsedArgs, env: NodeJS.ProcessEnv, cwd: strin
   const entries = await collectAudit(asked ? [asked] : PLATFORMS, cwd, env);
   emit({ targets: entries });
   for (const line of formatAudit(entries)) say(line);
+  if (!hasFlag(args, "exit-code")) return EXIT.ok;
   const differs = entries.some((e) => (e.onlyOnPlatform?.length ?? 0) + (e.onlyLocal?.length ?? 0) > 0);
-  return differs && hasFlag(args, "exit-code") ? EXIT.differs : EXIT.ok;
+  if (differs) return EXIT.differs;
+  // A check that could not run is not a pass: in CI, a signed-out gh or a
+  // failing wrangler would otherwise read as "everything matches".
+  const checked = entries.some((e) => e.status === "ok" || e.status === "no-local-file");
+  const unavailable = entries.some((e) => e.status === "unavailable");
+  return unavailable || !checked ? EXIT.error : EXIT.ok;
 }
 
 /** Every scope of every platform asked for, compared. Shared with `setup`. */

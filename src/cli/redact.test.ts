@@ -4,25 +4,50 @@ import { createRedactor, MIN_REDACT_LENGTH, REDACTED, redactable } from "./redac
 const SECRET = "klef-test-9f3a7c2e5b1d8a64";
 
 describe("redactable", () => {
+  // The plain values asked for, without their encoded forms.
+  const plain = (values: string[]) => redactable(values).filter((v) => values.includes(v));
+
   it("drops values too short to mask safely, and settings that are never secret", () => {
-    expect(redactable(["1", "true", "3000", "false", "production", "localhost", SECRET])).toEqual([SECRET]);
+    expect(plain(["1", "true", "3000", "false", "production", "localhost", SECRET])).toEqual([SECRET]);
+    expect(redactable(["1", "true", "3000", "production"])).toEqual([]);
     expect(MIN_REDACT_LENGTH).toBe(5);
   });
 
   it("keeps a value exactly at the minimum", () => {
-    expect(redactable(["12345"])).toEqual(["12345"]);
+    expect(plain(["12345"])).toEqual(["12345"]);
   });
 
   it("orders longest first, so a value containing another is masked whole", () => {
-    expect(redactable(["short1", "a much longer value", "mid value"])).toEqual([
-      "a much longer value",
-      "mid value",
-      "short1",
-    ]);
+    const all = redactable(["short1", "a much longer value", "mid value"]);
+    expect(all.map((v) => v.length)).toEqual([...all.map((v) => v.length)].sort((a, b) => b - a));
+    expect(plain(["short1", "a much longer value", "mid value"])).toEqual(["a much longer value", "mid value", "short1"]);
   });
 
   it("collapses duplicates", () => {
-    expect(redactable([SECRET, SECRET])).toHaveLength(1);
+    expect(redactable([SECRET, SECRET])).toEqual(redactable([SECRET]));
+  });
+
+  it("also masks the value's common encodings, which a logger or a URL builder prints by accident", () => {
+    const value = "p@ss/word+key=1";
+    const r = createRedactor(redactable([value]));
+    const lines = [
+      JSON.stringify({ password: value }),
+      `https://x.test/?k=${encodeURIComponent(value)}`,
+      `Authorization: Basic ${Buffer.from(value).toString("base64")}`,
+      Buffer.from(value).toString("base64url"),
+      Buffer.from(value).toString("hex"),
+    ];
+    const out = r.write(`${lines.join("\n")}\n`);
+    for (const line of lines) expect(out).not.toContain(line);
+    expect(out.match(/\[klef:redacted\]/g)).toHaveLength(lines.length);
+  });
+
+  it("masks each line of a multi-line value, since output is matched a line at a time", () => {
+    const key = "-----BEGIN KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEF\nAASCBKcwggSjAgEAAoIBAQC7\n-----END KEY-----";
+    const r = createRedactor(redactable([key]));
+    const out = r.write(`${key}\n`);
+    expect(out).not.toContain("MIIEvQIBADANBgkqhkiG9w0BAQEF");
+    expect(out).not.toContain("AASCBKcwggSjAgEAAoIBAQC7");
   });
 });
 
