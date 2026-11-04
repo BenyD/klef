@@ -70,13 +70,15 @@ value, which is what makes it safe for you to run.
 - Never open, cat, print, grep, summarise, or commit an env file yourself,
   and never echo a variable's value. Refer to variables by name only.
 - If you need to know which keys a file defines, ask the user, or read
-  \`.env.example\` if there is one.
+  \`.env.example\` if there is one. Listing which env files exist (their
+  names, with \`ls -a\`) is fine; opening them is not.
 - Never ask the user for their master passphrase or access token, and never
   pipe or pass one to the CLI. It reads the passphrase from the terminal on
   purpose, so it cannot pass through you.
 - In a team project, an error with the code \`no_access\` means the user's
   access does not cover that environment (often production). Tell the user;
-  don't look for the values another way. A team admin can change it.
+  don't look for the values another way, and don't use \`ask\` to get them.
+  Carry on with what your access does cover. A team admin can change it.
 - To start the app, run the tests, or run any script that needs the
   variables, use \`${cli} run -- <command>\` instead of reading the file:
   it puts the variables straight into that command's environment, and
@@ -134,6 +136,43 @@ says who is signed in, what this directory is linked to, whether the vault is
 unlocked, each file's state (\`in-sync\`, \`edited-here\`, \`changed-in-vault\`,
 \`missing-here\`, ...), and \`next\`: the commands that would move things on.
 
+Follow \`next\` in the order given. If it lists \`login\` before \`setup\`, this
+device is locked: run \`login\` first (the user approves in the browser,
+which unlocks it), then \`setup\`.
+
+### When there is nothing to sync
+
+If this directory is not linked and has no env file and no \`.env.example\`,
+there is nothing to sync. Don't create an env file, don't look for one
+elsewhere on the machine, and don't make up keys. Tell the user, and ask
+whether they want Klef set up for keys they will add later, or meant another
+repository.
+
+### Linking the right project
+
+Never guess which vault project a repository belongs to. Run
+\`${cli} list --json\` to see the projects that exist, ask the user which one,
+then link it with \`${cli} setup --project <name>\`. Plain \`setup\` links on its
+own only when it can tell (the one project, named like this repo); otherwise
+it stops with \`confirmation_required\` and the projects in \`data.choices\`.
+If none fits, the user
+creates the project in the Klef web app first; the CLI does not create
+projects. Ask before suggesting a new name.
+
+### What belongs in the vault
+
+Klef syncs the env files that already exist (\`.env\`, \`.env.local\`,
+\`.env.production\`, \`.dev.vars\` and the like). Don't move other settings into
+the vault on your own: a mode switch or feature flag that lives in code or
+docs stays there unless the user asks.
+
+### When the request is unclear
+
+If the user asks to get their env "into Klef" (or similar) and it isn't
+clear whether that means pushing local files, pulling the vault's copy, or
+linking an empty project, and there are no local env files, ask one question
+before running anything.
+
 ### Commands
 
     ${cli} status --json         # the one call to start with
@@ -144,7 +183,7 @@ unlocked, each file's state (\`in-sync\`, \`edited-here\`, \`changed-in-vault\`,
     ${cli} diff --all --json     # which keys differ (names, never values)
     ${cli} pull --all            # write every file in .klef.json to disk
     ${cli} push --all --yes      # save local changes as new versions
-    ${cli} list --json           # files in the vault, names only
+    ${cli} list --json           # workspaces, projects and files, names only
 
 With \`--json\` every command prints one object: \`{ "ok": true, "data": ... }\`,
 or \`{ "ok": false, "error": { "code", "message", "next": [...] } }\`. Act on
@@ -181,7 +220,8 @@ agent: where it would need a person, it stops with one of these codes.
   choice: it never pulls over a local edit.
 - After a pull, check git does not track what it wrote:
   \`git ls-files --error-unmatch <path>\` should fail for every env file. If
-  one is tracked, tell the user straight away.
+  one is tracked, tell the user straight away, and offer to add it to
+  \`.gitignore\` and untrack it (\`git rm --cached <path>\`) once they say yes.
 - \`${cli} help <command>\` shows a command's flags and its \`--json\` shape.
   Newer versions may add commands; the same rules apply to every one.
 
@@ -200,7 +240,8 @@ with the local file, with \`${cli} audit --json\`:
 - Never copy a value between places, and never change a platform's variables
   yourself. Names only, in both directions.
 
-To refresh these instructions, run \`${cli} setup\` again.`;
+To refresh these instructions without touching the link, run
+\`${cli} setup claude cursor\` (only the targets you use).`;
 }
 
 /** The text that goes between the markers for one target. */

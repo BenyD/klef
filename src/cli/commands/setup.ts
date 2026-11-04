@@ -18,6 +18,7 @@ import {
   configForChoice,
   describeChoice,
   findChoice,
+  namesMatch,
   projectChoices,
   type ProjectChoice,
 } from "../setup-link.ts";
@@ -137,7 +138,7 @@ export async function setup(
   if (config) {
     step(2, `Linked to ${config.workspace} / ${config.project}`);
   } else {
-    const choice = await chooseProject(args, projectChoices(account.tree), deps);
+    const choice = await chooseProject(args, projectChoices(account.tree), deps, path.basename(cwd));
     config = { ...configForChoice(choice), minVersion: CLI_VERSION };
     await writeProjectConfig(cwd, config);
     step(2, `Linked to ${config.workspace} / ${config.project} (${allFiles(config).length} files)`);
@@ -231,6 +232,7 @@ async function chooseProject(
   args: ParsedArgs,
   choices: ProjectChoice[],
   deps: SetupDeps,
+  dirName: string,
 ): Promise<ProjectChoice> {
   if (choices.length === 0) {
     throw new CliError("not_found", "Your vault has no env files yet.", {
@@ -249,7 +251,11 @@ async function chooseProject(
     }
     return found;
   }
-  if (choices.length === 1) return choices[0]!;
+  // One project is taken as this repo's when its name matches the directory,
+  // or when a person is there to see it. An agent in an unrelated repo would
+  // otherwise link it to the only project and pull that project's files.
+  const agentRun = !uiMode().input || uiMode().json;
+  if (choices.length === 1 && (!agentRun || namesMatch(choices[0]!.project, dirName))) return choices[0]!;
 
   // An agent ran this, or nobody can answer. The choices are names only; the
   // user picks, and the agent reruns with the flags.

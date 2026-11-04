@@ -51,6 +51,15 @@ export function findChoice(
   return matches.length === 1 ? matches[0]! : null;
 }
 
+/**
+ * Whether a project's name plausibly is this repo's: the same letters and
+ * digits as the directory's name, ignoring case and punctuation.
+ */
+export function namesMatch(project: string, dirName: string): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return norm(project) !== "" && norm(project) === norm(dirName);
+}
+
 /** Which file plain `pull` and `push` default to when no --file is given. */
 const PREFERRED_DEFAULT = [".env.local", ".env"];
 

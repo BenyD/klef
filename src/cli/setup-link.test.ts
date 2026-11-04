@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { configForChoice, findChoice, type ProjectChoice } from "./setup-link.ts";
+import { configForChoice, findChoice, namesMatch, type ProjectChoice } from "./setup-link.ts";
 
 const choice = (workspace: string, project: string, files: string[]): ProjectChoice => ({
   workspace,
@@ -37,5 +37,14 @@ describe("configForChoice", () => {
 
   it("falls back to the first file when there is no .env.local or .env", () => {
     expect(configForChoice(choice("P", "app", ["prod.env", "dev.env"])).file).toBe("prod.env");
+  });
+});
+
+describe("namesMatch", () => {
+  it("matches a project to its repo directory, ignoring case and punctuation", () => {
+    expect(namesMatch("Lensdrop", "lensdrop")).toBe(true);
+    expect(namesMatch("my-app", "My_App")).toBe(true);
+    expect(namesMatch("shop-old", "unclog")).toBe(false);
+    expect(namesMatch("--", "")).toBe(false);
   });
 });

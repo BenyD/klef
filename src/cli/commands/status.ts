@@ -124,7 +124,7 @@ export async function status(
 }
 
 /** What to run next, most useful first. Never more than three. */
-function nextSteps(s: {
+export function nextSteps(s: {
   tokenStatus: TokenStatus;
   linked: boolean;
   unlocked: boolean;
@@ -134,7 +134,14 @@ function nextSteps(s: {
   if (s.tokenStatus === "absent" || s.tokenStatus === "rejected") {
     return [{ command: command(s.linked ? "login" : "setup"), description: s.linked ? "sign in" : "sign in and link this repo" }];
   }
-  if (!s.linked) return [{ command: command("setup"), description: "link this repo and pull its files" }];
+  if (!s.linked) {
+    const setup = { command: command("setup"), description: "link this repo and pull its files" };
+    // Unlock first: setup links a locked device but then stops before the
+    // pull, and an agent can't unlock on its own.
+    return s.unlocked
+      ? [setup]
+      : [{ command: command("login"), description: "the user approves in the browser, which unlocks this device" }, setup];
+  }
   if (!s.treeKnown) return [];
   const moving = s.files.filter((f) => f.state !== "in-sync" && f.state !== "absent");
   if (moving.length === 0) return [];

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseArgs } from "./args.ts";
 import { setup, type SetupDeps } from "./commands/setup.ts";
 import { NoTerminalError } from "./prompt.ts";
+import { resetUi, setUiMode } from "./ui.ts";
 import type { VaultTree } from "../shared/api-types.ts";
 
 // `klef setup` against real directories and a stand-in account: what it
@@ -292,6 +293,33 @@ describe("klef setup (everything)", () => {
       next: [{ command: "klef setup --workspace <workspace> --project <project>" }],
     });
     expect(await exists(path.join(cwd, ".klef.json"))).toBe(false);
+  });
+
+  describe("with one project in the vault", () => {
+    const ONE = { ...TREE, workspaces: [{ ...TREE.workspaces[0]!, projects: [project("lensdrop", [".env.local"])] }] } as unknown as VaultTree;
+    afterEach(() => resetUi());
+
+    it("does not let an agent link an unrelated repo to it", async () => {
+      setUiMode({ input: false });
+      await expect(run("setup --yes", yes, { account: async () => ({ email: "me@example.com", tree: ONE }) })).rejects.toMatchObject({
+        code: "confirmation_required",
+      });
+      expect(await exists(path.join(cwd, ".klef.json"))).toBe(false);
+    });
+
+    it("links it for an agent when the repo is named after it", async () => {
+      setUiMode({ input: false });
+      const named = path.join(cwd, "lensdrop");
+      await mkdir(named);
+      const pullFile = vi.fn(async () => 0);
+      await setup(parseArgs(["setup", "--yes"]), named, deps({ account: async () => ({ email: "me@example.com", tree: ONE }), pullFile }));
+      expect(JSON.parse(await readFile(path.join(named, ".klef.json"), "utf8")).project).toBe("lensdrop");
+    });
+
+    it("still links it for a person, who sees the name", async () => {
+      await run("setup --yes", yes, { account: async () => ({ email: "me@example.com", tree: ONE }) });
+      expect(JSON.parse(await readFile(path.join(cwd, ".klef.json"), "utf8")).project).toBe("lensdrop");
+    });
   });
 
   it("hands the passphrase step to the user when an agent runs it", async () => {
