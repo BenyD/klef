@@ -213,12 +213,15 @@ function block(cli: string): string {
  * the markers, so it is regenerated along with the block.
  */
 function ownedFile(target: SetupTarget, cli: string): string {
+  // Quoted: the summary has ": " in it, which plain YAML reads as a new
+  // key. Claude Code tolerates that; Cursor drops the file.
+  const description = JSON.stringify(SUMMARY);
   if (target === "claude") {
-    return `---\nname: klef\ndescription: ${SUMMARY}\n---\n\n${block(cli)}\n`;
+    return `---\nname: klef\ndescription: ${description}\n---\n\n${block(cli)}\n`;
   }
   // Cursor project rule. alwaysApply keeps it in context without the agent
   // having to guess that an env question is a Klef question.
-  return `---\ndescription: ${SUMMARY}\nglobs:\nalwaysApply: true\n---\n\n${block(cli)}\n`;
+  return `---\ndescription: ${description}\nglobs:\nalwaysApply: true\n---\n\n${block(cli)}\n`;
 }
 
 /**

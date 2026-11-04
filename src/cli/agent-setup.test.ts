@@ -117,6 +117,19 @@ describe("planSetup", () => {
     expect(rule).toMatch(/^---\ndescription: .+\nglobs:\nalwaysApply: true\n---\n/);
   });
 
+  it("writes frontmatter strict YAML parsers accept", () => {
+    // An unquoted value with ": " in it is a YAML error. Claude Code
+    // tolerates it; Cursor silently drops the skill or rule.
+    for (const target of ["claude", "cursor"] as const) {
+      const front = plan([target])[0]!.contents!.split("\n---\n")[0]!.split("\n").slice(1);
+      for (const line of front) {
+        const value = line.slice(line.indexOf(":") + 1).trim();
+        if (value.startsWith('"')) expect(() => JSON.parse(value)).not.toThrow();
+        else expect(value).not.toMatch(/: |#/);
+      }
+    }
+  });
+
   it("reports nothing to do when run a second time", () => {
     const first = plan(["claude", "cursor", "claude-md", "agents"]);
     const disk = Object.fromEntries(first.map((p) => [p.path, p.contents!]));

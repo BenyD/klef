@@ -1,6 +1,6 @@
 ---
 name: klef
-description: Use whenever a task touches this project's env files, environment variables, API keys or other secrets: run the app or a script with them (klef run), get a missing value from the user without it entering the chat (klef ask), and sync .env files with the Klef vault (status, sync, pull, push), never reading or printing a secret value.
+description: "Use whenever a task touches this project's env files, environment variables, API keys or other secrets: run the app or a script with them (klef run), get a missing value from the user without it entering the chat (klef ask), and sync .env files with the Klef vault (status, sync, pull, push), never reading or printing a secret value."
 ---
 
 <!-- klef:start (managed by klef setup; edits inside are replaced) -->

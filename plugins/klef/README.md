@@ -1,4 +1,4 @@
-# Klef for Claude Code
+# Klef for Claude Code and Cursor
 
 [Klef](https://klef.sh) is an end-to-end encrypted vault for `.env` files.
 This plugin teaches Claude Code to work with your secrets without ever
@@ -23,9 +23,14 @@ scripts. Claude runs the Klef CLI through `npx @klefsh/cli`.
 
 ## Install
 
+Claude Code:
+
 ```
 /plugin install klef --marketplace BenyD/klef
 ```
+
+Cursor: install **Klef** from the Cursor marketplace once it is listed. Until
+then, copy this folder to `~/.cursor/plugins/local/klef` and reload the window.
 
 ## Data it sends
 

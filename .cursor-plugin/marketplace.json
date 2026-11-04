@@ -1,0 +1,14 @@
+{
+  "name": "klef",
+  "owner": { "name": "Beny Dishon K", "email": "hello@klef.sh" },
+  "metadata": {
+    "description": "Klef: end-to-end encrypted .env files that coding agents can use without reading"
+  },
+  "plugins": [
+    {
+      "name": "klef",
+      "source": "./plugins/klef",
+      "description": "Run your app with secrets the agent never sees, ask for a missing key in the browser instead of the chat, and sync .env files with the Klef vault."
+    }
+  ]
+}
