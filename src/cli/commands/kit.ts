@@ -14,7 +14,9 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
-import type { ParsedArgs } from "../args.ts";
+import { flagValue, hasFlag, type ParsedArgs } from "../args.ts";
+import { openBrowser } from "../device-login.ts";
+import { generateSealKeypair, openToken, type SealedToken } from "../../shared/device-seal.ts";
 import { configDir } from "../paths.ts";
 import { childEnv } from "../run-tool.ts";
 import { promptLine, promptSecret } from "../prompt.ts";
@@ -25,6 +27,7 @@ import {
   isKitVersion,
   isLicenseKeyShape,
   isWorkerName,
+  KEY_PORTAL,
   kitServer,
   kitStateFile,
   kitNotices,
@@ -43,10 +46,27 @@ import {
 interface Ctx {
   server: string;
   dir: string;
+  /**
+   * Whether a person can answer prompts here. Not under a coding agent, CI
+   * or --no-input: then the licence key comes through the browser and
+   * nothing waits on Enter.
+   */
+  interactive: boolean;
+  /** Take the licence key through the browser even at a terminal. */
+  browser: boolean;
+  /** The Worker's name, from --name; asked for when not given. */
+  name: string | null;
 }
 
 export async function kit(args: ParsedArgs, env: NodeJS.ProcessEnv): Promise<number> {
-  const ctx: Ctx = { server: kitServer(env), dir: configDir(env, homedir()) };
+  const mode = uiMode();
+  const ctx: Ctx = {
+    server: kitServer(env),
+    dir: configDir(env, homedir()),
+    interactive: mode.input && !mode.agent && !mode.json,
+    browser: hasFlag(args, "browser"),
+    name: flagValue(args, "name"),
+  };
   const [sub, name] = args.positionals;
   if (sub === "setup") return setup(ctx);
   if (sub === "update") return update(ctx, name);
@@ -274,9 +294,56 @@ async function withKitFolder<T>(root: string, fn: () => Promise<T> | T): Promise
   }
 }
 
+/**
+ * The licence key: typed at the terminal, or, where nobody can type (a coding
+ * agent's shell, CI) or with --browser, pasted on klef.sh in the browser and
+ * handed back sealed to this process (connectLicenseKey). Never printed
+ * either way, so an agent driving this never sees it.
+ */
+async function getLicenseKey(ctx: Ctx): Promise<string> {
+  return ctx.interactive && !ctx.browser ? askLicenseKey() : connectLicenseKey(ctx);
+}
+
+async function connectLicenseKey(ctx: Ctx): Promise<string> {
+  const { publicJwk, privateKey } = await generateSealKeypair();
+  const started = await call(ctx, "connect", { publicJwk });
+  if (!started.ok) throw await failure(started, "Could not start the browser handoff");
+  const { deviceCode, userCode, verificationUri, interval, expiresIn } = (await started.json()) as {
+    deviceCode: string;
+    userCode: string;
+    verificationUri: string;
+    interval: number;
+    expiresIn: number;
+  };
+  say(`Paste your licence key in the browser: ${verificationUri}`);
+  say(`Check the code there matches ${userCode}. Waiting for it...`);
+  openBrowser(verificationUri);
+
+  const deadline = Date.now() + expiresIn * 1000;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, interval * 1000));
+    // A dropped poll is retried on the next tick; the code lasts minutes.
+    const res = await call(ctx, "connect/token", { deviceCode }).catch(() => null);
+    if (!res || res.status === 428 || res.status === 429 || res.status >= 500) continue;
+    if (!res.ok) break;
+    const { sealedKey } = (await res.json()) as { sealedKey: SealedToken };
+    const key = (await openToken(privateKey, sealedKey).catch(() => "")).trim();
+    if (!isLicenseKeyShape(key)) throw new CliError("usage", "What came back from the browser is not a licence key. Run the same command again.");
+    note("Got the licence key from the browser.");
+    return key;
+  }
+  throw new CliError("timed_out", "The licence key was not pasted in the browser in time.", {
+    hint: `Run the same command again for a new code. No key? ${KEY_PORTAL} has it, signed in with the email you paid with.`,
+  });
+}
+
 async function askLicenseKey(): Promise<string> {
   const key = (await promptSecret("Licence key (from your receipt, not shown): ")).trim();
-  if (!isLicenseKeyShape(key)) throw new CliError("usage", "That does not look like a licence key. Copy it from your receipt email.");
+  if (!isLicenseKeyShape(key)) {
+    throw new CliError("usage", "That does not look like a licence key. Copy it from your receipt email.", {
+      hint: `No receipt? Sign in to ${KEY_PORTAL} with the email you paid with, or write to hello@klef.sh.`,
+    });
+  }
   return key;
 }
 
@@ -284,8 +351,8 @@ async function askLicenseKey(): Promise<string> {
 
 async function setup(ctx: Ctx): Promise<number> {
   say("Klef self-host kit: deploys Klef to your own Cloudflare account.\n");
-  const licenseKey = await askLicenseKey();
-  const workerName = (await promptLine("Name for your Worker (klef): ")).trim() || "klef";
+  const licenseKey = await getLicenseKey(ctx);
+  const workerName = ctx.name?.trim() || (ctx.interactive ? (await promptLine("Name for your Worker (klef): ")).trim() : "") || "klef";
   if (!isWorkerName(workerName)) throw new CliError("usage", "Use lowercase letters, digits and dashes for the Worker name.");
   const rerun = "kit setup";
 
@@ -312,7 +379,7 @@ async function setup(ctx: Ctx): Promise<number> {
     state.version = info.version;
     writeState(ctx, state);
   });
-  if (!state.url) {
+  if (!state.url && ctx.interactive) {
     state.url = (await promptLine("The address Wrangler deployed to (https://...): ")).trim().replace(/\/+$/, "") || null;
     writeState(ctx, state);
   }
@@ -323,6 +390,13 @@ async function setup(ctx: Ctx): Promise<number> {
   for (const step of secretSteps(url, info.wrangler, workerName)) {
     say(`  ${cmd(step.command)}`);
     say(`    ${step.hint}\n`);
+  }
+  if (!ctx.interactive) {
+    // Nobody here to press Enter: the deploy is done, and the secrets are the
+    // person's to set. `kit status` checks the deployment once they are.
+    done(`Klef ${info.version} is deployed${state.url ? ` at ${state.url}` : ""}. Set the six secrets above, then check it with ${cmd(suggested("kit status"))}.`);
+    emit({ workerName, url: state.url, version: info.version, secretsSet: false });
+    return 0;
   }
   await promptLine("Press Enter once all six are set. ");
   note("Checking the deployment...");
@@ -352,7 +426,7 @@ async function update(ctx: Ctx, wanted: string | undefined): Promise<number> {
   }
 
   say(`Updating ${state.workerName} from ${state.version ?? "an unfinished setup"} to ${latest}.`);
-  const licenseKey = await askLicenseKey();
+  const licenseKey = await getLicenseKey(ctx);
   note("\nDownloading the kit...");
   const { root, kitDir, info, updatesUntil } = await fetchKit(ctx, licenseKey, state.instanceId);
   state.updatesUntil = updatesUntil ?? state.updatesUntil ?? null;
@@ -373,16 +447,20 @@ async function status(ctx: Ctx): Promise<number> {
   const names = deployments(ctx);
   const states = names.map((n) => readState(ctx, n)!);
   if (!states.length) say(`No kit deployment on this machine. Set one up with ${cmd(suggested("kit setup"))}.`);
-  for (const s of states) {
+  // One quick health check each: after a setup that ended at the deploy
+  // (no terminal to wait at), this is where you see the secrets took.
+  const up = await Promise.all(states.map((s) => (s.url ? healthy(s.url, 1, 0) : Promise.resolve(false))));
+  for (const [i, s] of states.entries()) {
     const until = s.updatesUntil ? `, updates until ${s.updatesUntil.slice(0, 10)}` : "";
-    say(`${s.workerName}: kit ${s.version ?? "(setup not finished)"}${s.url ? ` at ${s.url}` : ""}${until}`);
+    const health = s.url ? (up[i] ? ", answering" : ", not answering yet (are its six secrets set?)") : "";
+    say(`${s.workerName}: kit ${s.version ?? "(setup not finished)"}${s.url ? ` at ${s.url}` : ""}${health}${until}`);
   }
   if (states.length) {
     const latest = await latestVersion(ctx).catch(() => null);
     for (const line of kitNotices(states, latest, Date.now(), suggested)) note(line);
   }
   emit({
-    deployments: states.map(({ workerName, url, version, updatesUntil }) => ({ workerName, url, version, updatesUntil: updatesUntil ?? null })),
+    deployments: states.map(({ workerName, url, version, updatesUntil }, i) => ({ workerName, url, version, updatesUntil: updatesUntil ?? null, healthy: up[i] })),
   });
   return 0;
 }
@@ -399,7 +477,7 @@ async function status(ctx: Ctx): Promise<number> {
 export async function kitUpdateNotice(env: NodeJS.ProcessEnv): Promise<void> {
   const mode = uiMode();
   if (mode.json || mode.quiet || mode.agent || !mode.input || process.stderr.isTTY !== true) return;
-  const ctx: Ctx = { server: kitServer(env), dir: configDir(env, homedir()) };
+  const ctx: Ctx = { server: kitServer(env), dir: configDir(env, homedir()), interactive: false, browser: false, name: null };
   const names = deployments(ctx);
   if (!names.length) return;
   const stamp = path.join(path.dirname(kitStateFile(ctx.dir, "x")), ".last-check");

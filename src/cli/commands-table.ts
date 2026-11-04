@@ -417,10 +417,16 @@ export const COMMANDS: CommandSpec[] = [
       "the licence for this one deployment, downloads the kit into a temporary folder, creates the database, " +
       "deploys, deletes the folder, and prints the commands that set the Worker's secrets, which you run " +
       "yourself. update installs the newest kit on a deployment set up from this machine (name it when there " +
-      "is more than one) and asks for the key again; status lists them. Needs a terminal and Node.js 22.18 or newer.",
-    flags: [],
+      "is more than one) and asks for the key again; status lists them. Needs Node.js 22.18 or newer. " +
+      "Where nobody can type (a coding agent, CI) or with --browser, the licence key is pasted on klef.sh " +
+      "instead and handed back sealed, never printed, and setup ends after the deploy instead of waiting.",
+    flags: [
+      { name: "name", value: "name", description: "The Worker's name, instead of being asked (setup)" },
+      { name: "browser", description: "Paste the licence key in the browser, not here" },
+    ],
     examples: [
       ["klef kit setup", "Licence, database, deploy, then the secret commands"],
+      ["klef kit setup --name klef --browser", "The same, with the key pasted in the browser"],
       ["klef kit update", "Newest kit, migrations, redeploy"],
       ["klef kit status", "Deployments set up from this machine"],
     ],
@@ -624,6 +630,7 @@ export function topicHelp(topic: (typeof TOPICS)[number], cli: string): string {
         ["KLEF_CONFIG_DIR", "Where klef keeps state (default ~/.config/klef)"],
         ["KLEF_AGENT_SOCK", "Where the unlock agent's socket lives"],
         ["KLEF_NO_REMEMBER", "Never keep the vault key on this device, for this run"],
+        ["KLEF_NO_UPDATE_CHECK", "Never check npm for a newer klef (the once-a-day notice)"],
         ["KLEF_NO_INPUT", "Never prompt, like --no-input"],
         ["CI", "Set by CI systems; klef then never prompts"],
         ["NO_COLOR", "No colour (https://no-color.org)"],

@@ -14,6 +14,9 @@
 
 import path from "node:path";
 
+/** Where a buyer finds their licence key again, signed in with the email they paid with. */
+export const KEY_PORTAL = "https://customer.dodopayments.com";
+
 /** What `klef kit` remembers about one deployment. No licence key, no secrets. */
 export interface KitState {
   workerName: string;

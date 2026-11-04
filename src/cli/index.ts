@@ -38,6 +38,7 @@ import { ask } from "./commands/ask.ts";
 import { recover } from "./commands/recover.ts";
 import { scan } from "./commands/scan.ts";
 import { kit, kitUpdateNotice } from "./commands/kit.ts";
+import { cliUpdateNotice } from "./cli-update.ts";
 import { AGENT_COMMAND } from "./agent-spawn.ts";
 import { runAgentProcess } from "./agent.ts";
 import { CLI_VERSION } from "./version.ts";
@@ -183,6 +184,8 @@ if (args.command === AGENT_COMMAND) {
     process.exitCode = await main(args);
     // Once a day, on a machine that set up a self-host kit (commands/kit.ts).
     if (args.command !== "kit") await kitUpdateNotice(process.env);
+    // Once a day, when a newer klef itself is out (cli-update.ts).
+    await cliUpdateNotice(process.env);
   } catch (err) {
     // Errors reach the user as one line plus a next step. Stack traces are
     // noise here, and a stack could carry values a message wouldn't. The
