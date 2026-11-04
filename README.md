@@ -154,7 +154,7 @@ needs a person stops with an error code and the exact command to run next.
 | --- | --- |
 | 0 | Success, including nothing to do |
 | 1 | Network, server, or unexpected failure, or a CLI older than the repo's `minVersion` |
-| 2 | Usage error, or a confirmation nobody could give |
+| 2 | Usage error, or a yes or a choice nobody could give (check `error.code`) |
 | 3 | Not signed in, the token was rejected, or a team file your access doesn't cover |
 | 4 | Locked: this device needs unlocking |
 | 5 | Conflict: both sides changed, nothing written |

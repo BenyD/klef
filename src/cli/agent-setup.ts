@@ -223,9 +223,9 @@ agent: where it would need a person, it stops with one of these codes.
   choose a side.
 - **\`not_signed_in\` (exit 3)**: run \`${cli} setup\`. Sign-in opens the
   browser for the user to approve.
-- **\`not_linked\` (exit 6)**: link as "Linking the right project" says:
-  \`list\`, ask, then \`setup --project <name>\`. Plain \`setup\` stops with the
-  choices when it can't tell.
+- **\`not_linked\` (exit 6)**: link as "Linking the right project" above
+  says. Exit codes are shared (\`confirmation_required\` and \`choice_required\`
+  are both 2), so always act on \`error.code\`.
 - **Before pushing**, say which files will change and get a yes in the chat,
   then use \`--yes\`. Push reports only how many lines changed, and every
   earlier version is kept, so a bad push can be restored in the web app.

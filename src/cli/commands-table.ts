@@ -582,7 +582,7 @@ export function topicHelp(topic: (typeof TOPICS)[number], cli: string): string {
       ...table([
         ["0", "Success, including nothing to do"],
         ["1", "Failure: network, server, or something unexpected"],
-        ["2", "Usage error, or a confirmation was needed and no one could answer (rerun with --yes)"],
+        ["2", "Usage error, or a yes or a choice was needed and no one could answer (see error.code)"],
         ["3", "Not signed in, or the token was rejected (klef login)"],
         ["4", "Locked: this device needs unlocking (klef login in the browser, or klef unlock)"],
         ["5", "Conflict: both sides changed; nothing was written"],
