@@ -20,6 +20,7 @@ import {
 import { login } from "./commands/login.ts";
 import { logout } from "./commands/logout.ts";
 import { status } from "./commands/status.ts";
+import { doctor } from "./commands/doctor.ts";
 import { link } from "./commands/link.ts";
 import { list } from "./commands/list.ts";
 import { pull } from "./commands/pull.ts";
@@ -53,6 +54,7 @@ const RUN: Record<string, Run> = {
   login: (args, env) => login(args, env),
   logout: (_args, env) => logout(env),
   status: (args, env, cwd) => status(args, env, cwd),
+  doctor: (args, env, cwd) => doctor(args, env, cwd),
   link: (args, env, cwd) => link(args, env, cwd),
   list: (args, env, cwd) => list(args, env, cwd),
   set: (args, env, cwd) => set(args, env, cwd),
@@ -153,7 +155,8 @@ async function main(args: ParsedArgs): Promise<number> {
   // The repo's minVersion, checked before anything reads its link. A
   // malformed .klef.json is left for the command itself to report.
   const config = await readProjectConfig(cwd).catch(() => null);
-  checkMinVersion(CLI_VERSION, config?.minVersion, process.argv.slice(2).map(shellArg).join(" "));
+  // doctor is what you run when something is wrong, outdated CLI included.
+  if (spec.name !== "doctor") checkMinVersion(CLI_VERSION, config?.minVersion, process.argv.slice(2).map(shellArg).join(" "));
   return RUN[spec.name]!(args, env, cwd);
 }
 

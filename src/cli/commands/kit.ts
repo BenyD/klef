@@ -294,16 +294,13 @@ async function setup(ctx: Ctx): Promise<number> {
   // as creating anything.
   const abandoned = readState(ctx, workerName) ? null : unfinished(ctx, workerName);
   if (abandoned) {
-    note(`Using this licence's activation from the setup of ${abandoned.workerName}, which stopped before it created anything.`);
+    note(`Carrying on the setup of ${abandoned.workerName}, which stopped before it deployed, as ${workerName}.`);
     rmSync(kitStateFile(ctx.dir, abandoned.workerName), { force: true });
   }
-  const state: KitState = readState(ctx, workerName) ?? {
-    workerName,
-    instanceId: abandoned?.instanceId ?? (await activate(ctx, licenseKey, workerName)),
-    databaseId: null,
-    url: null,
-    version: null,
-  };
+  const state: KitState = readState(ctx, workerName) ??
+    (abandoned
+      ? { ...abandoned, workerName }
+      : { workerName, instanceId: await activate(ctx, licenseKey, workerName), databaseId: null, url: null, version: null });
   writeState(ctx, state);
 
   note("\nDownloading the kit...");

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security problem
+    url: mailto:security@klef.sh
+    about: Report a vulnerability privately, not in a public issue.
+  - name: Billing, or anything about your klef.sh account
+    url: https://klef.sh/contact
+    about: Payments, refunds, licences and accounts go through the contact form.

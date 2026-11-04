@@ -214,14 +214,15 @@ export function kitNotices(
 }
 
 /**
- * A setup that activated a licence and stopped before it created anything
- * (no database, nothing deployed), for instance because the name it chose
- * was taken. Its activation can go to a new name instead of spending another:
- * the licence covers one deployment, and this one never came to be. Null when
- * there is none, or more than one and so no telling which licence is meant.
+ * A setup that activated a licence and stopped before it deployed anything,
+ * for instance because the name it chose was taken or the deploy failed. It
+ * can carry on under a new name, with its activation (and its database, if it
+ * got that far) instead of spending another: the licence covers one
+ * deployment, and this one never came to be. Null when there is none, or more
+ * than one and so no telling which licence is meant.
  */
 export function unfinishedSetup(states: KitState[], except: string): KitState | null {
-  const found = states.filter((s) => s.workerName !== except && !s.databaseId && !s.url && !s.version);
+  const found = states.filter((s) => s.workerName !== except && !s.url && !s.version);
   return found.length === 1 ? found[0]! : null;
 }
 

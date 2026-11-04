@@ -210,8 +210,8 @@ describe("unfinishedSetup", () => {
     expect(unfinishedSetup([state("klef")], "klef-test")?.instanceId).toBe("lki_klef");
   });
 
-  it("never takes a deployment that got as far as a database, a URL or a version", () => {
-    expect(unfinishedSetup([state("a", { databaseId: "db" })], "b")).toBeNull();
+  it("carries on one that got as far as its database, but never one that deployed", () => {
+    expect(unfinishedSetup([state("a", { databaseId: "db" })], "b")?.databaseId).toBe("db");
     expect(unfinishedSetup([state("a", { url: "https://a.workers.dev" })], "b")).toBeNull();
     expect(unfinishedSetup([state("a", { version: "1.0.0" })], "b")).toBeNull();
   });

@@ -133,6 +133,11 @@ export function sendUrl(origin: string, id: string, fragmentKey: string): string
 const ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
 const KEY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
+/** Whether a link's fragment has the shape of a send's key: checked before the one view is spent on it. */
+export function isSendKey(fragment: string): boolean {
+  return KEY_PATTERN.test(fragment);
+}
+
 /** True for an id a client could have made; the API's input check. */
 export function isSendId(value: unknown): value is string {
   return typeof value === "string" && ID_PATTERN.test(value);

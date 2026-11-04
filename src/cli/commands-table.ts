@@ -118,6 +118,23 @@ export const COMMANDS: CommandSpec[] = [
     json: "{ workspace, project, file, files: [ { file, path } ], config, changed }",
   },
   {
+    name: "doctor",
+    group: "Look around",
+    summary: "Versions, setup and server health, to paste into a bug report",
+    description:
+      "Prints the CLI, Node and OS versions, the server and whether it answers, where the token " +
+      "and vault key are kept, what this directory is linked to and the kits set up from here. " +
+      "Names and versions only, never a value, token or key, so it is safe to post publicly.",
+    flags: [],
+    examples: [
+      ["klef doctor", "Before reporting a bug"],
+      ["klef doctor --json", "The same, as JSON"],
+    ],
+    json:
+      "{ cli, node, os, invokedAs, configDir, server: { url, reachable }, signedIn, tokenStore, " +
+      "vault: { keyRemembered, unlockAgent }, project: { workspace, project, file } | null, kits: [ { workerName, version, deployed } ] }",
+  },
+  {
     name: "status",
     group: "Everyday",
     summary: "Sign-in, link, lock state and each file's sync state, in one call",

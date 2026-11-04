@@ -12,6 +12,7 @@
 // and errors pass through redactAssignments on the way out as a backstop.
 
 import { redactAssignments } from "./output.ts";
+import { command as suggested } from "./invocation.ts";
 
 /** The JSON contract's version. Bumped only for a breaking change; new fields are not one. */
 export const JSON_SCHEMA = 1;
@@ -314,10 +315,19 @@ export function reportError(err: unknown): number {
   return failure.exitCode;
 }
 
-/** Anything thrown, as a CliError. Unknown errors keep their message and count as internal. */
+/** Where to report a bug, with the template that asks for `klef doctor`'s output. */
+export const ISSUES_URL = "https://github.com/BenyD/klef/issues/new?template=bug.yml";
+
+/**
+ * Anything thrown, as a CliError. Unknown errors keep their message, count as
+ * internal, and say how to report them: anything that gets here is a bug.
+ */
 export function toCliError(err: unknown): CliError {
   if (err instanceof CliError) return err;
-  return new CliError("internal", err instanceof Error ? err.message : String(err));
+  return new CliError("internal", err instanceof Error ? err.message : String(err), {
+    hint: `This looks like a bug in klef. Please report it, with what the command below prints, at ${ISSUES_URL}`,
+    next: [suggested("doctor")],
+  });
 }
 
 /**

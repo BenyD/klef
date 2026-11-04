@@ -1,0 +1,29 @@
+name: Bug report
+description: Something in the Klef CLI, the self-host kit or a plugin did not work.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never paste a secret value, an access token or a licence key here. Everything `klef doctor` prints is safe to share.
+        For a security problem, email security@klef.sh instead of opening an issue.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The command you ran, what you expected, and what you got instead. Error messages help most.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `klef doctor`
+      description: Run `npx @klefsh/cli doctor` (or `klef doctor`) where it went wrong, and paste what it prints.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen again
+      description: Steps from a fresh start, if you know them.
