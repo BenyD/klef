@@ -291,7 +291,7 @@ describe("klef setup (everything)", () => {
   // Run by an agent: every step that needs the user says what to hand them.
   it("tells an agent to ask the user which project", async () => {
     await expect(run("setup", yes, { line: NO_TERMINAL })).rejects.toMatchObject({
-      code: "confirmation_required",
+      code: "choice_required",
       next: [{ command: "klef setup --workspace <workspace> --project <project>" }],
     });
     expect(await exists(path.join(cwd, ".klef.json"))).toBe(false);
@@ -304,7 +304,7 @@ describe("klef setup (everything)", () => {
     it("does not let an agent link an unrelated repo to it", async () => {
       setUiMode({ input: false });
       await expect(run("setup --yes", yes, { account: async () => ({ email: "me@example.com", tree: ONE }) })).rejects.toMatchObject({
-        code: "confirmation_required",
+        code: "choice_required",
       });
       expect(await exists(path.join(cwd, ".klef.json"))).toBe(false);
     });

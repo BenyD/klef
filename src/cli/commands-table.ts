@@ -640,6 +640,7 @@ export function topicHelp(topic: (typeof TOPICS)[number], cli: string): string {
     ...table([
       ["usage", "Unknown command or flag, or a bad value (exit 2)"],
       ["confirmation_required", "A yes was needed; ask the user, then rerun with --yes (exit 2)"],
+      ["choice_required", "A choice was needed (data.choices); ask the user, then rerun next with their pick (exit 2)"],
       ["unsafe_path", "A path outside this directory (exit 2)"],
       ["not_signed_in", "No token on this machine (exit 3)"],
       ["token_rejected", "The token expired or was revoked (exit 3)"],

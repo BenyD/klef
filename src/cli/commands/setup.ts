@@ -259,7 +259,7 @@ async function chooseProject(
 
   // An agent ran this, or nobody can answer. The choices are names only; the
   // user picks, and the agent reruns with the flags.
-  const needChoice = new CliError("confirmation_required", "Which project is this directory? It needs a choice.", {
+  const needChoice = new CliError("choice_required", "Which project is this directory? It needs a choice.", {
     hint: `Ask the user which one (${choices.map(describeChoice).join("; ")}), then rerun:`,
     next: [command("setup --workspace <workspace> --project <project>")],
     data: {

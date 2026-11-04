@@ -13,7 +13,8 @@ import { runTool } from "./run-tool.ts";
 export function isEnvFileName(name: string): boolean {
   if (/\.(example|sample|template|dist|defaults|schema)$/i.test(name)) return false;
   if (/^\.env\.(example|sample|template)\./i.test(name)) return false;
-  return /^\.env(\.[\w.-]+)?$/.test(name) || /^[\w.-]+\.env$/.test(name);
+  // .dev.vars is Wrangler's env file, and some repos keep .prod.vars beside it.
+  return /^\.env(\.[\w.-]+)?$/.test(name) || /^[\w.-]+\.env$/.test(name) || /^\.[\w-]+\.vars$/.test(name);
 }
 
 const SKIP = new Set(["node_modules", ".git", "dist", "build", "out", ".next", ".turbo", "vendor", "target"]);

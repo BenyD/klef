@@ -34,6 +34,7 @@ export const EXIT = {
 export type ErrorCode =
   | "usage"
   | "confirmation_required"
+  | "choice_required"
   | "not_signed_in"
   | "token_rejected"
   | "locked"
@@ -55,6 +56,7 @@ export type ErrorCode =
 const EXIT_FOR: Record<ErrorCode, number> = {
   usage: EXIT.usage,
   confirmation_required: EXIT.usage,
+  choice_required: EXIT.usage,
   not_signed_in: EXIT.auth,
   token_rejected: EXIT.auth,
   locked: EXIT.locked,

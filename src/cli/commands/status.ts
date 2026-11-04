@@ -9,6 +9,7 @@ import type { ParsedArgs } from "../args.ts";
 import { allFiles, CONFIG_FILENAME, type ProjectConfig } from "../project-config.ts";
 import { QUICK_STATE_WORDS } from "../sync-plan.ts";
 import { fileStates, type FileState } from "../file-states.ts";
+import { findEnvFiles } from "../env-scan.ts";
 import { CLI_VERSION } from "../version.ts";
 import type { VaultTree } from "../../shared/api-types.ts";
 import { cmd, emit, say, style, uiMode, type NextStep } from "../ui.ts";
@@ -73,8 +74,17 @@ export async function status(
   }
 
   const files = config ? await fileStates(config, tree, cwd, env) : [];
+  // Unlinked: which env files are here to link at all (names only).
+  const localEnvFiles = config ? null : await findEnvFiles(cwd);
   const unlockedBy = remembered ? "remembered" : agent ? "agent" : null;
-  const next = nextSteps({ tokenStatus, linked: config !== null, unlocked: unlockedBy !== null, files, treeKnown: tree !== null });
+  const next = nextSteps({
+    tokenStatus,
+    linked: config !== null,
+    unlocked: unlockedBy !== null,
+    files,
+    treeKnown: tree !== null,
+    localEnvFiles: localEnvFiles?.length ?? 0,
+  });
 
   emit({
     version: CLI_VERSION,
@@ -91,6 +101,7 @@ export async function status(
       ? { workspace: config.workspace, project: config.project, config: CONFIG_FILENAME }
       : null,
     files,
+    ...(localEnvFiles ? { localEnvFiles } : {}),
     next: next.map((n) => ({ command: n.command, description: n.description })),
   });
   if (uiMode().json) return 0;
@@ -123,32 +134,36 @@ export async function status(
   return 0;
 }
 
-/** What to run next, most useful first. Never more than three. */
+/**
+ * What to run next, most useful first. Never more than three. A locked
+ * device always starts with login: pull, push and run need the key even when
+ * every file is in sync. An unlinked directory with no env file gets no
+ * setup: there is nothing to link, and the only project in the vault is
+ * likely the wrong one.
+ */
 export function nextSteps(s: {
   tokenStatus: TokenStatus;
   linked: boolean;
   unlocked: boolean;
   files: FileState[];
   treeKnown: boolean;
+  /** Env files found here when unlinked. */
+  localEnvFiles?: number;
 }): NextStep[] {
   if (s.tokenStatus === "absent" || s.tokenStatus === "rejected") {
     return [{ command: command(s.linked ? "login" : "setup"), description: s.linked ? "sign in" : "sign in and link this repo" }];
   }
-  if (!s.linked) {
-    const setup = { command: command("setup"), description: "link this repo and pull its files" };
-    // Unlock first: setup links a locked device but then stops before the
-    // pull, and an agent can't unlock on its own.
-    return s.unlocked
-      ? [setup]
-      : [{ command: command("login"), description: "the user approves in the browser, which unlocks this device" }, setup];
-  }
-  if (!s.treeKnown) return [];
-  const moving = s.files.filter((f) => f.state !== "in-sync" && f.state !== "absent");
-  if (moving.length === 0) return [];
   const steps: NextStep[] = [];
   if (!s.unlocked) {
     steps.push({ command: command("login"), description: "the user approves in the browser, which unlocks this device" });
   }
+  if (!s.linked) {
+    if ((s.localEnvFiles ?? 0) > 0) steps.push({ command: command("setup"), description: "link this repo and pull its files" });
+    return steps;
+  }
+  if (!s.treeKnown) return steps;
+  const moving = s.files.filter((f) => f.state !== "in-sync" && f.state !== "absent");
+  if (moving.length === 0) return steps;
   if (moving.some((f) => f.state === "unknown")) steps.push({ command: command("diff --all"), description: "see which keys differ" });
   steps.push({ command: command("sync"), description: "bring the files in line" });
   return steps.slice(0, 3);

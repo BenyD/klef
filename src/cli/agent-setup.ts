@@ -136,9 +136,12 @@ says who is signed in, what this directory is linked to, whether the vault is
 unlocked, each file's state (\`in-sync\`, \`edited-here\`, \`changed-in-vault\`,
 \`missing-here\`, ...), and \`next\`: the commands that would move things on.
 
-Follow \`next\` in the order given. If it lists \`login\` before \`setup\`, this
-device is locked: run \`login\` first (the user approves in the browser,
-which unlocks it), then \`setup\`.
+Follow \`next\` in the order given. When \`vault.unlocked\` is false, \`next\`
+starts with \`login\`: run it first (the user approves in the browser, which
+unlocks this device), even when every file is in sync, before anything that
+reads or writes values. In a directory that is not linked, \`localEnvFiles\`
+lists the env files here by name; when it is empty, \`next\` has no \`setup\`,
+because there is nothing to link.
 
 ### When there is nothing to sync
 
@@ -152,10 +155,12 @@ repository.
 ### Linking the right project
 
 Never guess which vault project a repository belongs to. Run
-\`${cli} list --json\` to see the projects that exist, ask the user which one,
-then link it with \`${cli} setup --project <name>\`. Plain \`setup\` links on its
-own only when it can tell (the one project, named like this repo); otherwise
-it stops with \`confirmation_required\` and the projects in \`data.choices\`.
+\`${cli} list --json\` to see the projects that exist (each row is a file, with
+its workspace and project), ask the user which one, then link it with
+\`${cli} setup --workspace <workspace> --project <project>\` (\`--workspace\` can
+be left out when the project name is unique). Plain \`setup\` links on its own
+only when it can tell (the one project, named like this repo); otherwise it
+stops with \`choice_required\` and the projects in \`data.choices\`.
 If none fits, the user creates the project in the Klef web app first (klef.sh,
 or their own Klef server: New project), then you link it; the CLI does not
 create projects. You may suggest the repository's name for it, but ask.
@@ -180,11 +185,12 @@ before running anything.
     ${cli} run -- npm run dev    # run with the variables, output redacted
     ${cli} ask NAME --json       # the user enters a missing value in the browser
     ${cli} sync --dry-run --json # what a sync would do, writing nothing
+    ${cli} push --all --json     # without --yes: stops with each file's counts
     ${cli} sync --yes            # pull or push each file, whichever side changed
     ${cli} diff --all --json     # which keys differ (names, never values)
     ${cli} pull --all            # write every file in .klef.json to disk
     ${cli} push --all --yes      # save local changes as new versions
-    ${cli} list --json           # workspaces, projects and files, names only
+    ${cli} list --json           # every file, with its workspace and project
 
 With \`--json\` every command prints one object: \`{ "ok": true, "data": ... }\`,
 or \`{ "ok": false, "error": { "code", "message", "next": [...] } }\`. Act on
@@ -203,6 +209,10 @@ agent: where it would need a person, it stops with one of these codes.
   needs a yes. Say what will change (the plan is in \`data\`: the files and
   what happens to each), get a yes in the chat, then run the \`next\`
   command, which adds \`--yes\`.
+- **\`choice_required\` (exit 2)**: the command needs the user to choose,
+  such as which project \`setup\` should link. The options are in
+  \`data.choices\`. Ask the user, then run the \`next\` command with their pick
+  filled in. It is not a yes, so don't add \`--yes\` for it.
 - **\`conflict\` (exit 5)**: both sides changed and nothing was written. Show
   the user which keys differ (in \`data\`) and let them choose: \`next\` holds
   the pull and push that keep one side whole, and \`${cli} sync --merge

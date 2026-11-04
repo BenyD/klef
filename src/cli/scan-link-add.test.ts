@@ -36,8 +36,8 @@ async function touch(rel: string, text = "A=1\n") {
 
 describe("env file names", () => {
   it("knows env files from their templates", () => {
-    for (const n of [".env", ".env.local", ".env.production", "app.env", ".env.staging.local"]) expect(isEnvFileName(n), n).toBe(true);
-    for (const n of [".env.example", ".env.sample", ".env.template", "env.ts", ".envrc", "app.env.example"]) expect(isEnvFileName(n), n).toBe(false);
+    for (const n of [".env", ".env.local", ".env.production", "app.env", ".env.staging.local", ".dev.vars", ".prod.vars"]) expect(isEnvFileName(n), n).toBe(true);
+    for (const n of [".env.example", ".env.sample", ".env.template", "env.ts", ".envrc", "app.env.example", ".dev.vars.example", "wrangler.vars"]) expect(isEnvFileName(n), n).toBe(false);
   });
 
   it("names a vault file after its folder unless it is at the root", () => {
