@@ -114,27 +114,36 @@ See [`docs/AGENT_ACCESS.md`](./docs/AGENT_ACCESS.md) and the
 | Command | What it does |
 | --- | --- |
 | `klef setup` | Sign in, link the repo, pull what's missing, write agent instructions |
+| `klef link` | Link this directory to a project in the vault (writes `.klef.json`) |
 | `klef status` | Account, link, lock state and each file's sync state, in one call |
 | `klef sync` | Push your edits and pull theirs; stops on a conflict |
 | `klef pull` / `klef push` | Write the vault's copy to disk / save local changes as a new version |
 | `klef diff` | Which keys differ between here and the vault, never their values |
 | `klef run -- <cmd>` | Run a command with the variables, output redacted |
 | `klef ask <NAME>` | Ask the user for a missing value in the browser |
+| `klef set <NAME>` | Set one variable in a local file, the value typed at the terminal |
+| `klef recover <NAME> --from <version>` | Bring one variable back from an earlier vault version |
+| `klef scan` | List env files here that `.klef.json` does not cover yet |
 | `klef audit` | Key names on Vercel, GitHub and Cloudflare that differ from local files |
 | `klef restore <dir>` | On a new machine, pull every linked checkout under a directory |
 | `klef list` | Workspaces, projects and files in your vault (names only) |
 | `klef login` / `klef logout` | Approve this machine in the browser / sign out and revoke its token |
 | `klef unlock` / `klef lock` | Unlock with your passphrase at the terminal / forget the key now |
+| `klef kit` | Deploy and update the self-host kit on your own Cloudflare account |
+| `klef completion <shell>` | Print a completion script for bash, zsh or fish |
 
-`klef help <command>` shows each command's flags and its `--json` output.
+`klef help <command>` shows each command's flags and its `--json` output, and
+`klef help json` lists every error code.
 
 ## Scripts and CI
 
 Every command takes `--json` and then prints exactly one object on stdout:
 
 ```json
-{ "schema": 1, "ok": true, "data": {} }
-{ "ok": false, "error": { "code": "locked", "message": "...", "next": ["klef login"] }, "exit": 4 }
+{ "schema": 1, "ok": true, "command": "pull", "data": {}, "warnings": [] }
+{ "schema": 1, "ok": false, "command": "pull",
+  "error": { "code": "locked", "message": "...", "hint": "...", "next": [{ "command": "klef login" }] },
+  "exit": 4, "warnings": [] }
 ```
 
 Hints and progress go to stderr. Klef never prompts where nobody can answer:
@@ -144,9 +153,9 @@ needs a person stops with an error code and the exact command to run next.
 | Exit | Meaning |
 | --- | --- |
 | 0 | Success, including nothing to do |
-| 1 | Network, server, or unexpected failure |
+| 1 | Network, server, or unexpected failure, or a CLI older than the repo's `minVersion` |
 | 2 | Usage error, or a confirmation nobody could give |
-| 3 | Not signed in, or the token was rejected |
+| 3 | Not signed in, the token was rejected, or a team file your access doesn't cover |
 | 4 | Locked: this device needs unlocking |
 | 5 | Conflict: both sides changed, nothing written |
 | 6 | Not linked, or no such workspace, project or file |
