@@ -30,9 +30,11 @@ import {
   kitNotices,
   kitWranglerConfig,
   parseDatabaseId,
+  parseDatabaseNames,
   parseDeployUrl,
   pickDeployment,
   secretSteps,
+  unfinishedSetup,
   updateCheckDue,
   type KitInfo,
   type KitState,
@@ -65,6 +67,13 @@ function writeState(ctx: Ctx, state: KitState): void {
   const file = kitStateFile(ctx.dir, state.workerName);
   mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
   writeFileSync(file, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
+}
+
+function unfinished(ctx: Ctx, except: string): KitState | null {
+  const states = deployments(ctx)
+    .map((name) => readState(ctx, name))
+    .filter((s): s is KitState => !!s);
+  return unfinishedSetup(states, except);
 }
 
 function deployments(ctx: Ctx): string[] {
@@ -153,7 +162,7 @@ function wrangler(
   kitDir: string,
   version: string,
   wranglerArgs: string[],
-  opts: { capture?: boolean; unattended?: boolean } = {},
+  opts: { capture?: boolean; unattended?: boolean; quiet?: boolean } = {},
 ): { ok: boolean; out: string } {
   const capture = opts.capture ?? false;
   // Under --json, stdout carries the one JSON object, so Wrangler's own
@@ -166,7 +175,7 @@ function wrangler(
     stdio: ["inherit", capture ? "pipe" : uiMode().json ? 2 : "inherit", "inherit"],
     shell: process.platform === "win32",
   });
-  if (capture && res.stdout) out.write(res.stdout);
+  if (capture && res.stdout && !opts.quiet) out.write(res.stdout);
   return { ok: res.status === 0, out: res.stdout ?? "" };
 }
 
@@ -175,8 +184,14 @@ function stepFailed(what: string, rerun: string): CliError {
 }
 
 /** Signs Wrangler in if needed, writes the config, migrates and deploys. Returns the URL, if Wrangler printed one. */
+/** The D1 databases in the signed-in account, by name; empty when Wrangler can't list them. */
+function databaseNames(w: (a: string[], opts?: { capture?: boolean; quiet?: boolean }) => { ok: boolean; out: string }): string[] {
+  const listed = w(["d1", "list", "--json"], { capture: true, quiet: true });
+  return listed.ok ? parseDatabaseNames(listed.out) : [];
+}
+
 function deployKit(kitDir: string, info: KitInfo, state: KitState, rerun: string, onDatabase: (id: string) => void): string | null {
-  const w = (a: string[], opts: { capture?: boolean; unattended?: boolean } = {}) => wrangler(kitDir, info.wrangler, a, opts);
+  const w = (a: string[], opts: { capture?: boolean; unattended?: boolean; quiet?: boolean } = {}) => wrangler(kitDir, info.wrangler, a, opts);
   const who = w(["whoami"], { capture: true });
   if (!who.ok || /not authenticated/i.test(who.out)) {
     note("Signing Wrangler in to your Cloudflare account...");
@@ -184,6 +199,15 @@ function deployKit(kitDir: string, info: KitInfo, state: KitState, rerun: string
   }
 
   if (!state.databaseId) {
+    // Wrangler would only say "already exists"; say which name, and that a
+    // rerun with another name keeps this machine's activation.
+    const database = `${state.workerName}-db`;
+    if (databaseNames(w).includes(database)) {
+      throw new CliError("conflict", `This Cloudflare account already has a database named ${database}.`, {
+        hint: "Run setup again and choose another name for your Worker. Your licence carries over to it.",
+        next: [suggested(rerun)],
+      });
+    }
     note("\nCreating the database...");
     const created = w(["d1", "create", `${state.workerName}-db`], { capture: true, unattended: true });
     const id = parseDatabaseId(created.out);
@@ -265,10 +289,17 @@ async function setup(ctx: Ctx): Promise<number> {
   if (!isWorkerName(workerName)) throw new CliError("usage", "Use lowercase letters, digits and dashes for the Worker name.");
   const rerun = "kit setup";
 
-  // A second run picks up where the first stopped, on the same activation.
+  // A second run picks up where the first stopped, on the same activation:
+  // under the same name, or under a new one when the first never got as far
+  // as creating anything.
+  const abandoned = readState(ctx, workerName) ? null : unfinished(ctx, workerName);
+  if (abandoned) {
+    note(`Using this licence's activation from the setup of ${abandoned.workerName}, which stopped before it created anything.`);
+    rmSync(kitStateFile(ctx.dir, abandoned.workerName), { force: true });
+  }
   const state: KitState = readState(ctx, workerName) ?? {
     workerName,
-    instanceId: await activate(ctx, licenseKey, workerName),
+    instanceId: abandoned?.instanceId ?? (await activate(ctx, licenseKey, workerName)),
     databaseId: null,
     url: null,
     version: null,

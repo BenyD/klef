@@ -213,3 +213,25 @@ export function kitNotices(
   return lines;
 }
 
+/**
+ * A setup that activated a licence and stopped before it created anything
+ * (no database, nothing deployed), for instance because the name it chose
+ * was taken. Its activation can go to a new name instead of spending another:
+ * the licence covers one deployment, and this one never came to be. Null when
+ * there is none, or more than one and so no telling which licence is meant.
+ */
+export function unfinishedSetup(states: KitState[], except: string): KitState | null {
+  const found = states.filter((s) => s.workerName !== except && !s.databaseId && !s.url && !s.version);
+  return found.length === 1 ? found[0]! : null;
+}
+
+/** Database names from `wrangler d1 list --json`; empty when the output isn't that. */
+export function parseDatabaseNames(output: string): string[] {
+  try {
+    const rows = JSON.parse(output) as unknown;
+    if (!Array.isArray(rows)) return [];
+    return rows.map((r) => (r as { name?: unknown })?.name).filter((n): n is string => typeof n === "string");
+  } catch {
+    return [];
+  }
+}

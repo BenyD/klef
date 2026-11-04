@@ -5,6 +5,8 @@ import {
   isWorkerName,
   kitWranglerConfig,
   parseDatabaseId,
+  parseDatabaseNames,
+  unfinishedSetup,
   parseDeployUrl,
   isKitVersion,
   kitNotices,
@@ -193,3 +195,37 @@ describe("update notices", () => {
   });
 });
 
+
+describe("unfinishedSetup", () => {
+  const state = (workerName: string, over: Partial<KitState> = {}): KitState => ({
+    workerName,
+    instanceId: `lki_${workerName}`,
+    databaseId: null,
+    url: null,
+    version: null,
+    ...over,
+  });
+
+  it("hands a setup that stopped before creating anything to a new name", () => {
+    expect(unfinishedSetup([state("klef")], "klef-test")?.instanceId).toBe("lki_klef");
+  });
+
+  it("never takes a deployment that got as far as a database, a URL or a version", () => {
+    expect(unfinishedSetup([state("a", { databaseId: "db" })], "b")).toBeNull();
+    expect(unfinishedSetup([state("a", { url: "https://a.workers.dev" })], "b")).toBeNull();
+    expect(unfinishedSetup([state("a", { version: "1.0.0" })], "b")).toBeNull();
+  });
+
+  it("leaves the name being set up alone, and gives up when it can't tell which one is meant", () => {
+    expect(unfinishedSetup([state("klef")], "klef")).toBeNull();
+    expect(unfinishedSetup([state("a"), state("b")], "c")).toBeNull();
+  });
+});
+
+describe("parseDatabaseNames", () => {
+  it("reads names from wrangler d1 list --json, and nothing from anything else", () => {
+    expect(parseDatabaseNames('[{"uuid":"1","name":"klef-db"},{"uuid":"2","name":"other"}]')).toEqual(["klef-db", "other"]);
+    expect(parseDatabaseNames("not json")).toEqual([]);
+    expect(parseDatabaseNames('{"name":"x"}')).toEqual([]);
+  });
+});
