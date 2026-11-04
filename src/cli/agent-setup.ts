@@ -115,6 +115,11 @@ command through Klef, which puts the variables in its environment:
     ${cli} run --only DATABASE_URL -- sh -c 'psql "$DATABASE_URL" -c "select 1"'
     ${cli} run --from-vault -- pnpm test
 
+\`run\` loads the linked file (\`file\` in \`.klef.json\`, usually \`.env.local\`);
+\`--file .env.production\` picks another. Before a run that uses production
+values, or that changes data (a migration, a seed, a deploy), tell the user
+which file and which command, and get a yes in the chat.
+
 Wrap any \`$NAME\` in \`sh -c '...'\` with single quotes, so your own shell does
 not expand it (to nothing) before Klef runs. Klef prints no value, and masks
 every value from the file in the command's output; still prefer commands that
