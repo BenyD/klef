@@ -54,6 +54,15 @@ describe("confirmOrFail", () => {
     });
   }
 
+  it("carries what a yes would change, so the agent can show the user first", async () => {
+    setUiMode({ agent: true });
+    const plan = { files: [{ file: ".env.local", added: 1, removed: 0 }] };
+    await expect(confirmOrFail("Push?", "push", parseArgs(["push"]), noTerminal, plan)).rejects.toMatchObject({
+      code: "confirmation_required",
+      data: plan,
+    });
+  });
+
   it("fails the same way when there turns out to be no terminal", async () => {
     setUiMode({});
     await expect(confirmOrFail("Push?", "push", parseArgs(["push"]), noTerminal)).rejects.toMatchObject({

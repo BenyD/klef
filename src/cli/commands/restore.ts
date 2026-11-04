@@ -74,7 +74,15 @@ export async function restore(
     say(`  ${shown(dir).padEnd(width)}  ${config.workspace} / ${config.project}  ${style.dim(files)}`);
   }
   const question = projects.length === 1 ? "Restore it?" : `Restore these ${projects.length}?`;
-  if (!(await confirmOrFail(question, "restore", args, ask))) {
+  const plan = {
+    checkouts: projects.map(({ dir, config }) => ({
+      dir: shown(dir),
+      workspace: config.workspace,
+      project: config.project,
+      files: allFiles(config).map((f) => f.file),
+    })),
+  };
+  if (!(await confirmOrFail(question, "restore", args, ask, plan))) {
     say("Nothing restored.");
     return 1;
   }

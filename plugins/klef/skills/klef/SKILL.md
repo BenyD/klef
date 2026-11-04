@@ -88,8 +88,9 @@ which unlocks it), then `setup`.
 
 ### When there is nothing to sync
 
-If this directory is not linked and has no env file and no `.env.example`,
-there is nothing to sync. Don't create an env file, don't look for one
+If this directory is not linked and has no env file, there is nothing to
+sync. A `.env.example` alone doesn't change that: it lists key names, not
+values, and is not vault content. Don't create an env file, don't look for one
 elsewhere on the machine, and don't make up keys. Tell the user, and ask
 whether they want Klef set up for keys they will add later, or meant another
 repository.
@@ -101,9 +102,9 @@ Never guess which vault project a repository belongs to. Run
 then link it with `npx @klefsh/cli setup --project <name>`. Plain `setup` links on its
 own only when it can tell (the one project, named like this repo); otherwise
 it stops with `confirmation_required` and the projects in `data.choices`.
-If none fits, the user
-creates the project in the Klef web app first; the CLI does not create
-projects. Ask before suggesting a new name.
+If none fits, the user creates the project in the Klef web app first (klef.sh,
+or their own Klef server: New project), then you link it; the CLI does not
+create projects. You may suggest the repository's name for it, but ask.
 
 ### What belongs in the vault
 
@@ -145,8 +146,9 @@ agent: where it would need a person, it stops with one of these codes.
   If the user prefers, they can run `npx @klefsh/cli unlock` in their own terminal
   instead. Either way, wait for them; never retry in a loop.
 - **`confirmation_required` (exit 2)**: the command writes something and
-  needs a yes. Say what will change (the plan is in the output), get a yes in
-  the chat, then run the `next` command, which adds `--yes`.
+  needs a yes. Say what will change (the plan is in `data`: the files and
+  what happens to each), get a yes in the chat, then run the `next`
+  command, which adds `--yes`.
 - **`conflict` (exit 5)**: both sides changed and nothing was written. Show
   the user which keys differ (in `data`) and let them choose: `next` holds
   the pull and push that keep one side whole, and `npx @klefsh/cli sync --merge
@@ -155,9 +157,11 @@ agent: where it would need a person, it stops with one of these codes.
   both sides added keys. A key whose value differs needs the user: they
   settle it with `npx @klefsh/cli set NAME` (which prompts them, not you) or
   choose a side.
-- **`not_signed_in` or `not_linked` (exit 3 or 6)**: run `npx @klefsh/cli setup`.
-  Sign-in opens the browser for the user to approve; when it needs a choice
-  from the user, it stops with the exact command to rerun once they answer.
+- **`not_signed_in` (exit 3)**: run `npx @klefsh/cli setup`. Sign-in opens the
+  browser for the user to approve.
+- **`not_linked` (exit 6)**: link as "Linking the right project" says:
+  `list`, ask, then `setup --project <name>`. Plain `setup` stops with the
+  choices when it can't tell.
 - **Before pushing**, say which files will change and get a yes in the chat,
   then use `--yes`. Push reports only how many lines changed, and every
   earlier version is kept, so a bad push can be restored in the web app.
@@ -186,6 +190,8 @@ with the local file, with `npx @klefsh/cli audit --json`:
 - Never copy a value between places, and never change a platform's variables
   yourself. Names only, in both directions.
 
-To refresh these instructions without touching the link, run
-`npx @klefsh/cli setup claude cursor` (only the targets you use).
+To refresh these instructions, run `npx @klefsh/cli setup claude cursor` (only the
+targets you use). With targets, setup writes only these instruction files:
+it never links the directory or writes `.klef.json`, and it asks before
+writing, with the files in `data.agentFiles`.
 <!-- klef:end -->

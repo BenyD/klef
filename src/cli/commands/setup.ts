@@ -366,7 +366,8 @@ async function installAgentFiles(
   // An agent may only go ahead once the user has said yes in its chat, so
   // without a terminal this fails with the exact command to rerun with --yes.
   const question = writes.length === 1 ? "Write it?" : `Write ${writes.length} files?`;
-  if (!(await confirmOrFail(question, "setup", args, deps.ask))) {
+  const toWrite = { agentFiles: writes.map((item) => ({ path: `${where}/${item.path}`, action: item.action })) };
+  if (!(await confirmOrFail(question, "setup", args, deps.ask, toWrite))) {
     say("     Nothing written.");
     return 1;
   }

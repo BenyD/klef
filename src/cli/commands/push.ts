@@ -147,7 +147,10 @@ export async function push(
   // One question for the whole batch: the summaries above are the thing being
   // confirmed, and asking per file would turn --all back into a chore.
   const question = pending.length === 1 ? "Push?" : `Push ${pending.length} files?`;
-  if (!(await confirmOrFail(question, "push", args, ask))) {
+  const plan = {
+    files: pending.map((p) => ({ file: p.resolved.fileName, path: path.relative(cwd, p.source), ...p.stats })),
+  };
+  if (!(await confirmOrFail(question, "push", args, ask, plan))) {
     say("Nothing pushed.");
     return 1;
   }

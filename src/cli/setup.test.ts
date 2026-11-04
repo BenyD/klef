@@ -110,6 +110,8 @@ describe("klef setup <targets>", () => {
       code: "confirmation_required",
       exitCode: 2,
       next: [{ command: "klef setup cursor --yes" }],
+      // What a yes would write, for the agent to show the user first.
+      data: { agentFiles: [{ path: "./.cursor/rules/klef.mdc", action: "create" }] },
     });
     expect(await exists(path.join(cwd, ".cursor/rules/klef.mdc"))).toBe(false);
   });

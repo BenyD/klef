@@ -84,11 +84,14 @@ export async function confirmOrFail(
   name: string,
   args: ParsedArgs,
   ask: (question: string) => Promise<boolean>,
+  /** What a yes would change, names and counts only, for the agent to show the user. */
+  plan?: Record<string, unknown>,
 ): Promise<boolean> {
   if (args.flags.has("yes")) return true;
   const needYes = new CliError("confirmation_required", `${command(name)} needs a yes before it changes anything.`, {
     hint: "Nobody can answer here. Ask the user, then rerun with --yes:",
     next: [rerun(name, args, ["--yes"])],
+    ...(plan ? { data: plan } : {}),
   });
   if (!canConfirm()) throw needYes;
   try {

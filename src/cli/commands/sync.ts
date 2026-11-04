@@ -88,7 +88,11 @@ export async function sync(
       if (file.decision.action !== "merge") say(`Push ${style.bold(file.entry.file)}: ${describePending(file)}`);
     }
     const question = pushes.length === 1 ? "Push?" : `Push ${pushes.length} files?`;
-    if (!(await confirmOrFail(question, "sync", args, ask))) {
+    const plan = {
+      push: pushes.map((f) => ({ file: f.entry.file, action: f.decision.action })),
+      pull: pulls.map((f) => ({ file: f.entry.file, action: f.decision.action })),
+    };
+    if (!(await confirmOrFail(question, "sync", args, ask, plan))) {
       // Pulls are still safe to make: each one replaces a file nobody has
       // edited since it last matched the vault.
       for (const line of await applySync(ctx, cwd, config, files, new Set(["in-sync", "pull"]))) done(line);
