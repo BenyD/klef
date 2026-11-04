@@ -15,6 +15,7 @@ import {
   type SetupTarget,
 } from "../agent-setup.ts";
 import {
+  canAddProjects,
   configForChoice,
   describeChoice,
   findChoice,
@@ -22,7 +23,8 @@ import {
   projectChoices,
   type ProjectChoice,
 } from "../setup-link.ts";
-import { KlefApi, UnauthorizedError } from "../api.ts";
+import { ApiError, KlefApi, UnauthorizedError } from "../api.ts";
+import { findEnvFiles } from "../env-scan.ts";
 import { loadToken } from "../credentials.ts";
 import { apiBaseUrl } from "../paths.ts";
 import { readProjectConfig, writeProjectConfig } from "../project-file.ts";
@@ -30,11 +32,11 @@ import { allFiles, CONFIG_FILENAME, type ProjectConfig } from "../project-config
 import { resolveWritePath } from "../write-path.ts";
 import { confirm, NoTerminalError, promptLine } from "../prompt.ts";
 import { flagValue, hasFlag, parseArgs, type ParsedArgs } from "../args.ts";
-import { confirmOrFail } from "../common.ts";
+import { confirmOrFail, shellArg } from "../common.ts";
 import { CliError, cmd, done, emit, nested, note, say, style, uiMode, type NextStep } from "../ui.ts";
 import { fileStates, type FileState } from "../file-states.ts";
 import { QUICK_STATE_WORDS } from "../sync-plan.ts";
-import type { VaultTree } from "../../shared/api-types.ts";
+import type { VaultTree, WorkspaceNode } from "../../shared/api-types.ts";
 import { login } from "./login.ts";
 import { unlock } from "./unlock.ts";
 import { pull } from "./pull.ts";
@@ -59,6 +61,8 @@ export interface SetupDeps {
   states?: (config: ProjectConfig) => Promise<FileState[]>;
   /** Pull one vault file to one local path. */
   pullFile: (file: string, localPath: string) => Promise<number>;
+  /** Add an empty project to a workspace: a name, nothing encrypted. */
+  createProject: (workspaceId: string, name: string) => Promise<{ id: string; name: string }>;
 }
 
 export function defaultSetupDeps(args: ParsedArgs, env: NodeJS.ProcessEnv, cwd: string): SetupDeps {
@@ -88,6 +92,11 @@ export function defaultSetupDeps(args: ParsedArgs, env: NodeJS.ProcessEnv, cwd: 
     },
     pullFile: (file, localPath) =>
       nested(() => pull(parseArgs(["pull", "--file", file, "--path", localPath]), env, cwd)),
+    async createProject(workspaceId, name) {
+      const stored = await loadToken(env);
+      if (!stored) throw new CliError("not_signed_in", "Not signed in.", { next: [command("login")] });
+      return new KlefApi(apiBaseUrl(env), stored.token).createProject(workspaceId, name);
+    },
   };
 }
 
@@ -115,7 +124,7 @@ export async function setup(
   }
 
   const step = (n: number, text: string) => say(`${style.dim(`${n}/4`)}  ${text}`);
-  const report: Record<string, unknown> = { signedIn: false, email: null, linked: null, agentFiles: [], pulled: [] };
+  const report: Record<string, unknown> = { signedIn: false, email: null, linked: null, created: false, agentFiles: [], pulled: [] };
 
   // 1. Signed in.
   let account = await deps.account();
@@ -138,8 +147,13 @@ export async function setup(
   if (config) {
     step(2, `Linked to ${config.workspace} / ${config.project}`);
   } else {
-    const choice = await chooseProject(args, projectChoices(account.tree), deps, path.basename(cwd));
-    config = { ...configForChoice(choice), minVersion: CLI_VERSION };
+    const choice = hasFlag(args, "create")
+      ? await createProject(args, account.tree, deps, path.basename(cwd), report)
+      : await chooseProject(args, projectChoices(account.tree), deps, path.basename(cwd));
+    // Names only: an empty project links the env files found here, which
+    // `sync` then creates in the vault. None of them is opened.
+    const localNames = choice.files.length ? [] : await findEnvFiles(cwd, 0);
+    config = { ...configForChoice(choice, localNames), minVersion: CLI_VERSION };
     await writeProjectConfig(cwd, config);
     step(2, `Linked to ${config.workspace} / ${config.project} (${allFiles(config).length} files)`);
     say(style.dim(`     Wrote ${CONFIG_FILENAME}: names only, safe to commit.`));
@@ -152,12 +166,18 @@ export async function setup(
 
   // 4. Files on disk. Only the missing ones: pull overwrites, and a local
   // file may hold edits that are not in the vault yet.
+  // A file the vault does not have yet has nothing to pull: it is one this
+  // directory brings, or one nobody has made.
+  const inVault = vaultFileNames(account.tree, config);
   const missing: { file: string; path: string }[] = [];
+  let absent = 0;
   for (const entry of allFiles(config)) {
-    if (!(await exists(resolveWritePath(cwd, entry.path)))) missing.push(entry);
+    if (await exists(resolveWritePath(cwd, entry.path))) continue;
+    if (inVault && !inVault.has(entry.file.toLowerCase())) absent++;
+    else missing.push(entry);
   }
   if (missing.length === 0) {
-    step(4, "Every file is on disk");
+    step(4, absent ? "Nothing in the vault to pull yet" : "Every file is on disk");
     await finish(config, deps, report);
     return agentCode;
   }
@@ -228,6 +248,26 @@ async function finish(config: ProjectConfig, deps: SetupDeps, report: Record<str
   emit(report);
 }
 
+/**
+ * The vault names of the linked project's files, lowercased, or null when the
+ * tree does not have the project (renamed, or another account), in which case
+ * every missing file is pulled and pull says what is wrong.
+ */
+function vaultFileNames(tree: VaultTree, config: ProjectConfig): Set<string> | null {
+  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+  const project = tree.workspaces
+    .filter((w) => same(w.name, config.workspace))
+    .flatMap((w) => w.projects)
+    .find((p) => same(p.name, config.project));
+  return project ? new Set(project.files.map((f) => f.name.toLowerCase())) : null;
+}
+
+/** The rerun that creates a project, for when nothing in the vault fits. */
+const CREATE_NEXT = {
+  command: command("setup --create --project <name>"),
+  description: "once the user agrees, create a project for this repo (it defaults to this directory's name)",
+};
+
 async function chooseProject(
   args: ParsedArgs,
   choices: ProjectChoice[],
@@ -235,8 +275,9 @@ async function chooseProject(
   dirName: string,
 ): Promise<ProjectChoice> {
   if (choices.length === 0) {
-    throw new CliError("not_found", "Your vault has no env files yet.", {
-      hint: "Add them at klef.sh, then run this again.",
+    throw new CliError("not_found", "Your vault has no projects yet.", {
+      hint: "Create one for this repo:",
+      next: [CREATE_NEXT],
     });
   }
 
@@ -245,8 +286,8 @@ async function chooseProject(
     const found = findChoice(choices, flagValue(args, "workspace"), named);
     if (!found) {
       throw new CliError("not_found", `No single project called "${named}" in your vault.`, {
-        hint: "Add --workspace if two workspaces have a project by that name.",
-        next: [command("list")],
+        hint: "Add --workspace if two workspaces have a project by that name, or create it:",
+        next: [command("list"), CREATE_NEXT],
       });
     }
     return found;
@@ -261,7 +302,7 @@ async function chooseProject(
   // user picks, and the agent reruns with the flags.
   const needChoice = new CliError("choice_required", "Which project is this directory? It needs a choice.", {
     hint: `Ask the user which one (${choices.map(describeChoice).join("; ")}), then rerun:`,
-    next: [command("setup --workspace <workspace> --project <project>")],
+    next: [command("setup --workspace <workspace> --project <project>"), CREATE_NEXT],
     data: {
       choices: choices.map((c) => ({ workspace: c.workspace, project: c.project, files: c.files.map((f) => f.name) })),
     },
@@ -280,6 +321,95 @@ async function chooseProject(
   }
   const picked = choices[Number.parseInt(answer.trim(), 10) - 1];
   if (!picked) throw new CliError("usage", "Not one of the options. Nothing linked.");
+  return picked;
+}
+
+/**
+ * `setup --create`: make the project this directory links to, named by
+ * `--project` or after the directory, in the workspace `--workspace` names or
+ * the only one this account can add projects to. A project by that name
+ * already there is linked rather than duplicated, so rerunning is safe.
+ *
+ * It creates a name and nothing else: the env files reach the vault later,
+ * through `sync`, encrypted on this machine like any push.
+ */
+async function createProject(
+  args: ParsedArgs,
+  tree: VaultTree,
+  deps: SetupDeps,
+  dirName: string,
+  report: Record<string, unknown>,
+): Promise<ProjectChoice> {
+  const name = (flagValue(args, "project") ?? dirName).trim();
+  if (!name) throw new CliError("usage", "Name the project.", { next: [command("setup --create --project <name>")] });
+  const workspace = await createIn(args, tree, deps, name);
+
+  const existing = workspace.projects.find((p) => p.name.toLowerCase() === name.toLowerCase());
+  if (existing) {
+    note(`${workspace.name} already has ${existing.name}; linking it.`);
+    return { workspace: workspace.name, project: existing.name, files: existing.files.map((f) => ({ name: f.name, environment: f.environment })) };
+  }
+
+  let created: { id: string; name: string };
+  try {
+    created = await deps.createProject(workspace.id, name);
+  } catch (err) {
+    if (err instanceof ApiError && err.reason === "plan_limit") {
+      throw new CliError("no_access", err.message, { hint: "Upgrade at klef.sh, or link a project you already have:", next: [command("setup")] });
+    }
+    if (err instanceof ApiError && err.reason === "not_admin") {
+      throw new CliError("no_access", `Only a team admin can add projects to ${workspace.name}.`, {
+        hint: "Ask one to add it, or pick another workspace:",
+        next: [command("setup --create --workspace <workspace> --project <name>")],
+      });
+    }
+    throw err;
+  }
+  report.created = true;
+  say(style.dim(`     Created ${created.name} in ${workspace.name}`));
+  return { workspace: workspace.name, project: created.name, files: [] };
+}
+
+/** Which workspace `setup --create` adds the project to. */
+async function createIn(args: ParsedArgs, tree: VaultTree, deps: SetupDeps, name: string): Promise<WorkspaceNode> {
+  const named = flagValue(args, "workspace");
+  if (named) {
+    const found = tree.workspaces.filter((w) => w.name.toLowerCase() === named.toLowerCase());
+    if (found.length !== 1) {
+      throw new CliError("not_found", `No single workspace called "${named}" in your vault.`, { next: [command("list")] });
+    }
+    if (!canAddProjects(found[0]!)) {
+      throw new CliError("no_access", `Only a team admin can add projects to ${found[0]!.name}.`);
+    }
+    return found[0]!;
+  }
+
+  const open = tree.workspaces.filter(canAddProjects);
+  if (open.length === 0) {
+    throw new CliError("no_access", "There is no workspace you can add a project to.", {
+      hint: "Create one at klef.sh, or ask a team admin to add the project.",
+    });
+  }
+  if (open.length === 1) return open[0]!;
+
+  const needChoice = new CliError("choice_required", "Which workspace should the project go in? It needs a choice.", {
+    hint: `Ask the user which one (${open.map((w) => w.name).join("; ")}), then rerun:`,
+    next: [command(`setup --create --workspace <workspace> --project ${shellArg(name)}`)],
+    data: { workspaces: open.map((w) => w.name) },
+  });
+  if (!uiMode().input || uiMode().json) throw needChoice;
+
+  say(`${style.dim("2/4")}  Which workspace should ${name} go in?`);
+  open.forEach((w, i) => say(`       ${i + 1}. ${w.name}`));
+  let answer: string;
+  try {
+    answer = await deps.line(`Number (1-${open.length}): `);
+  } catch (err) {
+    if (!(err instanceof NoTerminalError)) throw err;
+    throw needChoice;
+  }
+  const picked = open[Number.parseInt(answer.trim(), 10) - 1];
+  if (!picked) throw new CliError("usage", "Not one of the options. Nothing created.");
   return picked;
 }
 

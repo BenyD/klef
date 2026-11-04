@@ -106,15 +106,21 @@ repository.
 ### Linking the right project
 
 Never guess which vault project a repository belongs to. Run
-`npx @klefsh/cli list --json` to see the projects that exist (each row is a file, with
-its workspace and project), ask the user which one, then link it with
-`npx @klefsh/cli setup --workspace <workspace> --project <project>` (`--workspace` can
-be left out when the project name is unique). Plain `setup` links on its own
-only when it can tell (the one project, named like this repo); otherwise it
-stops with `choice_required` and the projects in `data.choices`.
-If none fits, the user creates the project in the Klef web app first (klef.sh,
-or their own Klef server: New project), then you link it; the CLI does not
-create projects. You may suggest the repository's name for it, but ask.
+`npx @klefsh/cli setup --json`: it links on its own only when it can tell (the one
+project, named like this repo); otherwise it stops with `choice_required` and
+every project in `data.choices`, including new ones with no files yet (which
+`npx @klefsh/cli list` leaves out, since it lists files). Ask the user which one, then
+link it with `npx @klefsh/cli setup --workspace <workspace> --project <project>`
+(`--workspace` can be left out when the project name is unique).
+If none fits, ask the user whether to create one, suggesting the
+repository's name. Only once they say yes, run
+`npx @klefsh/cli setup --create --project <name>`; it adds an empty project (a name,
+nothing else) and links it, or links the one by that name if it already
+exists. With more than one workspace it stops with `choice_required` and
+`data.workspaces`; ask, then add `--workspace <workspace>`.
+A new project links the env files in this directory, by name. They reach the
+vault with `npx @klefsh/cli sync`, which creates each one there: say which files will
+be pushed and get a yes first, as for any push.
 
 ### What belongs in the vault
 

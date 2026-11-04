@@ -4,7 +4,8 @@
 // file, so `pull --all` brings down .env.local and .env.production together.
 // Pure, like listing.ts: a tree goes in, choices and a config come out.
 
-import type { VaultTree } from "../shared/api-types.ts";
+import type { VaultTree, WorkspaceNode } from "../shared/api-types.ts";
+import { environmentFor } from "./default-files.ts";
 import type { ProjectConfig } from "./project-config.ts";
 
 export interface ProjectChoice {
@@ -14,12 +15,14 @@ export interface ProjectChoice {
   files: { name: string; environment: string | null }[];
 }
 
-/** Every project that has at least one env file to sync. */
+/**
+ * Every project, including a new one with no env files yet: linking that one
+ * lists this directory's files instead, and `sync` creates them in the vault.
+ */
 export function projectChoices(tree: VaultTree): ProjectChoice[] {
   const out: ProjectChoice[] = [];
   for (const workspace of tree.workspaces) {
     for (const project of workspace.projects) {
-      if (project.files.length === 0) continue;
       out.push({
         workspace: workspace.name,
         project: project.name,
@@ -32,7 +35,8 @@ export function projectChoices(tree: VaultTree): ProjectChoice[] {
 
 /** "Personal / lensdrop (.env.local, .env.production)", for a numbered list. */
 export function describeChoice(choice: ProjectChoice): string {
-  return `${choice.workspace} / ${choice.project} (${choice.files.map((f) => f.name).join(", ")})`;
+  const files = choice.files.length ? choice.files.map((f) => f.name).join(", ") : "no files yet";
+  return `${choice.workspace} / ${choice.project} (${files})`;
 }
 
 /**
@@ -67,7 +71,8 @@ const PREFERRED_DEFAULT = [".env.local", ".env"];
  * A `.klef.json` for the whole project: every file listed for `--all`, each
  * living at its own name, and a sensible default for single-file commands.
  */
-export function configForChoice(choice: ProjectChoice): ProjectConfig {
+export function configForChoice(choice: ProjectChoice, localNames: readonly string[] = []): ProjectConfig {
+  if (choice.files.length === 0) return configForEmpty(choice, localNames);
   const byName = (name: string) => choice.files.find((f) => f.name.toLowerCase() === name);
   const main = PREFERRED_DEFAULT.map(byName).find((f) => f !== undefined) ?? choice.files[0]!;
   return {
@@ -77,4 +82,37 @@ export function configForChoice(choice: ProjectChoice): ProjectConfig {
     environment: main.environment,
     files: choice.files.map((f) => ({ file: f.name, path: f.name })),
   };
+}
+
+/** In the order an empty project's linked file is picked from this directory's. */
+const PREFERRED_LOCAL = [".env.local", ".env", ".env.development", ".dev.vars"];
+
+/**
+ * A `.klef.json` for a project with nothing in it yet: the env files in this
+ * directory, each to be created in the vault under its own name by `sync`.
+ * With none here, `.env`, the file `push` and `pull` have always defaulted to.
+ */
+function configForEmpty(choice: ProjectChoice, localNames: readonly string[]): ProjectConfig {
+  const local = [...localNames];
+  const main =
+    PREFERRED_LOCAL.map((name) => local.find((n) => n.toLowerCase() === name)).find((n) => n !== undefined) ??
+    local[0] ??
+    ".env";
+  const ordered = [main, ...local.filter((n) => n !== main)];
+  return {
+    workspace: choice.workspace,
+    project: choice.project,
+    file: main,
+    environment: environmentFor(main),
+    ...(ordered.length > 1 ? { files: ordered.map((file) => ({ file, path: file })) } : {}),
+  };
+}
+
+/**
+ * Whether this account may add a project to the workspace: its own, or a
+ * team's it administers. The server decides in the end (a team with no plan
+ * refuses too); this only keeps the choices to ones that can work.
+ */
+export function canAddProjects(workspace: WorkspaceNode): boolean {
+  return !workspace.team || workspace.team.role === "owner" || workspace.team.role === "admin";
 }

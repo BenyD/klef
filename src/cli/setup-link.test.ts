@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { configForChoice, findChoice, namesMatch, type ProjectChoice } from "./setup-link.ts";
+import { canAddProjects, configForChoice, describeChoice, findChoice, namesMatch, projectChoices, type ProjectChoice } from "./setup-link.ts";
+import type { VaultTree, WorkspaceNode } from "../shared/api-types.ts";
 
 const choice = (workspace: string, project: string, files: string[]): ProjectChoice => ({
   workspace,
@@ -46,5 +47,39 @@ describe("namesMatch", () => {
     expect(namesMatch("my-app", "My_App")).toBe(true);
     expect(namesMatch("shop-old", "unclog")).toBe(false);
     expect(namesMatch("--", "")).toBe(false);
+  });
+});
+
+describe("an empty project", () => {
+  const empty = choice("P", "app", []);
+
+  it("is offered, and says it has no files yet", () => {
+    const tree = { workspaces: [{ id: "w", name: "P", icon: null, createdAt: "", projects: [{ id: "p", name: "app", framework: null, icon: null, createdAt: "", files: [] }] }] } as unknown as VaultTree;
+    expect(projectChoices(tree)).toEqual([{ workspace: "P", project: "app", files: [] }]);
+    expect(describeChoice(empty)).toBe("P / app (no files yet)");
+  });
+
+  it("links this directory's env files, preferring .env.local", () => {
+    const config = configForChoice(empty, [".dev.vars", ".env", ".env.local", ".env.production"]);
+    expect(config.file).toBe(".env.local");
+    expect(config.environment).toBe("development");
+    expect(config.files?.map((f) => f.file)).toEqual([".env.local", ".dev.vars", ".env", ".env.production"]);
+  });
+
+  it("links .env alone when this directory has none", () => {
+    const config = configForChoice(empty, []);
+    expect(config).toEqual({ workspace: "P", project: "app", file: ".env", environment: null });
+  });
+});
+
+describe("canAddProjects", () => {
+  const ws = (team: unknown) => ({ id: "w", name: "W", icon: null, createdAt: "", projects: [], team }) as unknown as WorkspaceNode;
+
+  it("allows your own workspace and a team you administer, not one you only belong to", () => {
+    expect(canAddProjects(ws(null))).toBe(true);
+    expect(canAddProjects(ws(undefined))).toBe(true);
+    expect(canAddProjects(ws({ role: "owner" }))).toBe(true);
+    expect(canAddProjects(ws({ role: "admin" }))).toBe(true);
+    expect(canAddProjects(ws({ role: "member" }))).toBe(false);
   });
 });

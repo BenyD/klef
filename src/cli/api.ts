@@ -147,6 +147,19 @@ export class KlefApi {
   }
 
   /**
+   * Create an empty project in a workspace. A name is plaintext by design and
+   * the only thing sent; the server refuses one past a Free plan's limit, or in
+   * a team this account does not administer.
+   */
+  createProject(workspaceId: string, name: string): Promise<{ id: string; name: string }> {
+    return this.request("/api/projects", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId, name }),
+    });
+  }
+
+  /**
    * Create an empty env file in a project. Names and the environment label are
    * plaintext by design; the contents arrive afterwards as an encrypted
    * version, like any other save.

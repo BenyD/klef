@@ -46,6 +46,7 @@ function deps(overrides: Partial<SetupDeps> = {}): SetupDeps {
       await writeFile(path.join(cwd, localPath), "# pulled\n");
       return 0;
     },
+    createProject: async (_workspaceId, name) => ({ id: `new-${name}`, name }),
     ...overrides,
   };
 }
@@ -273,12 +274,35 @@ describe("klef setup (everything)", () => {
   });
 
   it("offers a menu when there is more than one project", async () => {
-    const line = vi.fn(async () => "2");
+    const line = vi.fn(async () => "3");
     expect(await run("setup", yes, { line })).toBe(0);
     expect(output.join("\n")).toContain("1. Personal / lensdrop (.env.production, .env.local)");
-    // Projects with no files are not offered.
-    expect(output.join("\n")).not.toContain("empty");
+    // A project with no files is offered too: linking it is how its files get in.
+    expect(output.join("\n")).toContain("2. Personal / empty (no files yet)");
     expect(JSON.parse(await readFile(path.join(cwd, ".klef.json"), "utf8")).project).toBe("blog");
+  });
+
+  it("links an empty project to the env files here, pulling nothing", async () => {
+    await writeFile(path.join(cwd, ".env.local"), "A=1\n");
+    await writeFile(path.join(cwd, ".env.production"), "A=2\n");
+    await writeFile(path.join(cwd, ".env.example"), "A=\n");
+    const pullFile = vi.fn(async () => 0);
+    const unlock = vi.fn(async () => 0);
+    expect(await run("setup --project empty --yes", yes, { pullFile, unlock })).toBe(0);
+    const config = JSON.parse(await readFile(path.join(cwd, ".klef.json"), "utf8"));
+    expect(config.project).toBe("empty");
+    expect(config.file).toBe(".env.local");
+    expect(config.files.map((f: { file: string }) => f.file)).toEqual([".env.local", ".env.production"]);
+    expect(pullFile).not.toHaveBeenCalled();
+    expect(unlock).not.toHaveBeenCalled();
+    expect(await readFile(path.join(cwd, ".env.local"), "utf8")).toBe("A=1\n");
+  });
+
+  it("does not try to pull a file the vault does not have", async () => {
+    const pullFile = vi.fn(async () => 0);
+    expect(await run("setup --project empty --yes", yes, { pullFile })).toBe(0);
+    expect(pullFile).not.toHaveBeenCalled();
+    expect(output).toContain("4/4  Nothing in the vault to pull yet");
   });
 
   it("links the project --project names, without a menu", async () => {
@@ -292,7 +316,7 @@ describe("klef setup (everything)", () => {
   it("tells an agent to ask the user which project", async () => {
     await expect(run("setup", yes, { line: NO_TERMINAL })).rejects.toMatchObject({
       code: "choice_required",
-      next: [{ command: "klef setup --workspace <workspace> --project <project>" }],
+      next: [{ command: "klef setup --workspace <workspace> --project <project>" }, { command: "klef setup --create --project <name>" }],
     });
     expect(await exists(path.join(cwd, ".klef.json"))).toBe(false);
   });
@@ -338,8 +362,77 @@ describe("klef setup (everything)", () => {
     expect(pullFile).not.toHaveBeenCalled();
   });
 
-  it("stops when the vault has nothing to link", async () => {
+  it("stops when the vault has nothing to link, and says how to create a project", async () => {
     const account = async () => ({ email: "me@example.com", tree: { workspaces: [] } });
-    await expect(run("setup", yes, { account })).rejects.toThrow(/no env files yet/);
+    await expect(run("setup", yes, { account })).rejects.toMatchObject({
+      message: expect.stringMatching(/no projects yet/),
+      next: [{ command: "klef setup --create --project <name>" }],
+    });
+  });
+
+  describe("--create", () => {
+    const TEAM = {
+      workspaces: [
+        TREE.workspaces[0]!,
+        { id: "t", name: "Acme", icon: null, createdAt: "", team: { role: "member" }, projects: [] },
+      ],
+    } as unknown as VaultTree;
+    afterEach(() => resetUi());
+
+    it("creates a project named after the directory and links it to the files here", async () => {
+      const named = path.join(cwd, "lensdrop-web");
+      await mkdir(named);
+      await writeFile(path.join(named, ".env"), "A=1\n");
+      const createProject = vi.fn(async (_w: string, name: string) => ({ id: "p", name }));
+      const code = await setup(parseArgs(["setup", "--create", "--yes"]), named, deps({ account: async () => ({ email: "me@example.com", tree: TEAM }), createProject }));
+      expect(code).toBe(0);
+      // Only the workspace this account can add to: Acme is a team it is a member of.
+      expect(createProject).toHaveBeenCalledWith("w", "lensdrop-web");
+      const config = JSON.parse(await readFile(path.join(named, ".klef.json"), "utf8"));
+      expect(config).toMatchObject({ workspace: "Personal", project: "lensdrop-web", file: ".env" });
+      expect(output.join("\n")).toContain("Created lensdrop-web in Personal");
+    });
+
+    it("links the project by that name instead of making a second", async () => {
+      const createProject = vi.fn(async (_w: string, name: string) => ({ id: "p", name }));
+      expect(await run("setup --create --project BLOG --yes", yes, { createProject })).toBe(0);
+      expect(createProject).not.toHaveBeenCalled();
+      expect(JSON.parse(await readFile(path.join(cwd, ".klef.json"), "utf8")).project).toBe("blog");
+    });
+
+    it("refuses a team workspace this account does not administer", async () => {
+      const createProject = vi.fn(async (_w: string, name: string) => ({ id: "p", name }));
+      await expect(
+        run("setup --create --workspace acme --project api --yes", yes, { account: async () => ({ email: "me@example.com", tree: TEAM }), createProject }),
+      ).rejects.toMatchObject({ code: "no_access" });
+      expect(createProject).not.toHaveBeenCalled();
+    });
+
+    it("asks an agent which workspace when there is more than one", async () => {
+      setUiMode({ input: false });
+      const TWO = { workspaces: [TREE.workspaces[0]!, { id: "w2", name: "Work", icon: null, createdAt: "", projects: [] }] } as unknown as VaultTree;
+      const createProject = vi.fn(async (_w: string, name: string) => ({ id: "p", name }));
+      await expect(
+        run("setup --create --project api --yes", yes, { account: async () => ({ email: "me@example.com", tree: TWO }), createProject }),
+      ).rejects.toMatchObject({
+        code: "choice_required",
+        data: { workspaces: ["Personal", "Work"] },
+        next: [{ command: "klef setup --create --workspace <workspace> --project api" }],
+      });
+      expect(createProject).not.toHaveBeenCalled();
+      expect(await exists(path.join(cwd, ".klef.json"))).toBe(false);
+    });
+
+    it("passes on the Free plan's limit with a way forward", async () => {
+      const { ApiError } = await import("./api.ts");
+      const createProject = vi.fn(async () => {
+        throw new ApiError("Free includes 3 projects.", 402, { reason: "plan_limit" });
+      });
+      await expect(run("setup --create --project api --yes", yes, { createProject })).rejects.toMatchObject({
+        code: "no_access",
+        message: "Free includes 3 projects.",
+      });
+      expect(await exists(path.join(cwd, ".klef.json"))).toBe(false);
+    });
   });
 });

@@ -36,6 +36,8 @@ Options:
   --dry-run          Show what sync would do, and do none of it
   --workspace, --project <name>
                      setup: which project to link, without the menu
+  --create           setup: create the project first, named after this
+                     directory unless --project names it
   -y, --yes          Skip the confirmation on push, sync, restore and setup
   --global           setup: install the Claude Code skill for every project
   --json             Machine-readable output (list, status, audit)

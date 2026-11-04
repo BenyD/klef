@@ -64,15 +64,17 @@ export const COMMANDS: CommandSpec[] = [
     flags: [
       { name: "workspace", value: "name", description: "Link to a project in this workspace" },
       { name: "project", value: "name", description: "Link to this project, without the menu" },
+      { name: "create", description: "Create the project first, named after this directory" },
       { name: "global", description: "Install the Claude Code skill for every project" },
       { name: "paste", description: "Sign in by pasting a token instead of the browser" },
     ],
     examples: [
       ["klef setup", "Everything, step by step"],
       ["klef setup --project lensdrop --yes", "No menu and no questions, for an agent"],
+      ["klef setup --create", "Create a project named after this directory, and link it"],
       ["klef setup claude cursor", "Only (re)write the agent instructions"],
     ],
-    json: "{ signedIn, email, linked: { workspace, project, files }, agentFiles: [ { path, action } ], pulled: [ path ], files: [ { file, path, state } ], next }",
+    json: "{ signedIn, email, linked: { workspace, project, files }, created, agentFiles: [ { path, action } ], pulled: [ path ], files: [ { file, path, state } ], next }",
   },
   {
     name: "login",
