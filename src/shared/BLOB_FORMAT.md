@@ -175,6 +175,11 @@ pt   = uint32be(len(utf8(text))) || utf8(text), zero-padded to the first of
 blob = WrappedKey shape, AES-256-GCM(k', pt), context "klef/send/v1", id
 ```
 
+A file, or some of its lines, is sent as `text = "klef-file:" || name || "\n" ||
+contents`, where `name` matches `[A-Za-z0-9._-]{1,100}`. The name is inside
+the ciphertext, so neither the server nor the link reveals it. Any other text
+is a plain value.
+
 ## What the server can and cannot do
 
 | Server sees | Server can read? |

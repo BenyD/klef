@@ -25,6 +25,24 @@ const SEND_PASSPHRASE_INFO = "klef/send/v1/passphrase";
 /** The largest text a send can carry, in UTF-8 bytes. */
 export const MAX_SEND_BYTES = SEND.paddingBuckets[SEND.paddingBuckets.length - 1]! - SEND.lengthPrefixBytes;
 
+/** How long a send can wait to be opened, in seconds, shortest first. */
+export const SEND_EXPIRY_OPTIONS = [
+  { seconds: 900, label: "15 minutes" },
+  { seconds: 3600, label: "1 hour" },
+  { seconds: 86_400, label: "1 day" },
+  { seconds: 3 * 86_400, label: "3 days" },
+  { seconds: 7 * 86_400, label: "7 days" },
+  { seconds: 30 * 86_400, label: "30 days" },
+] as const;
+
+/** The default expiry: one day. */
+export const DEFAULT_SEND_EXPIRY = 86_400;
+
+/** Whether a sender may pick this expiry. */
+export function isSendExpiry(seconds: unknown): seconds is number {
+  return SEND_EXPIRY_OPTIONS.some((o) => o.seconds === seconds);
+}
+
 /** What the server stores. Opaque without the fragment key. */
 export interface StoredSend {
   id: string;
@@ -123,6 +141,32 @@ export async function openSend(stored: StoredSend, fragmentKey: string, passphra
   } finally {
     padded.fill(0);
   }
+}
+
+// A whole file, or some of its lines, sent with its name: the name rides
+// inside the encrypted text, on a first line of its own, so the link (which
+// may sit in a chat log) never says which file it is.
+const FILE_PREFIX = "klef-file:";
+const FILE_NAME = /^[A-Za-z0-9._-]{1,100}$/;
+
+/** Whether a name can label a sent file: a plain file name, no path. */
+export function isSendFileName(name: string): boolean {
+  return FILE_NAME.test(name) && name !== "." && name !== "..";
+}
+
+/** The text to send for a file called `name`. */
+export function sendFileText(name: string, content: string): string {
+  if (!isSendFileName(name)) throw new Error("That file name cannot be sent");
+  return `${FILE_PREFIX}${name}\n${content}`;
+}
+
+/** A sent file's name and contents, or null for a plain value. */
+export function readSendFile(text: string): { name: string; content: string } | null {
+  if (!text.startsWith(FILE_PREFIX)) return null;
+  const end = text.indexOf("\n");
+  if (end === -1) return null;
+  const name = text.slice(FILE_PREFIX.length, end);
+  return isSendFileName(name) ? { name, content: text.slice(end + 1) } : null;
 }
 
 /** The link: `<origin>/s/<id>#<key>`. */

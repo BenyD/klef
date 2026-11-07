@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  pickEntries,
   appendBlock,
   appendEntry,
   diffEntryRows,
@@ -304,5 +305,14 @@ describe("a leading byte order mark", () => {
       ["B", "2"],
     ]);
     expect(setEntry(text, 0, { value: "9" })).toBe("\uFEFFA=9\nB=2\n");
+  });
+
+  it("picks the selected entries' lines byte for byte, multi-line values whole", () => {
+    const text = '# Head\r\nA=1\r\nCERT="line 1\r\nline 2"\r\nB=2\r\n';
+    const lines = parseEnvText(text);
+    const a = lines.findIndex((l) => l.kind === "entry" && l.key === "A");
+    const cert = lines.findIndex((l) => l.kind === "entry" && l.key === "CERT");
+    expect(pickEntries(text, [cert, a])).toBe('A=1\r\nCERT="line 1\r\nline 2"\r\n');
+    expect(pickEntries(text, [0])).toBe("");
   });
 });

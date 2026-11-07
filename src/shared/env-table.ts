@@ -154,6 +154,23 @@ export function entryLines(entry: EnvEntry): number[] {
   return Array.from({ length: end - entry.index + 1 }, (_, i) => entry.index + i);
 }
 
+/**
+ * The selected entries' lines, byte for byte and in file order, with a
+ * multi-line value's continuation lines, ending in a newline. For sending
+ * some of a file's keys.
+ */
+export function pickEntries(text: string, indices: Iterable<number>): string {
+  const parsed = parseEnvText(text);
+  const raws = text.split("\n");
+  const keep = new Set<number>();
+  for (const i of indices) {
+    const line = parsed[i];
+    if (line?.kind === "entry") for (const j of entryLines(line)) keep.add(j);
+  }
+  const picked = [...keep].sort((a, b) => a - b).map((i) => raws[i]!);
+  return picked.length ? `${picked.join("\n")}\n` : "";
+}
+
 /** Delete the line at `index` (entry or otherwise), with a multi-line value's continuation lines. */
 export function removeLine(text: string, index: number): string {
   return removeLines(text, [index]);

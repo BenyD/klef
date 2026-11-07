@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { SEND } from "./constants.ts";
 import {
+  isSendFileName,
+  readSendFile,
+  sendFileText,
   createSend,
   isSendId,
   MAX_SEND_BYTES,
@@ -76,5 +79,16 @@ describe("sends", () => {
     expect(parseSendUrl(url)).toEqual({ id: stored.id, fragmentKey });
     expect(parseSendUrl("https://klef.sh/s/abc#def")).toBeNull();
     expect(isSendId("../../etc")).toBe(false);
+  });
+
+  it("carry a file's name inside the sent text, and only a plain file name", () => {
+    const text = sendFileText(".env.local", "A=1\nB=2\n");
+    expect(readSendFile(text)).toEqual({ name: ".env.local", content: "A=1\nB=2\n" });
+    expect(readSendFile("sk_live_123")).toBeNull();
+    expect(readSendFile("klef-file:../etc/passwd\nx")).toBeNull();
+    expect(readSendFile("klef-file:.env")).toBeNull();
+    expect(() => sendFileText("a/b", "x")).toThrow();
+    expect(isSendFileName("..")).toBe(false);
+    expect(isSendFileName(".env.production")).toBe(true);
   });
 });
