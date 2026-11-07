@@ -267,6 +267,57 @@ reading the database, including the operator. Collection is single use. The
 vault key, when the browser also unlocked the CLI, travels the same way (see
 "Unlocking the CLI at sign-in").
 
+## Teams
+
+A team workspace is shared without the server ever holding a key it can use.
+
+- Each person has a P-256 key pair, made on their device. The private half is
+  encrypted under their own vault key; the public half has a fingerprint, shown
+  on their account page and next to their name in a team.
+- Every project environment in a team has its own key. An admin's browser
+  wraps each key a member may hold to that member's public key, with an
+  authenticated ECDH seal that only someone holding the admin's private key can
+  make. The server stores the wraps and cannot open or forge one, so it cannot
+  give anyone access.
+- Admins (and the owner) hold the workspace key, which reaches every
+  environment. Developers and read-only members get the keys for the
+  environments they are granted, never production (any label containing
+  `prod`). A member without production cannot decrypt it even with a full copy
+  of the database. Who may write is enforced by the server.
+- Access starts only when an admin chooses **Give access** after comparing
+  fingerprints with the person. Each browser pins the fingerprints it has seen
+  and refuses a key whose sender's fingerprint changed, so a substituted
+  public key is a loud stop, not silent trust.
+- Removing someone rotates exactly the keys they held (every key, for an
+  admin), so anything saved afterwards is unreadable to them. Rotation cannot
+  take back values they already saw; rotate those at their providers.
+- What we trust the server for: returning the right public key when someone is
+  first given access. The fingerprint comparison is the check on that, and the
+  CLI, built from this repository, is an independent client.
+
+## Sends
+
+A send is one value, a note or a file, for someone who may have no account.
+
+- It is encrypted in the sender's browser under a 32-byte key that exists only
+  in the link's fragment (after `#`), which browsers never send to a server.
+  An optional passphrase is mixed in through Argon2id. The server stores
+  ciphertext padded to 256 B, 1, 4, 16 or 64 KiB, so its size says little. A
+  sent file's name is inside the ciphertext.
+- Opening takes a view in one conditional database update, so a race for the
+  last view has one winner; the ciphertext is deleted at the last view, at
+  expiry (15 minutes to 30 days) or on revoke.
+- The recipient's page fetches nothing that spends a view until **Reveal**, so
+  link previews cannot burn it. Before that it may ask whether the link still
+  opens, which returns only the expiry, the views left and whether a passphrase
+  is needed.
+- Opening is rate limited per IP address. A sender cannot set passphrase
+  parameters heavy enough to hang the recipient's tab (Argon2id is capped at
+  64 MiB and 10 passes).
+- Sends are created in the browser only. An access token cannot create or list
+  them, so a coding agent cannot mint a link to a value it could then open.
+- The page that opens a send loads no analytics.
+
 ## Handling rules the code follows
 
 - Encryption keys exist only on the client during an unlocked session: in
